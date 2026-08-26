@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qfin"
+version = "0.3.0"
+description = "A finance-specific modelling and compilation layer for quantum computers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Venkat Kota" }]
+keywords = ["quantum computing", "finance", "option pricing", "pennylane"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Scientific/Engineering",
+]
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+quantum = ["pennylane>=0.45,<0.46"]
+dev = [
+  "build>=1.2",
+  "mypy>=1.11",
+  "pennylane>=0.45,<0.46",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.8",
+]
+
+[project.scripts]
+qfin = "qfin.__main__:main"
+
+[project.urls]
+Documentation = "https://github.com/venkatkota2/qfin#readme"
+Repository = "https://github.com/venkatkota2/qfin"
+Issues = "https://github.com/venkatkota2/qfin/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+qfin = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+strict = true
+packages = ["qfin"]
+mypy_path = "src"
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["pennylane", "pennylane.*", "scipy", "scipy.*"]
+ignore_missing_imports = true
