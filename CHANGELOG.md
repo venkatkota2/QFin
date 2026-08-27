@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Prevented false representation convergence when coarse grids miss a non-zero
+  tail payoff by validating MVP qubit selection against Black–Scholes.
+- Switched the default simulator to PennyLane Lightning's compiled C++ backend,
+  while retaining an explicit device override.
+- Corrected empirical encodings so custom bounds report and exclude omitted
+  mass rather than folding it into boundary bins.
+- Renamed the installable distribution to `qfin-quantum` because `qfin` is
+  already occupied on PyPI; the import package remains `qfin`.
+- Bounded NumPy and SciPy to their current major versions and pinned development
+  checks to mypy 1.x after mypy 2.x failed in the supported local environment.
 - Aligned package and README licensing metadata with the repository's current
   no-license state.
 - Added a reproducible multi-case numerical demonstration and a CI coverage

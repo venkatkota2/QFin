@@ -1,5 +1,6 @@
 """Financial-to-quantum compiler entry point."""
 
+from dataclasses import replace
 from math import exp, isfinite
 from typing import Literal
 
@@ -65,35 +66,62 @@ def compile(
     if not 0 < tail_probability < 1:
         raise ValueError("tail_probability must lie strictly between zero and one")
 
-    distribution = GeometricBrownianMotion(market).terminal_distribution(problem.maturity)
     discount_factor = exp(-market.rate * problem.maturity)
+    distribution = GeometricBrownianMotion(market).terminal_distribution(problem.maturity)
+    classical_value = black_scholes_price(problem, market)
 
     def discounted_payoff(grid: np.ndarray) -> np.ndarray:
         return discount_factor * problem.payoff(grid)
 
     encoder = encode_quantiles if representation_method == "quantile" else encode
-    representation = encoder(
-        distribution,
-        target_error=budget.discretization,
-        objective=discounted_payoff,
-        min_qubits=min_qubits,
-        max_qubits=max_qubits,
-        tail_probability=tail_probability,
-    )
-    raw_payoff = problem.payoff(representation.grid)
+    representation = None
+    raw_payoff = None
+    discrete_value = 0.0
+    previous_value: float | None = None
+    representation_tolerance = budget.domain_truncation + budget.discretization
+
+    # The generic encoders use successive-grid stabilization because they do
+    # not know an exact expectation. For the Black-Scholes MVP an analytical
+    # benchmark is available, so use it to prevent false convergence when two
+    # coarse grids both miss a low-probability, non-zero payoff region.
+    for candidate in range(min_qubits, max_qubits + 1):
+        candidate_representation = encoder(
+            distribution,
+            target_error=budget.discretization,
+            objective=discounted_payoff,
+            qubits=candidate,
+            min_qubits=min_qubits,
+            max_qubits=max_qubits,
+            tail_probability=tail_probability,
+        )
+        candidate_payoff = problem.payoff(candidate_representation.grid)
+        candidate_value = discount_factor * float(
+            np.dot(candidate_representation.probabilities, candidate_payoff)
+        )
+        refinement_change = (
+            float("inf")
+            if previous_value is None
+            else abs(candidate_value - previous_value)
+        )
+        representation = replace(
+            candidate_representation,
+            discretization_error=refinement_change,
+        )
+        raw_payoff = candidate_payoff
+        discrete_value = candidate_value
+        if abs(discrete_value - classical_value) <= representation_tolerance:
+            break
+        previous_value = candidate_value
+
+    assert representation is not None
+    assert raw_payoff is not None
     payoff_scale = float(np.max(raw_payoff))
     if payoff_scale == 0.0:
         normalized_payoff = np.zeros_like(raw_payoff)
     else:
         normalized_payoff = raw_payoff / payoff_scale
-    discrete_value = discount_factor * float(
-        np.dot(representation.probabilities, raw_payoff)
-    )
-    classical_value = black_scholes_price(problem, market)
     representation_error = abs(discrete_value - classical_value)
-    representation_converged = (
-        representation.discretization_error <= budget.discretization
-    )
+    representation_converged = representation_error <= representation_tolerance
     payoff_approximation: WalshPayoffApproximation | None = None
     if representation_method == "quantile":
         payoff_approximation = WalshPayoffApproximation.fit(

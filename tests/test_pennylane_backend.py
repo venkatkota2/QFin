@@ -45,6 +45,7 @@ def test_default_circuit_contains_no_dense_unitaries(
     small_model: qfin.CompiledPricingModel,
 ) -> None:
     backend = small_model.to_pennylane()
+    assert backend.device_name == "lightning.qubit"
     diagram = backend.draw(power=1)
     assert "RZ" in diagram or "PauliRot" in diagram
     assert " H " in diagram or "─H─" in diagram
@@ -74,8 +75,19 @@ def test_end_to_end_quantum_run_is_close_to_discrete_value(
     assert result.value <= result.confidence_interval_95[1]
     assert result.resources.total_shots == 16_000
     assert result.resources.backend_mode == "compressed"
+    assert result.resources.backend == "pennylane.lightning.qubit"
+    assert result.backend == "pennylane.lightning.qubit:compressed"
     assert result.payoff_approximation is not None
     assert result.to_dict()["payoff_approximation"] is not None
     assert result.estimation_error == pytest.approx(
         abs(result.value - result.circuit_value)
     )
+
+
+def test_pennylane_device_can_be_overridden(
+    small_model: qfin.CompiledPricingModel,
+) -> None:
+    backend = small_model.to_pennylane(device_name="default.qubit")
+    assert backend.device_name == "default.qubit"
+    resources = small_model.resources(device_name="default.qubit")
+    assert resources.backend == "pennylane.default.qubit"

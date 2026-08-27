@@ -27,7 +27,7 @@ class CompressedPennyLaneBackend:
         normalized_payoff: NDArray[np.float64],
         payoff_approximation: WalshPayoffApproximation,
         *,
-        device_name: str = "default.qubit",
+        device_name: str = "lightning.qubit",
         max_compressed_terms: int = 32_767,
     ) -> None:
         payoff = np.asarray(normalized_payoff, dtype=np.float64).reshape(-1)

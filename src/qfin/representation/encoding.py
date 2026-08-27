@@ -109,17 +109,21 @@ def _empirical_grid(
     edges: NDArray[np.float64],
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], float]:
     assert distribution.probabilities is not None
-    bin_index = np.searchsorted(edges, distribution.values, side="right") - 1
+    included = (distribution.values >= edges[0]) & (distribution.values <= edges[-1])
+    included_values = distribution.values[included]
+    included_probabilities = distribution.probabilities[included]
+    omitted_mass = float(1.0 - np.sum(included_probabilities))
+    bin_index = np.searchsorted(edges, included_values, side="right") - 1
     bin_index = np.clip(bin_index, 0, edges.size - 2)
     probabilities = np.zeros(edges.size - 1, dtype=np.float64)
     weighted_values = np.zeros(edges.size - 1, dtype=np.float64)
-    np.add.at(probabilities, bin_index, distribution.probabilities)
-    np.add.at(weighted_values, bin_index, distribution.probabilities * distribution.values)
+    np.add.at(probabilities, bin_index, included_probabilities)
+    np.add.at(weighted_values, bin_index, included_probabilities * included_values)
     midpoints = 0.5 * (edges[:-1] + edges[1:])
     grid = midpoints.copy()
     occupied = probabilities > 0
     grid[occupied] = weighted_values[occupied] / probabilities[occupied]
-    return grid, probabilities, 0.0
+    return grid, probabilities, omitted_mass
 
 
 def _fixed_encoding(

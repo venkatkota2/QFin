@@ -10,7 +10,7 @@ normalization, amplitude-estimation circuit, and validation report.
 
 Version `0.3.0` solves one problem end to end: European call and put pricing
 under Black–Scholes using maximum-likelihood amplitude estimation (MLAE) on
-PennyLane's `default.qubit` simulator. Its default representation labels
+PennyLane's `lightning.qubit` simulator. Its default representation labels
 equal-probability inverse-CDF points with a uniform quantum register and
 compiles the payoff into a tolerance-controlled sparse Walsh/Pauli circuit.
 No arbitrary dense unitary or probability-loading angle table is constructed.
@@ -25,7 +25,9 @@ python -m pip install -e ".[quantum]"
 
 Python 3.11 or newer is supported. NumPy and SciPy are core dependencies;
 PennyLane is optional so the financial and compilation layers can be used
-without a quantum runtime.
+without a quantum runtime. The distribution name is `qfin-quantum` because the
+`qfin` name on PyPI belongs to a different project; the Python import remains
+`qfin`.
 
 ## First price
 
@@ -63,19 +65,25 @@ print(backend.draw(power=1))
 print(backend.circuit_specs(power=1))
 ```
 
+`lightning.qubit` is the default C++ simulator. Any installed PennyLane device
+can be selected explicitly, for example
+`model.run(device_name="default.qubit")`.
+
 Or run the bundled command:
 
 ```bash
 qfin price --kind call --spot 100 --strike 105 --maturity 1 \
-  --rate 0.04 --volatility 0.20 --shots 2000 --seed 7
+  --rate 0.04 --volatility 0.20 --shots 2000 --seed 7 \
+  --device lightning.qubit
 ```
 
 ## What the compiler does
 
 1. Converts the Black–Scholes market into the terminal lognormal distribution.
 2. Selects a truncated quantile domain and midpoint inverse-CDF quadrature.
-3. Increases qubits until the payoff expectation stabilizes or the configured
-   simulator limit is reached.
+3. Increases qubits until the discrete price is inside the combined domain and
+   discretization allocation against the Black–Scholes MVP benchmark, or the
+   configured simulator limit is reached.
 4. Normalizes the payoff into an objective-qubit amplitude.
 5. Loads the equal-probability quantile labels with one Hadamard per data qubit.
 6. Fits the payoff rotation with magnitude-ordered Walsh coefficients until
@@ -131,6 +139,17 @@ converged unless it meets both requested criteria. Resource counts are logical
 and PennyLane-level rather than hardware-transpiled counts. QFin does not yet
 support calibration, path-dependent products, stochastic volatility,
 portfolio risk, hardware noise, Qiskit export, or production controls.
+
+## Stack and performance
+
+- NumPy and SciPy handle vectorized distribution, quadrature, Walsh-transform,
+  and likelihood calculations.
+- PennyLane provides the circuit and backend abstraction.
+- PennyLane Lightning supplies the compiled C++ state-vector simulator used by
+  default; `default.qubit` remains available for portability and debugging.
+- QFin stays pure Python because profiling shows circuit simulation dominates
+  the current classical compiler work. A QFin-specific Rust or C++ extension
+  would add packaging complexity without addressing the current bottleneck.
 
 See [docs/circuit-design.md](docs/circuit-design.md) for the v0.3 circuit,
 [docs/architecture.md](docs/architecture.md) for package design, and
