@@ -1,5 +1,7 @@
 # QFin
 
+[![CI](https://github.com/venkatkota2/QFin/actions/workflows/ci.yml/badge.svg)](https://github.com/venkatkota2/QFin/actions/workflows/ci.yml)
+
 QFin is an experimental Python framework that translates familiar financial
 models into quantum representations and executable quantum circuits. It sits
 above PennyLane: users describe an option and market model, while QFin chooses
