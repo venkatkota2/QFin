@@ -134,16 +134,20 @@ See [docs/circuit-design.md](docs/circuit-design.md) for the v0.3 circuit,
 [docs/architecture.md](docs/architecture.md) for package design, and
 [docs/roadmap.md](docs/roadmap.md) for the next research steps.
 
+## Reproducible numerical demonstration
+
+[docs/benchmark-0.3.0.md](docs/benchmark-0.3.0.md) compares several call and
+put cases with Black-Scholes and reports QFin estimates, absolute errors,
+shots, retained Walsh terms, and logical-resource counts. The table is emitted
+by [examples/recruiter_benchmark.py](examples/recruiter_benchmark.py); it is a
+simulator demonstration, not evidence of quantum advantage.
+
 ## Development
 
 ```bash
 python -m pip install -e ".[dev]"
 ruff check .
 mypy src/qfin
-pytest
+pytest --cov=qfin --cov-fail-under=78
 python -m build
 ```
-
-## License
-
-MIT
