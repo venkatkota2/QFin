@@ -35,6 +35,23 @@ def test_empirical_encoding_preserves_the_mean() -> None:
     assert encoding.conditional_mean == pytest.approx(distribution.mean)
 
 
+def test_empirical_encoding_does_not_fold_omitted_mass_into_boundary_bins() -> None:
+    distribution = qfin.EmpiricalDistribution(
+        np.array([0.0, 1.0, 2.0, 100.0]),
+        probabilities=np.array([0.1, 0.2, 0.3, 0.4]),
+    )
+    encoding = qfin.encode(
+        distribution,
+        qubits=2,
+        min_qubits=2,
+        max_qubits=2,
+        bounds=(0.0, 2.0),
+    )
+
+    assert encoding.tail_probability == pytest.approx(0.4)
+    assert encoding.conditional_mean == pytest.approx((0.2 + 0.6) / 0.6)
+
+
 def test_quantile_encoding_has_parameter_free_uniform_probabilities() -> None:
     distribution = qfin.LogNormal(mu=np.log(100), sigma=0.2)
     encoding = qfin.encode_quantiles(

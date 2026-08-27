@@ -68,3 +68,19 @@ def test_compiler_reports_when_payoff_term_cap_misses_tolerance() -> None:
     assert not model.payoff_approximation.met_tolerance
     assert not model.compilation_converged
     assert "not met" in model.explain()
+
+
+def test_compiler_does_not_false_converge_when_coarse_grids_miss_tail_payoff() -> None:
+    market = qfin.BlackScholes(spot=100, rate=0.03, volatility=0.50)
+    option = qfin.EuropeanCall(strike=300, maturity=1.0)
+    model = qfin.compile(option, market, target_error=0.10, max_qubits=12)
+    representation_budget = (
+        model.error_budget.domain_truncation + model.error_budget.discretization
+    )
+
+    assert model.classical_value > 0.40
+    assert model.representation.qubits > 4
+    assert model.payoff_scale > 0
+    assert model.representation_error <= representation_budget
+    assert model.representation_converged
+    assert "Representation validation error" in model.explain()

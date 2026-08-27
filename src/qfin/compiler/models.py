@@ -139,13 +139,14 @@ class CompiledPricingModel:
         schedule: Sequence[int] = (0, 1, 2, 4),
         shots: int = 1_000,
         backend_mode: BackendMode | None = None,
+        device_name: str = "lightning.qubit",
     ) -> ResourceReport:
         resolved_mode = self._resolve_backend_mode(backend_mode)
         return estimate_resources(
             self.representation.qubits,
             schedule=schedule,
             shots=shots,
-            backend="pennylane.default.qubit",
+            backend=f"pennylane.{device_name}",
             backend_mode=resolved_mode,
             payoff_terms=(
                 self.payoff_approximation.parameter_count
@@ -166,6 +167,7 @@ class CompiledPricingModel:
         max_dense_dimension: int = 2_048,
         max_structured_rotations: int = 32_767,
         max_compressed_terms: int = 32_767,
+        device_name: str = "lightning.qubit",
     ) -> PennyLaneRuntime:
         """Build the optional PennyLane runtime adapter."""
         if self.backend_name != "pennylane":
@@ -180,18 +182,21 @@ class CompiledPricingModel:
                 self.representation,
                 self.normalized_payoff,
                 self.payoff_approximation,
+                device_name=device_name,
                 max_compressed_terms=max_compressed_terms,
             )
         if resolved_mode == "structured":
             return StructuredPennyLaneBackend(
                 self.representation,
                 self.normalized_payoff,
+                device_name=device_name,
                 max_structured_rotations=max_structured_rotations,
             )
         if resolved_mode == "dense":
             return DensePennyLaneBackend(
                 self.representation,
                 self.normalized_payoff,
+                device_name=device_name,
                 max_dense_dimension=max_dense_dimension,
             )
         raise ValueError("mode must be 'compressed', 'structured', or 'dense'")
@@ -203,6 +208,9 @@ class CompiledPricingModel:
     def explain(self) -> str:
         """Return a compact, human-readable compiler decision report."""
         status = "met" if self.representation_converged else "not met at max_qubits"
+        representation_allocation = (
+            self.error_budget.domain_truncation + self.error_budget.discretization
+        )
         if self.payoff_approximation is None:
             payoff_report = "Payoff: exact grid-point multiplexer"
             circuit_report = "probability-tree RY loading, multiplexed payoff rotations"
@@ -228,13 +236,16 @@ class CompiledPricingModel:
             f"{self.representation.grid_points} grid points, "
             f"domain=[{self.representation.lower_bound:.6f}, "
             f"{self.representation.upper_bound:.6f}]\n"
-            f"Representation convergence: {self.representation.discretization_error:.6g} "
-            f"({status}; allocation={self.error_budget.discretization:.6g})\n"
+            f"Representation validation error: {self.representation_error:.6g} "
+            f"({status}; domain + discretization allocation="
+            f"{representation_allocation:.6g})\n"
+            f"Successive-grid price change: "
+            f"{self.representation.discretization_error:.6g}\n"
             f"Encoding: {self.representation.encoding_method}; "
             f"state preparation={self.representation.state_preparation_method}\n"
             f"{payoff_report}\n"
             f"Circuit: {circuit_report}, gate-level reflections\n"
-            f"Algorithm: MLAE on PennyLane default.qubit; payoff scale={self.payoff_scale:.6f}\n"
+            f"Algorithm: MLAE on PennyLane; payoff scale={self.payoff_scale:.6f}\n"
             f"Discrete price={self.discrete_value:.6f}; "
             f"compiled-circuit price={self.circuit_value:.6f}; "
             f"Black-Scholes={self.classical_value:.6f}"
@@ -251,6 +262,7 @@ class CompiledPricingModel:
         max_dense_dimension: int = 2_048,
         max_structured_rotations: int = 32_767,
         max_compressed_terms: int = 32_767,
+        device_name: str = "lightning.qubit",
     ) -> PricingResult:
         """Execute MLAE and return a validated financial result."""
         powers = tuple(int(power) for power in schedule)
@@ -260,6 +272,7 @@ class CompiledPricingModel:
             max_dense_dimension=max_dense_dimension,
             max_structured_rotations=max_structured_rotations,
             max_compressed_terms=max_compressed_terms,
+            device_name=device_name,
         )
         observations = backend.run_schedule(powers, shots=shots, seed=seed)
         amplitude = maximum_likelihood_amplitude_estimate(
@@ -280,6 +293,7 @@ class CompiledPricingModel:
             schedule=powers,
             shots=shots,
             backend_mode=resolved_mode,
+            device_name=device_name,
         )
         return PricingResult(
             value=value,
@@ -298,6 +312,6 @@ class CompiledPricingModel:
             payoff_approximation=(
                 self.payoff_approximation if resolved_mode == "compressed" else None
             ),
-            backend=f"pennylane.default.qubit:{resolved_mode}",
+            backend=f"pennylane.{device_name}:{resolved_mode}",
             algorithm=self.algorithm_name,
         )

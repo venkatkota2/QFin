@@ -37,6 +37,11 @@ def _parser() -> argparse.ArgumentParser:
     price.add_argument("--schedule", type=int, nargs="+", default=[0, 1, 2, 4])
     price.add_argument("--seed", type=int, default=None)
     price.add_argument(
+        "--device",
+        default="lightning.qubit",
+        help="PennyLane device (default: lightning.qubit)",
+    )
+    price.add_argument(
         "--circuit-backend",
         choices=("compressed", "structured", "dense"),
         default=None,
@@ -78,6 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         schedule=tuple(args.schedule),
         seed=args.seed,
         backend_mode=args.circuit_backend,
+        device_name=args.device,
     )
     print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
     return 0

@@ -35,7 +35,7 @@ class DensePennyLaneBackend:
         representation: DistributionEncoding,
         normalized_payoff: NDArray[np.float64],
         *,
-        device_name: str = "default.qubit",
+        device_name: str = "lightning.qubit",
         max_dense_dimension: int = 2_048,
     ) -> None:
         payoff = np.asarray(normalized_payoff, dtype=np.float64).reshape(-1)

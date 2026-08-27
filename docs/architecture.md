@@ -82,6 +82,9 @@ data- and tolerance-dependent.
 ## Error semantics
 
 `target_error` is split between domain truncation, discretization,
-payoff-algorithm approximation, and sampling. It is not a formal end-to-end
-guarantee under shot or hardware noise. Every result reports the achieved
-error against the classical benchmark and whether the total request was met.
+payoff-algorithm approximation, and sampling. During the Black–Scholes MVP,
+qubit selection validates the combined domain-and-discretization error against
+the analytical price. This avoids false convergence when successive coarse
+grids both miss a small tail payoff. It is not a formal end-to-end guarantee
+under shot or hardware noise. Every result reports the achieved error against
+the classical benchmark and whether the total request was met.
