@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Aligned package and README licensing metadata with the repository's current
+  no-license state.
+- Added a reproducible multi-case numerical demonstration and a CI coverage
+  regression floor.
+
 ## 0.3.0 — 2026-08-24
 
 - Added inverse-CDF quantile encoding, preparing the terminal lognormal
