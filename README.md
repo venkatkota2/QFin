@@ -4,16 +4,17 @@
 
 QFin is an experimental Python framework that translates familiar financial
 models into quantum representations and executable quantum circuits. It sits
-above PennyLane: users describe an option and market model, while QFin chooses
-the terminal distribution, truncation bounds, grid, qubit count, payoff
-normalization, amplitude-estimation circuit, and validation report.
+above PennyLane: users describe an option-pricing or asset-liability problem,
+while QFin builds the financial cash flows and scenarios, chooses the quantum
+representation, and returns circuit, error, validation, and resource reports.
 
-Version `0.3.0` solves one problem end to end: European call and put pricing
-under Black–Scholes using maximum-likelihood amplitude estimation (MLAE) on
-PennyLane's `lightning.qubit` simulator. Its default representation labels
-equal-probability inverse-CDF points with a uniform quantum register and
-compiles the payoff into a tolerance-controlled sparse Walsh/Pauli circuit.
-No arbitrary dense unitary or probability-loading angle table is constructed.
+Version `0.4.0` retains the end-to-end European call/put pipeline and adds
+fixed-rate bonds, term and whole-life expected cash flows, duration/convexity
+matching, high-throughput parallel-rate scenarios, and quantum ALM shortfall
+estimation. Maximum-likelihood amplitude estimation (MLAE) runs on PennyLane's
+compiled C++ `lightning.qubit` simulator by default. Uniform option quantiles
+and uniform ALM scenario sets use parameter-free Hadamard loading plus a
+tolerance-controlled sparse Walsh/Pauli objective circuit.
 
 ## Install
 
@@ -77,6 +78,48 @@ qfin price --kind call --spot 100 --strike 105 --maturity 1 \
   --device lightning.qubit
 ```
 
+## Fixed-income and life ALM
+
+```python
+import numpy as np
+import qfin
+
+curve = qfin.DiscountCurve.flat(0.04)
+assets = qfin.FixedIncomePortfolio((
+    qfin.BondPosition(qfin.FixedRateBond(1_000, 0.04, 10, 2), 600),
+    qfin.BondPosition(qfin.FixedRateBond(1_000, 0.045, 20, 2), 450),
+))
+
+mortality = qfin.MortalityTable.illustrative_gompertz_makeham()
+liabilities = qfin.LifePolicyPortfolio((
+    qfin.PolicyPosition(qfin.TermLifePolicy(40, 25, 100_000), 80),
+    qfin.PolicyPosition(qfin.WholeLifePolicy(50, 50_000), 40),
+))
+
+alm = qfin.AssetLiabilityModel(assets, liabilities, curve, mortality)
+print(alm.evaluate().to_dict())
+
+shocks = np.array([-0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04])
+scenarios = alm.run_parallel_shocks(shocks)
+print(scenarios.expected_shortfall)
+
+compiled_risk = qfin.compile_alm(
+    alm,
+    shocks,
+    metric="expected_shortfall",
+    target_error=25_000,
+)
+result = compiled_risk.run(shots=2_000, seed=7)
+print(result.to_dict())
+```
+
+Classical cash-flow projection and scenario valuation stay in vectorized NumPy,
+where they belong. PennyLane is used for the quantum-relevant scenario
+expectation step. Equal-probability power-of-two scenario sets use the
+compressed Hadamard/Walsh circuit; non-uniform or padded sets use the exact
+probability-tree backend. See [docs/alm.md](docs/alm.md) for assumptions,
+performance design, and current actuarial limitations.
+
 ## What the compiler does
 
 1. Converts the Black–Scholes market into the terminal lognormal distribution.
@@ -130,29 +173,30 @@ the requested tolerances were not reached.
 
 ## Honest scope
 
-This release is a research prototype, not a production pricer and not evidence
-of quantum advantage. Quantile state preparation is `O(n)`, but interpreting
-the basis through the inverse CDF moves distribution complexity into the
-payoff function. Walsh compression is problem- and tolerance-dependent and can
-still retain all `2**n` coefficients. The report never labels a capped fit as
-converged unless it meets both requested criteria. Resource counts are logical
-and PennyLane-level rather than hardware-transpiled counts. QFin does not yet
-support calibration, path-dependent products, stochastic volatility,
-portfolio risk, hardware noise, Qiskit export, or production controls.
+This release is a research prototype, not a production pricer, actuarial
+valuation engine, or evidence of quantum advantage. Quantile/scenario loading
+can be `O(n)` for uniform registers, but objective synthesis is problem- and
+tolerance-dependent and can still retain all `2**n` coefficients. ALM currently
+uses deterministic expected mortality cash flows and parallel rate shifts; it
+does not model lapses, reserves, policyholder options, credit, stochastic
+rates, regulatory capital, or rebalancing. Resource counts are logical and
+PennyLane-level rather than hardware-transpiled counts.
 
 ## Stack and performance
 
 - NumPy and SciPy handle vectorized distribution, quadrature, Walsh-transform,
-  and likelihood calculations.
+  likelihood, cash-flow, mortality, and chunked scenario calculations.
 - PennyLane provides the circuit and backend abstraction.
 - PennyLane Lightning supplies the compiled C++ state-vector simulator used by
-  default; `default.qubit` remains available for portability and debugging.
+  default. One device is reused across an MLAE schedule; `default.qubit`
+  remains available for portability and debugging.
 - QFin stays pure Python because profiling shows circuit simulation dominates
   the current classical compiler work. A QFin-specific Rust or C++ extension
   would add packaging complexity without addressing the current bottleneck.
 
 See [docs/circuit-design.md](docs/circuit-design.md) for the v0.3 circuit,
 [docs/architecture.md](docs/architecture.md) for package design, and
+[docs/alm.md](docs/alm.md) for the v0.4 ALM model, and
 [docs/roadmap.md](docs/roadmap.md) for the next research steps.
 
 ## Reproducible numerical demonstration
@@ -162,6 +206,10 @@ put cases with Black-Scholes and reports QFin estimates, absolute errors,
 shots, retained Walsh terms, and logical-resource counts. The table is emitted
 by [examples/recruiter_benchmark.py](examples/recruiter_benchmark.py); it is a
 simulator demonstration, not evidence of quantum advantage.
+
+[docs/benchmark-0.4.0.md](docs/benchmark-0.4.0.md) records the reproducible ALM
+scenario-throughput and Walsh-compiler microbenchmarks, including environment
+and interpretation caveats.
 
 ## Development
 

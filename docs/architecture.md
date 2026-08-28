@@ -10,8 +10,8 @@ Financial model -> representation -> algorithm -> circuit -> backend
 
 ## Layers
 
-- `qfin.finance`: immutable financial inputs, distributions, instruments, and
-  the geometric-Brownian-motion terminal model.
+- `qfin.finance`: immutable financial inputs, distributions, instruments,
+  fixed-income cash flows, mortality projections, and ALM scenarios.
 - `qfin.representation`: inverse-CDF quantile and probability-mass encodings,
   automatic qubit allocation, and accuracy metadata.
 - `qfin.compiler`: problem classification, representation selection, payoff
@@ -20,7 +20,9 @@ Financial model -> representation -> algorithm -> circuit -> backend
   payoff synthesis, legacy exact loaders, and gate-level reflections.
 - `qfin.algorithms`: backend-independent maximum-likelihood amplitude
   estimation from circuit observations.
-- `qfin.backends`: optional runtime adapters. The MVP implements PennyLane.
+- `qfin.backends`: optional PennyLane runtime adapters. Device construction is
+  centralized; Lightning is preferred and one device is reused per MLAE
+  schedule.
 - `qfin.resources`: logical estimates with explicit assumptions.
 - `qfin.validation`: Black–Scholes reference values.
 
@@ -38,6 +40,26 @@ The probability of measuring the final objective qubit in `|1>` is therefore
 subspace. Circuits with powers `k` observe probabilities
 `sin^2((2k+1) theta)`, where `a = sin^2(theta)`. MLAE fits `theta` jointly from
 all shot counts and QFin converts `a` back to the discounted financial value.
+
+## ALM v0.4 pipeline
+
+Fixed-rate bond positions are converted to aggregated contractual cash flows.
+Term and whole-life policies are converted to expected benefit, premium, and
+expense cash flows using survival-at-start and death-during-year probabilities
+from the supplied mortality table. Base valuation reports present value,
+surplus, funding ratio, duration, dollar-duration gap, and convexity.
+
+For parallel rate shift `s`, the scenario engine reuses each base discounted
+cash flow and applies `exp(-s t)`. It evaluates scenario blocks with NumPy
+matrix multiplication under a configurable memory ceiling. This classical
+stage produces a discrete surplus distribution.
+
+`compile_alm` maps either `1(surplus < 0)` or `max(-surplus, 0)` to the objective
+qubit. Uniform power-of-two scenario sets use Hadamard index preparation and
+the sparse Walsh circuit. Non-uniform or padded sets use the exact probability
+tree. The same PennyLane backends and MLAE implementation therefore serve
+option pricing and ALM risk without embedding actuarial cash-flow projection
+inside a quantum circuit.
 
 ## Compressed v0.3 circuit
 

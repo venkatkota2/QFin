@@ -30,11 +30,11 @@ def _fast_walsh_hadamard(values: NDArray[np.float64]) -> NDArray[np.float64]:
         raise ValueError("Walsh transform input must have power-of-two length")
     width = 1
     while width < transformed.size:
-        for start in range(0, transformed.size, 2 * width):
-            left = transformed[start : start + width].copy()
-            right = transformed[start + width : start + 2 * width].copy()
-            transformed[start : start + width] = left + right
-            transformed[start + width : start + 2 * width] = left - right
+        blocks = transformed.reshape(-1, 2 * width)
+        left = blocks[:, :width].copy()
+        right = blocks[:, width:].copy()
+        blocks[:, :width] = left + right
+        blocks[:, width:] = left - right
         width *= 2
     return transformed
 

@@ -4,12 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qfin-quantum"
-version = "0.3.0"
-description = "A finance-specific modelling and compilation layer for quantum computers"
+version = "0.4.0"
+description = "Quantum-ready pricing, fixed-income, and life-insurance ALM modelling"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Venkat Kota" }]
-keywords = ["quantum computing", "finance", "option pricing", "pennylane"]
+keywords = [
+  "quantum computing",
+  "finance",
+  "option pricing",
+  "asset liability management",
+  "life insurance",
+  "pennylane",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Financial and Insurance Industry",

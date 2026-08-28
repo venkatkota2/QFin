@@ -10,8 +10,14 @@ from numpy.typing import NDArray
 
 from qfin.algorithms import CircuitObservation
 from qfin.backends.compressed import CompressedPennyLaneBackend
+from qfin.backends.runtime import (
+    ComplexPrecision,
+    create_device,
+    execute_probability_circuits,
+    load_pennylane,
+)
 from qfin.backends.structured import StructuredPennyLaneBackend
-from qfin.exceptions import BackendUnavailableError, ResourceLimitError
+from qfin.exceptions import ResourceLimitError
 from qfin.representation import DistributionEncoding
 
 __all__ = [
@@ -36,6 +42,7 @@ class DensePennyLaneBackend:
         normalized_payoff: NDArray[np.float64],
         *,
         device_name: str = "lightning.qubit",
+        precision: ComplexPrecision = "complex128",
         max_dense_dimension: int = 2_048,
     ) -> None:
         payoff = np.asarray(normalized_payoff, dtype=np.float64).reshape(-1)
@@ -46,6 +53,8 @@ class DensePennyLaneBackend:
         self.representation = representation
         self.normalized_payoff = payoff
         self.device_name = device_name
+        self.resolved_device_name = device_name
+        self.precision = precision
         self.total_wires = representation.qubits + 1
         self.wires = tuple(range(self.total_wires))
         self.objective_wire = self.wires[-1]
@@ -60,17 +69,6 @@ class DensePennyLaneBackend:
         self._preparation_unitary = self._householder(self._joint_state)
         self._zero_reflection = np.ones(self._dimension, dtype=np.complex128)
         self._zero_reflection[0] = -1.0
-
-    @staticmethod
-    def _qml() -> Any:
-        try:
-            import pennylane as qml
-        except ImportError as exc:
-            raise BackendUnavailableError(
-                "PennyLane is required to execute quantum circuits. "
-                "Install QFin with `python -m pip install -e '.[quantum]'`."
-            ) from exc
-        return qml
 
     def _build_joint_state(self) -> NDArray[np.float64]:
         probabilities = self.representation.probabilities
@@ -106,15 +104,25 @@ class DensePennyLaneBackend:
         """Exact encoded objective amplitude before shot noise."""
         return float(np.dot(self.representation.probabilities, self.normalized_payoff))
 
-    def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
+    def _make_circuit(
+        self,
+        power: int,
+        *,
+        shots: int | None,
+        seed: int | None,
+        device: Any | None = None,
+    ) -> Any:
         if power < 0:
             raise ValueError("power must be non-negative")
-        qml = self._qml()
-        device = qml.device(
-            self.device_name,
-            wires=self.total_wires,
-            seed=seed,
-        )
+        qml = load_pennylane()
+        if device is None:
+            device, self.resolved_device_name = create_device(
+                qml,
+                self.device_name,
+                wires=self.total_wires,
+                seed=seed,
+                precision=self.precision,
+            )
         unitary = self._preparation_unitary
         inverse = unitary.conj().T
         zero_reflection = self._zero_reflection
@@ -144,7 +152,18 @@ class DensePennyLaneBackend:
         seed: int | None = None,
     ) -> float:
         """Execute one circuit and return objective-qubit success probability."""
-        probabilities = np.asarray(self._make_circuit(power, shots=shots, seed=seed)())
+        qml = load_pennylane()
+        device, self.resolved_device_name = create_device(
+            qml,
+            self.device_name,
+            wires=self.total_wires,
+            seed=seed,
+            precision=self.precision,
+        )
+        circuit = self._make_circuit(
+            power, shots=shots, seed=seed, device=device
+        )
+        probabilities = execute_probability_circuits((circuit,))[0]
         return float(probabilities[1])
 
     def run_schedule(
@@ -161,10 +180,22 @@ class DensePennyLaneBackend:
         if not powers or len(set(powers)) != len(powers) or any(power < 0 for power in powers):
             raise ValueError("schedule must contain unique, non-negative powers")
 
+        qml = load_pennylane()
+        device, self.resolved_device_name = create_device(
+            qml,
+            self.device_name,
+            wires=self.total_wires,
+            seed=seed,
+            precision=self.precision,
+        )
+        circuits = tuple(
+            self._make_circuit(power, shots=shots, seed=seed, device=device)
+            for power in powers
+        )
+        batch = execute_probability_circuits(circuits)
         observations: list[CircuitObservation] = []
-        for index, power in enumerate(powers):
-            circuit_seed = None if seed is None else seed + index
-            probability = self.probability(power, shots=shots, seed=circuit_seed)
+        for power, probabilities in zip(powers, batch, strict=True):
+            probability = float(probabilities[1])
             successes = int(np.clip(round(probability * shots), 0, shots))
             observations.append(
                 CircuitObservation(power=power, successes=successes, shots=shots)
@@ -173,7 +204,7 @@ class DensePennyLaneBackend:
 
     def draw(self, power: int = 0) -> str:
         """Render a text diagram of one exact-probability circuit."""
-        qml = self._qml()
+        qml = load_pennylane()
         circuit = self._make_circuit(power, shots=None, seed=None)
         return str(qml.draw(circuit)())
 # Backward-compatible constructor; compiled models select the v0.3 default.

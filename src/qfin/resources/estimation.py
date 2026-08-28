@@ -110,7 +110,7 @@ def estimate_resources(
         max_gates += max_power * (zero_reflection_operations + 1)
         classical_parameter_count = payoff_rotations
         dense_unitary_entries = 0
-        estimate_kind = "quantile_walsh_pauli_logical_estimate"
+        estimate_kind = "uniform_hadamard_walsh_pauli_logical_estimate"
     elif backend_mode == "structured":
         work_qubits = 1
         total_qubits = data_qubits + 2

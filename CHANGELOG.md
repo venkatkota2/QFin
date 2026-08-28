@@ -1,6 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-08-28
+
+- Added continuously compounded discount curves, aggregated cash-flow
+  schedules, fixed-rate bonds, fixed-income portfolios, and parallel
+  duration/convexity measures.
+- Added mortality tables plus term-life and whole-life expected benefit,
+  premium, and expense projections.
+- Added an asset-liability model with funding, surplus, dollar-duration-gap,
+  and bounded-memory vectorized parallel-rate scenario analytics.
+- Added `compile_alm` for shortfall probability and expected shortfall using
+  uniform Hadamard/Walsh circuits or exact probability-tree loading.
+- Centralized PennyLane device creation, made Lightning precision explicit,
+  added an `auto` compatibility policy, and reused one device for each MLAE
+  schedule.
+- Vectorized the fast Walsh-Hadamard transform and added reproducible ALM
+  throughput and end-to-end examples.
+- Expanded CI tests across fixed income, mortality, ALM scenario equivalence,
+  Lightning execution, and quantum-versus-classical ALM validation.
 
 - Prevented false representation convergence when coarse grids miss a non-zero
   tail payoff by validating MVP qubit selection against Black–Scholes.

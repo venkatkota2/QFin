@@ -91,3 +91,13 @@ def test_pennylane_device_can_be_overridden(
     assert backend.device_name == "default.qubit"
     resources = small_model.resources(device_name="default.qubit")
     assert resources.backend == "pennylane.default.qubit"
+
+
+def test_auto_device_prefers_lightning_and_supports_single_precision(
+    small_model: qfin.CompiledPricingModel,
+) -> None:
+    backend = small_model.to_pennylane(device_name="auto", precision="complex64")
+    assert backend.probability(0) == pytest.approx(
+        backend.theoretical_amplitude(), abs=1e-5
+    )
+    assert backend.resolved_device_name == "lightning.qubit"

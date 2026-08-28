@@ -14,6 +14,7 @@ from qfin.backends import (
     DensePennyLaneBackend,
     StructuredPennyLaneBackend,
 )
+from qfin.backends.runtime import ComplexPrecision
 from qfin.circuits import WalshPayoffApproximation
 from qfin.finance import BlackScholes, EuropeanOption, LogNormal
 from qfin.representation import DistributionEncoding
@@ -168,6 +169,7 @@ class CompiledPricingModel:
         max_structured_rotations: int = 32_767,
         max_compressed_terms: int = 32_767,
         device_name: str = "lightning.qubit",
+        precision: ComplexPrecision = "complex128",
     ) -> PennyLaneRuntime:
         """Build the optional PennyLane runtime adapter."""
         if self.backend_name != "pennylane":
@@ -183,6 +185,7 @@ class CompiledPricingModel:
                 self.normalized_payoff,
                 self.payoff_approximation,
                 device_name=device_name,
+                precision=precision,
                 max_compressed_terms=max_compressed_terms,
             )
         if resolved_mode == "structured":
@@ -190,6 +193,7 @@ class CompiledPricingModel:
                 self.representation,
                 self.normalized_payoff,
                 device_name=device_name,
+                precision=precision,
                 max_structured_rotations=max_structured_rotations,
             )
         if resolved_mode == "dense":
@@ -197,6 +201,7 @@ class CompiledPricingModel:
                 self.representation,
                 self.normalized_payoff,
                 device_name=device_name,
+                precision=precision,
                 max_dense_dimension=max_dense_dimension,
             )
         raise ValueError("mode must be 'compressed', 'structured', or 'dense'")
@@ -263,6 +268,7 @@ class CompiledPricingModel:
         max_structured_rotations: int = 32_767,
         max_compressed_terms: int = 32_767,
         device_name: str = "lightning.qubit",
+        precision: ComplexPrecision = "complex128",
     ) -> PricingResult:
         """Execute MLAE and return a validated financial result."""
         powers = tuple(int(power) for power in schedule)
@@ -273,6 +279,7 @@ class CompiledPricingModel:
             max_structured_rotations=max_structured_rotations,
             max_compressed_terms=max_compressed_terms,
             device_name=device_name,
+            precision=precision,
         )
         observations = backend.run_schedule(powers, shots=shots, seed=seed)
         amplitude = maximum_likelihood_amplitude_estimate(
@@ -293,7 +300,7 @@ class CompiledPricingModel:
             schedule=powers,
             shots=shots,
             backend_mode=resolved_mode,
-            device_name=device_name,
+            device_name=backend.resolved_device_name,
         )
         return PricingResult(
             value=value,
@@ -312,6 +319,6 @@ class CompiledPricingModel:
             payoff_approximation=(
                 self.payoff_approximation if resolved_mode == "compressed" else None
             ),
-            backend=f"pennylane.{device_name}:{resolved_mode}",
+            backend=f"pennylane.{backend.resolved_device_name}:{resolved_mode}",
             algorithm=self.algorithm_name,
         )
