@@ -6,10 +6,24 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.12"
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,7 +32,41 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - run: ruff check .
-      - run: mypy src/qfin
-      - run: pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
+      - name: Verify compiled backends
+        run: >-
+          python -c "import qfin; info=qfin.system_info();
+          assert info['native_extension'];
+          assert info['pennylane_lightning'];
+          print(info)"
+      - run: python -m ruff check .
+      - run: python -m mypy src/qfin
+      - run: python -m pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
       - run: python -m build
+
+  package-smoke:
+    name: wheel and sdist smoke test
+    runs-on: ubuntu-latest
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build
+      - run: python -m venv wheel-test
+      - run: wheel-test/bin/python -m pip install dist/*.whl
+      - name: Smoke-test installed wheel
+        run: >-
+          wheel-test/bin/python -c "import qfin;
+          curve=qfin.YieldCurve([0, 1], [0.02, 0.02]);
+          result=qfin.price_bonds([qfin.FixedRateBond(1, 0.02)], curve);
+          assert qfin.system_info()['native_extension'];
+          assert result.dirty_prices.shape == (1,);
+          print(qfin.system_info())"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qfin-linux-build
+          path: dist/

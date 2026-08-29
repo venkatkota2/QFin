@@ -2,10 +2,31 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-08-29
+
+- Added a wheel-compatible C++20 financial extension using CMake,
+  scikit-build-core, and pybind11; the public API remains Python-first.
+- Added reusable zero curves, fixed/zero-coupon cash flows, batch curve/yield
+  pricing, yield solving, duration, convexity, DV01, accrued interest, and
+  clean/dirty prices with NumPy/native parity.
+- Added fixed-income asset portfolios, deterministic liability portfolios,
+  ALM funding/immunization measures, and chunked rate-scenario valuation.
+- Added mortality tables, annual term-life model points, lapse/expense
+  assumptions, native policy projection, aggregate cash flows, and per-policy
+  PVs.
+- Added weighted finite loss distributions, VaR/CVaR aggregation, and an honest
+  classical-to-quantum representation bridge for ALM scenario losses.
+- Added `qfin.system_info()` and problem capability metadata that distinguishes
+  classical models, native kernels, quantum representations, and quantum
+  algorithms.
+- Preserved PennyLane-Lightning as the default quantum simulator and documented
+  the separation between QFin-owned finance C++ and Lightning simulator C++.
+- Added cross-platform native CI, extensive analytical/edge/parity tests,
+  runnable examples, and measured end-to-end performance benchmarks.
 - Prevented false representation convergence when coarse grids miss a non-zero
   tail payoff by validating MVP qubit selection against Black–Scholes.
-- Switched the default simulator to PennyLane Lightning's compiled C++ backend,
-  while retaining an explicit device override.
+- Preferred PennyLane Lightning's compiled C++ backend through automatic device
+  selection, with `default.qubit` fallback and an explicit device override.
 - Corrected empirical encodings so custom bounds report and exclude omitted
   mass rather than folding it into boundary bins.
 - Renamed the installable distribution to `qfin-quantum` because `qfin` is

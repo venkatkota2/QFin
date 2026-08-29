@@ -16,3 +16,6 @@ class BackendUnavailableError(QFinError):
 class ResourceLimitError(QFinError):
     """Raised before a simulator allocation would exceed a safe MVP limit."""
 
+
+class NativeBackendUnavailableError(QFinError):
+    """Raised when native execution is explicitly requested but unavailable."""

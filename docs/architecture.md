@@ -1,90 +1,148 @@
 # Architecture
 
-QFin follows the pipeline in the project thesis:
+QFin is one Python package with two compiled execution dependencies serving
+different roles.
 
-```text
-Financial model -> representation -> algorithm -> circuit -> backend
-                                      |             |
-                                      +-> errors    +-> resources
+```mermaid
+flowchart TB
+    P["Financial problem"] --> A["Python financial API"]
+    A --> N["QFin C++20 financial core"]
+    N --> D["Scenario loss distribution"]
+    A --> C["QFin compiler"]
+    D --> R["QFin representation"]
+    R --> C
+    C --> Q["PennyLane circuit"]
+    Q --> L["PennyLane-Lightning C++ simulator"]
 ```
 
-## Layers
+## Responsibility boundaries
 
-- `qfin.finance`: immutable financial inputs, distributions, instruments, and
-  the geometric-Brownian-motion terminal model.
-- `qfin.representation`: inverse-CDF quantile and probability-mass encodings,
-  automatic qubit allocation, and accuracy metadata.
-- `qfin.compiler`: problem classification, representation selection, payoff
-  normalization, error budgeting, and the compiled model object.
-- `qfin.circuits`: parameter-free quantile preparation, sparse Walsh/Pauli
-  payoff synthesis, legacy exact loaders, and gate-level reflections.
-- `qfin.algorithms`: backend-independent maximum-likelihood amplitude
-  estimation from circuit observations.
-- `qfin.backends`: optional runtime adapters. The MVP implements PennyLane.
-- `qfin.resources`: logical estimates with explicit assumptions.
-- `qfin.validation`: Black–Scholes reference values.
+### Python
 
-## MVP quantum state
+- public financial API and immutable domain objects;
+- input validation and user-facing errors;
+- compiler, capability, and representation policy;
+- backend and algorithm selection;
+- reporting and classical/native parity references;
+- PennyLane circuit construction and resource estimates.
 
-For grid values `x_i`, probabilities `p_i`, and normalized payoff `f_i` in
-`[0, 1]`, QFin prepares
+### QFin-owned C++20
+
+- flattened cash-flow batch pricing and rate moments;
+- price/yield batches and robust bounded yield solving;
+- portfolio-level valuation under node-aligned scenario matrices;
+- policy × projection-year mortality/lapse/cash-flow loops;
+- weighted loss-distribution and expected-shortfall aggregation.
+
+### PennyLane and PennyLane-Lightning
+
+PennyLane owns the device/circuit abstraction. Lightning applies quantum gates,
+evolves state vectors, and samples measurements through its compiled C++
+implementation. QFin does not implement these kernels.
+
+## Native boundary
+
+`qfin._native` is private. Public functions accept Python financial objects,
+validate them, build contiguous NumPy buffers, and cross into C++ once per
+batch or chunk. C++ calls release the GIL during numerical work and return
+preallocated arrays. No API calls C++ once per bond, policy, scenario, cash
+flow, or time step.
+
+The reference path remains available with `engine="numpy"`. It provides an
+independent correctness oracle and is often faster for small vectorized work.
+`engine="native"` is an explicit override. `engine="auto"` uses conservative
+thresholds established by the reproducible benchmark rather than by language
+preference.
+
+Sort-heavy tail-risk aggregation currently remains on NumPy under `auto`
+because the measured native crossover was not stable. The C++ implementation
+is retained as an explicit, parity-tested path for continued profiling.
+
+Curve interpolation and standalone mortality-table interpolation remain in
+NumPy: their existing vectorized kernels benchmark faster than a separate
+QFin-native boundary crossing. They still execute inside C++ when embedded in
+the larger pricing, scenario, or policy-projection kernels.
+
+## Curves and fixed income
+
+`YieldCurve` stores strictly increasing year fractions and continuously
+compounded zero rates. The first implementation uses linear interpolation and
+flat extrapolation. Curve objects are reused during portfolio/scenario calls;
+the native kernel never reconstructs a curve for each instrument.
+
+`FixedRateBond` emits regular coupons plus a possible final stub and principal.
+Curve valuation computes
 
 ```text
-sum_i sqrt(p_i) |i> (sqrt(1-f_i)|0> + sqrt(f_i)|1>).
+PV = sum_i CF_i exp(-r(t_i) t_i).
 ```
 
-The probability of measuring the final objective qubit in `|1>` is therefore
-`a = sum_i p_i f_i`. A Grover iterate rotates this two-dimensional good/bad
-subspace. Circuits with powers `k` observe probabilities
-`sin^2((2k+1) theta)`, where `a = sin^2(theta)`. MLAE fits `theta` jointly from
-all shot counts and QFin converts `a` back to the discounted financial value.
+The first and second parallel-shift derivatives produce duration, convexity,
+and DV01. Yield-to-maturity functions use nominal compounding at each bond's
+coupon frequency and a monotone bisection bounded above the singular lower
+yield. Convergence is reported per instrument.
 
-## Compressed v0.3 circuit
+## ALM and scenarios
 
-The default encoding selects midpoint quantiles `u_i` and assigns
-`x_i = F^-1(u_i)`. Every basis state has weight `1/N`, so `H^n` prepares the
-distribution register with no trainable or table-driven distribution angles.
-This is a quadrature representation: the data register labels quantiles rather
-than evenly spaced asset prices.
+`AssetPortfolio`, `LiabilityPortfolio`, and `ALMModel` separate financial
+objects from execution. Base evaluation reports PVs, surplus/deficit, funding
+ratio, durations, convexities, and scaled immunization gaps.
 
-The desired objective rotation `alpha_i = 2 asin(sqrt(f_i))` is expanded in
-Walsh characters. A retained coefficient `c_s` becomes a rotation generated by
-`Z_s ⊗ Y`. These generators commute, and on basis state `|i>` their signed
-angles sum to the Walsh approximation of `alpha_i`. The compiler retains terms
-in descending coefficient magnitude until the financial price error and angle
-RMSE criteria are both satisfied, or until an explicit term cap is reached.
+Rate scenarios are additive shocks at the curve nodes. The C++ scenario kernel
+streams across scenarios and cash flows and returns portfolio-level PVs. Python
+chunks the scenario axis to bound working memory. The implementation does not
+allocate a portfolio × scenario × risk-factor × time cube.
 
-The result reports exact discrete price, compiled-circuit price, payoff
-approximation error, angle and payoff diagnostics, retained terms, and whether
-the requested tolerance was met.
+## Life projection semantics
 
-## Exact reference circuits
+The first policy kernel handles annual term-life projections:
 
-The v0.2 structured backend recursively splits the discretized probability
-mass into a binary tree. Each internal node becomes a conditional `RY` angle;
-level `l` is applied as a multiplexed rotation controlled by the first `l`
-data qubits. A second multiplexer rotates the objective qubit by
-`2 asin(sqrt(f_i))` for each normalized payoff `f_i`.
+1. opening in-force pays annual premium and incurs annual expense at time `t`;
+2. mortality is applied over the policy year;
+3. death benefit is paid at `t + 1`;
+4. lapse is applied to survivors;
+5. remaining in-force advances to the next year.
 
-All backends use a Grover zero-state reflection implemented with X gates, Hadamards, and a
-multi-controlled X using one reusable work qubit. PennyLane can decompose these
-operators further for a selected gate set. The old dense Householder backend
-remains accessible with `mode="dense"` for equivalence tests only.
+Outputs include aggregate premiums, benefits, expenses, net insurer liability
+cash flows, opening in-force counts, per-policy PVs, portfolio PV, and duration.
+Mortality and lapse edge cases (`0`, `1`, multipliers, table tails) are covered
+by Python/native parity tests.
 
-For `N = 2**n` grid points, the legacy structured preparation stores `N - 1`
-distribution angles and `N` payoff angles. This removes the `4**(n+1)` entries
-of the old joint-unitary matrix, but the gate and parameter counts remain
-`O(N)`. QFin therefore exposes a valid decomposable circuit without claiming
-that efficient fault-tolerant data loading has been solved. The v0.3 quantile
-loader removes that distribution table, while its Walsh payoff cost remains
-data- and tolerance-dependent.
+## Risk and compiler integration
 
-## Error semantics
+An `ALMScenarioResult` maps surplus deterioration into `LossDistribution`.
+Weighted VaR uses the first discrete loss whose cumulative probability reaches
+the requested confidence. Expected shortfall integrates the worst
+`1-confidence` probability mass, fractionally allocating mass at the VaR
+boundary.
 
-`target_error` is split between domain truncation, discretization,
-payoff-algorithm approximation, and sampling. During the Black–Scholes MVP,
-qubit selection validates the combined domain-and-discretization error against
-the analytical price. This avoids false convergence when successive coarse
-grids both miss a small tail payoff. It is not a formal end-to-end guarantee
-under shot or hardware noise. Every result reports the achieved error against
-the classical benchmark and whether the total request was met.
+`qfin.compile(CVaR(...))` currently creates:
+
+- a classical weighted-tail execution plan;
+- an empirical `DistributionEncoding` for future quantum work;
+- metadata stating that the quantum representation exists but the quantum
+  VaR/CVaR algorithm does not.
+
+This staged support is deliberate. The compiler will not route ALM or CVaR
+through an option-pricing circuit.
+
+## Existing option circuit
+
+The v0.3 compressed circuit remains unchanged. For grid labels `x_i`,
+probabilities `p_i`, and normalized payoff `f_i`, QFin prepares an objective
+amplitude representing `sum_i p_i f_i`, applies Grover powers, and fits the
+amplitude with MLAE. Quantile loading uses Hadamards; sparse Walsh/Pauli terms
+approximate payoff rotations. Compiler-facing device selection defaults to
+`auto`: it resolves to `lightning.qubit` when installed and otherwise to
+PennyLane's `default.qubit`.
+
+## Errors, memory, and threads
+
+C++ validates buffer shapes, finite inputs, ordered offsets, probabilities,
+curve grids, and solver controls. Standard C++ exceptions translate to Python
+exceptions; public validation normally fails before entering native code.
+
+The first native release is single-threaded and portable. This avoids
+oversubscription with NumPy/BLAS and PennyLane-Lightning while benchmark data is
+still being collected. Release builds use standard compiler optimization and
+auto-vectorization. OpenMP/SIMD/GPU work remains a benchmark-driven future path.
