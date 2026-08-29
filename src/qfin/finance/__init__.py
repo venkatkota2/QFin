@@ -9,6 +9,7 @@ from qfin.finance.alm import (
 )
 from qfin.finance.curves import YieldCurve
 from qfin.finance.distributions import EmpiricalDistribution, LogNormal, Normal
+from qfin.finance.factors import FactorScenarios, GaussianFactorModel
 from qfin.finance.fixed_income import (
     BondBatchAnalytics,
     CashFlow,
@@ -28,7 +29,18 @@ from qfin.finance.life import (
 )
 from qfin.finance.models import BlackScholes
 from qfin.finance.processes import GeometricBrownianMotion
-from qfin.finance.risk import CVaR, LossDistribution, RiskSummary, aggregate_risk
+from qfin.finance.risk import (
+    CVaR,
+    LossDistribution,
+    RiskConfidenceInterval,
+    RiskSummary,
+    TailProbability,
+    TailProbabilitySummary,
+    VaR,
+    aggregate_risk,
+    bootstrap_risk_interval,
+    evaluate_tail_probability,
+)
 from qfin.finance.scenarios import RateScenarioSet
 
 __all__ = [
@@ -44,7 +56,9 @@ __all__ = [
     "EuropeanCall",
     "EuropeanOption",
     "EuropeanPut",
+    "FactorScenarios",
     "FixedRateBond",
+    "GaussianFactorModel",
     "GeometricBrownianMotion",
     "LiabilityPortfolio",
     "LifePolicy",
@@ -55,10 +69,16 @@ __all__ = [
     "Normal",
     "ProjectionAssumptions",
     "RateScenarioSet",
+    "RiskConfidenceInterval",
     "RiskSummary",
+    "TailProbability",
+    "TailProbabilitySummary",
+    "VaR",
     "YieldCurve",
     "YieldSolveResult",
     "aggregate_risk",
+    "bootstrap_risk_interval",
+    "evaluate_tail_probability",
     "price_bonds",
     "price_bonds_from_yield",
     "project_liabilities",

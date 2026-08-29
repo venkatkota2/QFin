@@ -16,66 +16,18 @@ from qfin.backends import (
     StructuredPennyLaneBackend,
 )
 from qfin.circuits import WalshPayoffApproximation
+from qfin.compiler.risk_models import CompiledRiskModel as CompiledRiskModel
 from qfin.finance import BlackScholes, EuropeanOption, LogNormal
-from qfin.finance.fixed_income import Engine
-from qfin.finance.risk import CVaR, RiskSummary, aggregate_risk
 from qfin.representation import DistributionEncoding
 from qfin.resources import BackendMode, ResourceReport, estimate_resources
 
-PennyLaneRuntime = (
-    CompressedPennyLaneBackend | StructuredPennyLaneBackend | DensePennyLaneBackend
-)
+PennyLaneRuntime = CompressedPennyLaneBackend | StructuredPennyLaneBackend | DensePennyLaneBackend
 
 
 def _resolve_quantum_device(device_name: str) -> str:
     if device_name != "auto":
         return device_name
-    return (
-        "lightning.qubit"
-        if find_spec("pennylane_lightning") is not None
-        else "default.qubit"
-    )
-
-
-@dataclass(frozen=True, slots=True)
-class CompiledRiskModel:
-    """Classical CVaR execution plus a quantum-ready loss representation.
-
-    QFin does not yet claim a quantum CVaR algorithm. ``run`` is explicitly a
-    classical NumPy/C++ aggregation, while ``representation`` is the bridge to
-    future quantum tail-risk work.
-    """
-
-    problem: CVaR
-    representation: DistributionEncoding
-    target_error: float
-    backend_name: str = "classical"
-    algorithm_name: str = "weighted_discrete_expected_shortfall"
-    quantum_algorithm_available: bool = False
-
-    def run(self, *, engine: Engine = "auto") -> RiskSummary:
-        return aggregate_risk(
-            self.problem.distribution,
-            confidence=self.problem.confidence,
-            engine=engine,
-        )
-
-    def to_pennylane(self) -> None:
-        from qfin.exceptions import CompilationError
-
-        raise CompilationError(
-            "QFin can encode this loss distribution, but a quantum VaR/CVaR "
-            "oracle and estimator are not implemented yet"
-        )
-
-    def explain(self) -> str:
-        return (
-            "QFin compiled a finite CVaR problem for classical execution and "
-            f"distribution encoding ({self.representation.qubits} qubits, "
-            f"confidence={self.problem.confidence:.6f}). The classical weighted-tail "
-            "algorithm is available; the quantum CVaR algorithm is intentionally "
-            "reported as unavailable."
-        )
+    return "lightning.qubit" if find_spec("pennylane_lightning") is not None else "default.qubit"
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,9 +97,7 @@ class PricingResult:
             "amplitude_estimation": self.amplitude.to_dict(),
             "resources": self.resources.to_dict(),
             "payoff_approximation": (
-                None
-                if self.payoff_approximation is None
-                else self.payoff_approximation.to_dict()
+                None if self.payoff_approximation is None else self.payoff_approximation.to_dict()
             ),
             "backend": self.backend,
             "algorithm": self.algorithm,
@@ -182,8 +132,7 @@ class CompiledPricingModel:
     @property
     def compilation_converged(self) -> bool:
         payoff_converged = (
-            self.payoff_approximation is None
-            or self.payoff_approximation.met_tolerance
+            self.payoff_approximation is None or self.payoff_approximation.met_tolerance
         )
         return self.representation_converged and payoff_converged
 
@@ -231,9 +180,7 @@ class CompiledPricingModel:
         resolved_device = _resolve_quantum_device(device_name)
         if resolved_mode == "compressed":
             if self.payoff_approximation is None:
-                raise ValueError(
-                    "compressed backend requires representation_method='quantile'"
-                )
+                raise ValueError("compressed backend requires representation_method='quantile'")
             return CompressedPennyLaneBackend(
                 self.representation,
                 self.normalized_payoff,
@@ -271,9 +218,7 @@ class CompiledPricingModel:
             payoff_report = "Payoff: exact grid-point multiplexer"
             circuit_report = "probability-tree RY loading, multiplexed payoff rotations"
         else:
-            approximation_status = (
-                "met" if self.payoff_approximation.met_tolerance else "not met"
-            )
+            approximation_status = "met" if self.payoff_approximation.met_tolerance else "not met"
             payoff_report = (
                 f"Payoff: {self.payoff_approximation.parameter_count}/"
                 f"{self.payoff_approximation.full_term_count} Walsh/Pauli terms "
@@ -281,9 +226,7 @@ class CompiledPricingModel:
                 f"price error={self.payoff_approximation_error:.6g} "
                 f"({approximation_status}; allocation={self.error_budget.algorithmic:.6g})"
             )
-            circuit_report = (
-                "Hadamard quantile loading, sparse commuting Pauli payoff rotations"
-            )
+            circuit_report = "Hadamard quantile loading, sparse commuting Pauli payoff rotations"
         return (
             f"QFin compiled a European {self.instrument.kind} under Black-Scholes.\n"
             f"Terminal model: lognormal(mu={self.distribution.mu:.6f}, "

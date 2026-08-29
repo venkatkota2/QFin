@@ -116,15 +116,32 @@ the requested confidence. Expected shortfall integrates the worst
 `1-confidence` probability mass, fractionally allocating mass at the VaR
 boundary.
 
-`qfin.compile(CVaR(...))` currently creates:
+`qfin.compile(...)` now has separate policies for `TailProbability`, `VaR`,
+and `CVaR`:
 
-- a classical weighted-tail execution plan;
-- an empirical `DistributionEncoding` for future quantum work;
-- metadata stating that the quantum representation exists but the quantum
-  VaR/CVaR algorithm does not.
+- the original finite loss distribution remains the classical reference;
+- candidate empirical encodings are checked directly against the requested
+  risk statistic before qubit selection converges;
+- a generic probability tree prepares scenario probabilities;
+- exact grid-point indicator or normalized-excess objectives rotate one
+  objective qubit;
+- MLAE estimates each objective through PennyLane;
+- VaR uses hybrid binary search across occupied encoded loss points; and
+- CVaR estimates tail excess after the VaR threshold search.
 
-This staged support is deliberate. The compiler will not route ALM or CVaR
-through an option-pricing circuit.
+`compiled.run()` remains classical and `compiled.run_quantum()` selects the
+experimental circuit workflow explicitly. The compiler does not route risk
+problems through an option-pricing circuit.
+
+The risk resource report includes quantum circuits, shots, oracle queries,
+state-preparation rotations, classical input/encoded sizes, estimated sorting
+work, and preprocessing memory. Generic empirical loading remains
+`O(2**data_qubits)`; no efficient QRAM or hardware advantage is implied.
+
+`GaussianFactorModel` adds a validated, reproducible Gaussian correlation
+assumption for multi-factor scenario generation. It is deliberately separate
+from the quantum representation so calibrated copulas, heavy-tailed marginals,
+and nonlinear portfolio revaluation can replace it later.
 
 ## Existing option circuit
 

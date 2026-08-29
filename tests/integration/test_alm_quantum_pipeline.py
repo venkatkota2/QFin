@@ -4,7 +4,7 @@ import pytest
 import qfin
 
 
-def test_alm_scenarios_feed_loss_representation_without_fake_quantum_claim() -> None:
+def test_alm_scenarios_feed_tested_quantum_cvar_workflow() -> None:
     curve = qfin.YieldCurve([0, 1, 5, 10], [0.02, 0.025, 0.03, 0.035])
     model = qfin.ALMModel(
         qfin.AssetPortfolio([qfin.FixedRateBond(5, 0.03)], [10]),
@@ -13,15 +13,27 @@ def test_alm_scenarios_feed_loss_representation_without_fake_quantum_claim() -> 
     )
     scenarios = qfin.RateScenarioSet.parallel(curve, np.linspace(-0.02, 0.02, 16))
     scenario_result = model.run_scenarios(scenarios, engine="numpy")
-    problem = qfin.CVaR(scenario_result.loss_distribution(), confidence=0.95)
-    compiled = qfin.compile(problem, target_error=1.0, min_qubits=2, max_qubits=6)
+    problem = qfin.CVaR(scenario_result.loss_distribution(), confidence=0.75)
+    compiled = qfin.compile(problem, target_error=0.5, min_qubits=3, max_qubits=4)
     assert isinstance(compiled, qfin.CompiledRiskModel)
-    assert compiled.representation.grid_points >= 4
-    assert not compiled.quantum_algorithm_available
+    assert compiled.representation.grid_points >= 8
+    assert compiled.quantum_algorithm_available
     summary = compiled.run(engine="numpy")
     assert summary.cvar >= summary.var
-    with pytest.raises(qfin.CompilationError, match="not implemented"):
-        compiled.to_pennylane()
+    runtime = compiled.to_pennylane()
+    np.testing.assert_allclose(
+        runtime.distribution_probabilities(),
+        compiled.representation.probabilities,
+        atol=1e-10,
+    )
+    quantum = compiled.run_quantum(
+        shots=3_000,
+        schedule=(0, 1, 2, 4),
+        seed=17,
+        likelihood_grid_size=32_769,
+    )
+    assert quantum.expected_shortfall == pytest.approx(summary.cvar, abs=0.10)
+    assert quantum.resources.total_oracle_queries > 0
 
 
 def test_problem_capabilities_distinguish_each_implementation_stage() -> None:
@@ -29,8 +41,8 @@ def test_problem_capabilities_distinguish_each_implementation_stage() -> None:
     capabilities = qfin.problem_capabilities(qfin.CVaR(losses))
     assert capabilities.financial_model_available
     assert capabilities.quantum_representation_available
-    assert not capabilities.quantum_algorithm_available
-    assert "not yet implemented" in capabilities.note
+    assert capabilities.quantum_algorithm_available
+    assert "hybrid" in capabilities.note
 
 
 def test_system_info_separates_qfin_native_from_lightning() -> None:

@@ -23,13 +23,22 @@
   and quantum-algorithm availability;
 - Python/native parity tests and reproducible end-to-end benchmarks.
 
-## 0.5 — risk algorithm and compiler policy
+## 0.5 — risk algorithm and compiler policy (complete)
 
-- tail-probability, VaR, and CVaR quantum oracle design;
-- distribution/oracle error budgets and classical confidence intervals;
-- compiler selection across option pricing and loss-distribution problems;
-- state-preparation complexity and classical preprocessing cost reports;
-- correlation/dependence assumptions for multi-factor portfolio losses.
+- tail-probability indicator objectives with strict/inclusive boundary policy;
+- hybrid VaR binary search driven by MLAE CDF estimates;
+- CVaR tail-excess amplitude estimation conditional on the selected VaR;
+- distribution/oracle/estimation error budgets and reproducible classical
+  percentile-bootstrap intervals;
+- compiler selection across option pricing, tail probability, VaR, CVaR, and
+  explicit classical-only execution;
+- logical state-preparation, circuit, shot, oracle-query, sorting, and
+  preprocessing-memory reports;
+- validated Gaussian correlation assumptions and vectorized linear-factor
+  loss generation;
+- measured `default.qubit` versus `lightning.qubit` risk benchmarks;
+- explicit documentation of `O(2**qubits)` generic loading and the absence of
+  a quantum-advantage claim.
 
 ## 0.6 — richer ALM and life products
 
@@ -38,6 +47,10 @@
 - participating, universal-life, annuity, and multi-state policy foundations;
 - assumption sets, model-point grouping, attribution, and sensitivity reports;
 - chunked scenario × policy execution without full-cube allocation.
+
+The factor roadmap includes heavy-tailed marginals, copulas, nonlinear
+revaluation, and calibrated economic-scenario models beyond the 0.5 Gaussian
+foundation.
 
 ## 0.7 — device realism
 

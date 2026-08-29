@@ -4,9 +4,15 @@ from qfin.compiler.capabilities import ProblemCapabilities, problem_capabilities
 from qfin.compiler.compile import compile
 from qfin.compiler.models import (
     CompiledPricingModel,
-    CompiledRiskModel,
     ErrorBudget,
     PricingResult,
+)
+from qfin.compiler.risk_models import (
+    CompiledRiskModel,
+    QuantumRiskResult,
+    QuantumThresholdEstimate,
+    QuantumVaRSearch,
+    RiskErrorBudget,
 )
 
 __all__ = [
@@ -15,6 +21,10 @@ __all__ = [
     "ErrorBudget",
     "PricingResult",
     "ProblemCapabilities",
+    "QuantumRiskResult",
+    "QuantumThresholdEstimate",
+    "QuantumVaRSearch",
+    "RiskErrorBudget",
     "compile",
     "problem_capabilities",
 ]
