@@ -31,7 +31,9 @@ flowchart TB
 - flattened cash-flow batch pricing and rate moments;
 - price/yield batches and robust bounded yield solving;
 - portfolio-level valuation under node-aligned scenario matrices;
-- policy × projection-year mortality/lapse/cash-flow loops;
+- multi-period ALM roll-forward, reinvestment, payments, and rebalancing;
+- product/state policy × projection-year cash-flow loops;
+- chunked scenario × model-point × projection-year aggregation;
 - weighted loss-distribution and expected-shortfall aggregation.
 
 ### PennyLane and PennyLane-Lightning
@@ -57,6 +59,11 @@ preference.
 Sort-heavy tail-risk aggregation currently remains on NumPy under `auto`
 because the measured native crossover was not stable. The C++ implementation
 is retained as an explicit, parity-tested path for continued profiling.
+Multi-period ALM likewise stays on NumPy under `auto`: final measured 0.6
+speedups range from 0.88× to 1.09× and do not establish a native crossover.
+Base and scenario life projection use native execution for any
+non-empty workload when the extension is available; the smallest measured
+one-policy, one-scenario, one-year workload was already faster in C++.
 
 Curve interpolation and standalone mortality-table interpolation remain in
 NumPy: their existing vectorized kernels benchmark faster than a separate
@@ -82,35 +89,67 @@ and DV01. Yield-to-maturity functions use nominal compounding at each bond's
 coupon frequency and a monotone bisection bounded above the singular lower
 yield. Convergence is reported per instrument.
 
-## ALM and scenarios
+## ALM and economic scenarios
 
 `AssetPortfolio`, `LiabilityPortfolio`, and `ALMModel` separate financial
 objects from execution. Base evaluation reports PVs, surplus/deficit, funding
 ratio, durations, convexities, and scaled immunization gaps.
 
-Rate scenarios are additive shocks at the curve nodes. The C++ scenario kernel
-streams across scenarios and cash flows and returns portfolio-level PVs. Python
-chunks the scenario axis to bound working memory. The implementation does not
-allocate a portfolio × scenario × risk-factor × time cube.
+`RateScenarioSet` preserves one-period additive curve shocks.
+`EconomicScenarioSet` stores validated scenario × period paths for additive
+zero-rate and credit-spread shocks, equity and inflation rates, and mortality
+and lapse multipliers. It also carries normalized scenario probabilities,
+labels, period length, and an explicit dependence-assumption description. Its
+correlated-Gaussian constructor is a transparent research generator, not a
+calibrated economic-scenario model.
+
+One-period factor revaluation isolates rate, spread, equity, and inflation
+effects and reports the exact interaction residual. Multi-period ALM projects
+bond roll-down and cash-flow reinvestment, short-rate cash accrual, aggregate equity returns,
+inflation-indexed liabilities, liability payments, target-weight rebalancing,
+and transaction costs. Python chunks the scenario axis; the C++ kernel returns
+only scenario × period portfolio aggregates. It does not allocate an
+instrument-level result cube.
 
 ## Life projection semantics
 
-The first policy kernel handles annual term-life projections:
+The annual engine handles term, participating, universal-life, and annuity
+model points. `PolicyModelPointSet` groups exactly equal policies and retains
+positive exposure counts, so a large book can be represented without
+duplicating projection work. `LifeAssumptionSet` is the public semantic alias
+for the named mortality, decrement, recovery, expense, crediting, inflation,
+premium, and benefit assumptions.
+
+Each annual step follows an explicit ordering:
 
 1. opening in-force pays annual premium and incurs annual expense at time `t`;
-2. mortality is applied over the policy year;
-3. death benefit is paid at `t + 1`;
-4. lapse is applied to survivors;
-5. remaining in-force advances to the next year.
+2. universal-life account values receive premium, charge, and credited return;
+3. mortality is applied to active and disabled states;
+4. disability incidence and recovery move surviving lives between states;
+5. lapse is applied to remaining active and disabled lives; and
+6. death, disability, annuity, surrender, and maturity benefits are paid at
+   `t + 1` according to the selected product foundation.
 
 Outputs include aggregate premiums, benefits, expenses, net insurer liability
-cash flows, opening in-force counts, per-policy PVs, portfolio PV, and duration.
-Mortality and lapse edge cases (`0`, `1`, multipliers, table tails) are covered
-by Python/native parity tests.
+cash flows, active/disabled/death counts, model-point PVs, product PVs,
+portfolio PV, and duration. The scenario engine applies rate, inflation,
+mortality, and lapse paths in bounded scenario and model-point chunks and
+returns only scenario-level premiums, benefits, expenses, surrenders, and PVs.
+No scenario × policy × time output cube is allocated.
+
+These products are extensible actuarial foundations with annual expected-value
+semantics, not production contract implementations. Mortality/lapse extremes,
+product analytical cases, model-point grouping, chunk invariance, and
+Python/native parity are tested explicitly.
 
 ## Risk and compiler integration
 
-An `ALMScenarioResult` maps surplus deterioration into `LossDistribution`.
+`ALMScenarioResult`, `ALMFactorScenarioResult`, and `ALMPathResult` map surplus
+deterioration into `LossDistribution`. `LifeScenarioResult` maps increases in
+liability PV into the same representation boundary. Financial models remain
+classical/native preprocessing: users explicitly create `TailProbability`,
+`VaR`, or `CVaR` problems from those loss distributions before compiling.
+
 Weighted VaR uses the first discrete loss whose cumulative probability reaches
 the requested confidence. Expected shortfall integrates the worst
 `1-confidence` probability mass, fractionally allocating mass at the VaR

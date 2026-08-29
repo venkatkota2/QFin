@@ -8,6 +8,7 @@ pybind11_add_module(
     _qfin_native
     MODULE
     bindings/python.cpp
+    src/alm.cpp
     src/curves.cpp
     src/fixed_income.cpp
     src/mortality.cpp

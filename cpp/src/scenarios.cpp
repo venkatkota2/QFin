@@ -68,4 +68,52 @@ std::vector<double> scenario_portfolio_present_values(
     return result;
 }
 
+std::vector<double> scenario_indexed_cashflow_present_values(
+    const std::span<const double> cashflow_times,
+    const std::span<const double> cashflow_amounts,
+    const std::span<const double> inflation_linkage,
+    const std::span<const double> curve_times,
+    const std::span<const double> zero_rates,
+    const std::span<const double> scenario_rate_shocks,
+    const std::span<const double> scenario_inflation_rates,
+    const std::size_t scenario_count
+) {
+    validate_curve(curve_times, zero_rates);
+    if (cashflow_times.size() != cashflow_amounts.size() ||
+        cashflow_times.size() != inflation_linkage.size() ||
+        scenario_rate_shocks.size() != scenario_count * curve_times.size() ||
+        scenario_inflation_rates.size() != scenario_count) {
+        throw std::invalid_argument("invalid indexed scenario cash-flow buffers");
+    }
+    for (std::size_t index = 0; index < cashflow_times.size(); ++index) {
+        if (!std::isfinite(cashflow_times[index]) || cashflow_times[index] < 0.0 ||
+            !std::isfinite(cashflow_amounts[index]) ||
+            !std::isfinite(inflation_linkage[index]) || inflation_linkage[index] < 0.0) {
+            throw std::invalid_argument("invalid indexed scenario cash flow");
+        }
+    }
+    std::vector<double> result(scenario_count, 0.0);
+    for (std::size_t scenario = 0; scenario < scenario_count; ++scenario) {
+        const double inflation = scenario_inflation_rates[scenario];
+        if (!std::isfinite(inflation) || inflation <= -1.0) {
+            throw std::invalid_argument("scenario inflation rates must be greater than -1");
+        }
+        const auto shocks = scenario_rate_shocks.subspan(
+            scenario * curve_times.size(), curve_times.size()
+        );
+        double value = 0.0;
+        for (std::size_t index = 0; index < cashflow_times.size(); ++index) {
+            const double time = cashflow_times[index];
+            const double rate = interpolate_flat_linear(time, curve_times, zero_rates) +
+                                interpolate_flat_linear(time, curve_times, shocks);
+            const double scale = std::pow(
+                1.0 + inflation, time * inflation_linkage[index]
+            );
+            value += cashflow_amounts[index] * scale * std::exp(-rate * time);
+        }
+        result[scenario] = value;
+    }
+    return result;
+}
+
 }  // namespace qfin

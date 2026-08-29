@@ -6,8 +6,14 @@ from dataclasses import dataclass
 
 from qfin import _native
 from qfin.finance import EuropeanCall, EuropeanPut
-from qfin.finance.alm import ALMModel, ALMScenarioResult
-from qfin.finance.life import LifePolicy
+from qfin.finance.alm import (
+    ALMFactorScenarioResult,
+    ALMModel,
+    ALMPathResult,
+    ALMScenarioResult,
+)
+from qfin.finance.life import LifePolicy, PolicyModelPointSet
+from qfin.finance.life_scenarios import LifeScenarioResult
 from qfin.finance.risk import CVaR, LossDistribution, TailProbability, VaR
 
 
@@ -62,7 +68,7 @@ def problem_capabilities(problem: object) -> ProblemCapabilities:
                 "tail-excess amplitude. Generic loading is O(2**qubits)."
             ),
         )
-    if isinstance(problem, (LossDistribution, ALMScenarioResult)):
+    if isinstance(problem, LossDistribution):
         return ProblemCapabilities(
             category="tail_risk_input",
             financial_model_available=True,
@@ -70,27 +76,61 @@ def problem_capabilities(problem: object) -> ProblemCapabilities:
             native_implementation_available=_native.available(),
             quantum_representation_available=True,
             quantum_algorithm_available=False,
-            note="Wrap the loss distribution in TailProbability, VaR, or CVaR.",
+            note=(
+                "Wrap the distribution in TailProbability, VaR, or CVaR to select "
+                "an implemented classical or experimental quantum risk workflow."
+            ),
+        )
+    if isinstance(
+        problem,
+        (
+            ALMScenarioResult,
+            ALMFactorScenarioResult,
+            ALMPathResult,
+            LifeScenarioResult,
+        ),
+    ):
+        return ProblemCapabilities(
+            category="tail_risk_input",
+            financial_model_available=True,
+            classical_implementation="scenario loss-distribution source",
+            native_implementation_available=_native.available(),
+            quantum_representation_available=True,
+            quantum_algorithm_available=False,
+            note=(
+                "Call loss_distribution(), then wrap the result in TailProbability, "
+                "VaR, or CVaR to select an implemented risk workflow."
+            ),
         )
     if isinstance(problem, ALMModel):
         return ProblemCapabilities(
             category="asset_liability_management",
             financial_model_available=True,
-            classical_implementation="curve valuation and batched rate scenarios",
+            classical_implementation=(
+                "curve valuation, multi-factor attribution, and multi-period paths"
+            ),
             native_implementation_available=_native.available(),
             quantum_representation_available=False,
             quantum_algorithm_available=False,
-            note="Run scenarios first to produce a representable loss distribution.",
+            note=(
+                "Run rate, economic-factor, or multi-period scenarios first to "
+                "produce a representable loss distribution."
+            ),
         )
-    if isinstance(problem, LifePolicy):
+    if isinstance(problem, (LifePolicy, PolicyModelPointSet)):
         return ProblemCapabilities(
             category="life_liability_projection",
             financial_model_available=True,
-            classical_implementation="annual term-life expected cash-flow projection",
+            classical_implementation=(
+                "annual multi-product, multi-state expected cash-flow projection"
+            ),
             native_implementation_available=_native.available(),
             quantum_representation_available=False,
             quantum_algorithm_available=False,
-            note="Projection outputs can feed ALM; no direct quantum algorithm is claimed.",
+            note=(
+                "Base and scenario projections can feed ALM and tail-risk inputs; "
+                "no direct life-policy quantum algorithm is claimed."
+            ),
         )
     return ProblemCapabilities(
         category="unsupported",
