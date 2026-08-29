@@ -1,4 +1,4 @@
-# QFin v0.3 circuit design
+# QFin circuit design
 
 ## 1. Inverse-CDF quantile representation
 
@@ -67,3 +67,32 @@ observations without phase-estimation qubits.
 compiler reports `K/2**n`, approximation errors, and failure to converge under
 a cap. This milestone removes the exponential distribution-angle table but
 does not claim that every payoff has a compact Walsh expansion.
+
+## 5. Empirical tail-risk objectives (v0.5)
+
+ALM, life, or factor scenarios produce finite losses `L_i` with probabilities
+`p_i`. Unlike the option quantile path, the weights need not be uniform, so the
+v0.5 risk runtime uses the structured probability-tree loader.
+
+The same normalized-objective interface constructs:
+
+```text
+tail probability:  f_i(K) = 1[L_i > K]
+CDF search:         f_i(K) = 1[L_i <= K]
+tail excess:        f_i(v) = max(L_i-v, 0) / max_j max(L_j-v, 0).
+```
+
+All three use the existing Grover iterate and MLAE implementation. VaR wraps
+CDF amplitudes in a classical binary search over occupied loss points. CVaR
+uses the selected threshold and the tail-excess identity
+
+```text
+CVaR_alpha = v + E[max(L-v, 0)] / (1-alpha).
+```
+
+There is no new state-vector simulator. `RiskPennyLaneBackend` orchestrates the
+existing structured circuit, and PennyLane-Lightning performs simulation.
+
+The first risk oracle is exact on the encoded grid but not asymptotically
+compact: distribution and objective rotations are both `O(2**n)`. Resource
+reports expose that cost, threshold evaluations, and classical preprocessing.

@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-08-29
+
+- Added public `TailProbability` and `VaR` problems alongside `CVaR`.
+- Added `QuantumObjectiveEncoding` for CDF indicators, upper-tail indicators,
+  and normalized tail-excess objectives over finite loss representations.
+- Added an experimental PennyLane risk runtime that reuses QFin's structured
+  probability loader and PennyLane-Lightning rather than implementing another
+  simulator.
+- Added MLAE tail-probability estimation, hybrid MLAE-driven VaR binary search,
+  and CVaR tail-excess estimation through the Rockafellar-Uryasev identity.
+- Added separate distribution, exact-oracle, and estimation error budgets;
+  local quantum intervals; and reproducible weighted empirical bootstrap
+  intervals for classical VaR/CVaR.
+- Added logical risk-resource reports covering circuits, shots, oracle queries,
+  state preparation, objective evaluations, sorting work, and preprocessing
+  memory with explicit pre-transpilation caveats.
+- Added validated Gaussian multi-factor correlation scenarios and vectorized
+  linear-exposure loss mapping with an explicit dependence-assumption label.
+- Added ALM-to-quantum-risk integration tests, examples, and measured
+  `default.qubit` versus `lightning.qubit` benchmarks.
+- Documented that generic empirical state/objective loading remains
+  `O(2**data_qubits)` and that the workflow does not claim quantum advantage.
+
 ## 0.4.0 — 2026-08-29
 
 - Added a wheel-compatible C++20 financial extension using CMake,

@@ -8,10 +8,12 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `0.4.0` adds a QFin-owned C++20 financial core for batch fixed income,
-ALM scenarios, life projections, yield solving, and tail-risk aggregation. It
-preserves the existing European-option/MLAE pipeline and its default
-PennyLane-Lightning simulator.
+Version `0.5.0` connects QFin's native ALM/scenario loss distributions to
+experimental quantum tail-probability, VaR, and CVaR workflows. It adds hybrid
+MLAE threshold search, tail-excess estimation, risk-specific error/resource
+reports, bootstrap intervals, and explicit correlated-factor assumptions.
+The QFin-owned C++20 financial core introduced in 0.4 and the default
+PennyLane-Lightning simulator remain separate components.
 
 ## Architecture
 
@@ -156,7 +158,7 @@ portfolio. It is a rigorous foundation, not a Prophet/AXIS/PathWise replacement.
 Standalone mortality-table interpolation remains in NumPy because it benchmarks
 faster there; C++ accelerates the batched policy-by-year projection loop.
 
-## ALM to quantum representation
+## ALM to quantum risk
 
 ```python
 scenario_result = alm.run_scenarios(scenarios)
@@ -164,15 +166,49 @@ losses = scenario_result.loss_distribution()
 risk = qfin.CVaR(losses, confidence=0.995)
 compiled = qfin.compile(risk, target_error=1.0)
 
-print(compiled.run())
+classical = compiled.run()
+quantum = compiled.run_quantum(
+    shots=4_000,
+    schedule=(0, 1, 2, 4),
+    seed=7,
+)
+
+print(classical.cvar)
+print(quantum.expected_shortfall)
+print(quantum.value_at_risk)
+print(quantum.resources.to_dict())
 print(qfin.problem_capabilities(risk).to_dict())
 ```
 
-Today, weighted VaR/CVaR executes classically through NumPy or QFin C++, and
-the loss distribution can feed QFin's existing representation layer. QFin
-reports that a quantum CVaR oracle/algorithm is unavailable; calling
-`compiled.to_pennylane()` raises a clear `CompilationError`. This prevents an
-unsupported problem from silently using a meaningless quantum workflow.
+`compiled.run()` remains the stable NumPy/QFin-native validation path.
+`run_quantum()` executes the experimental PennyLane workflow: probability-tree
+state preparation, MLAE CDF objectives, hybrid VaR threshold search, and an
+MLAE tail-excess objective for CVaR. `TailProbability`, `VaR`, and `CVaR` are
+separate public problem types.
+
+The first empirical loader and objective multiplexer require
+`O(2**data_qubits)` rotations. QFin reports that cost explicitly and makes no
+quantum-advantage claim. See [docs/quantum-risk.md](docs/quantum-risk.md) for
+the equations, confidence-interval semantics, and limitations.
+
+Correlated multi-factor losses can be built with an explicit dependence model:
+
+```python
+import numpy as np
+import qfin
+
+factors = qfin.GaussianFactorModel(
+    factor_names=("rates", "equity", "credit"),
+    correlation=np.array(
+        [[1.0, -0.2, 0.2], [-0.2, 1.0, -0.3], [0.2, -0.3, 1.0]]
+    ),
+)
+scenarios = factors.simulate(10_000, seed=11, antithetic=True)
+losses = scenarios.linear_loss_distribution([20_000, -4_000, 35_000])
+```
+
+This Gaussian linear-factor model is a transparent foundation, not an
+assumption that real financial or insurance tails are Gaussian.
 
 ## European option quantum pipeline
 
@@ -222,14 +258,25 @@ policy projections, ALM scenarios, risk aggregation, and `default.qubit` versus
 PennyLane-Lightning. It does not claim quantum advantage or promise a fixed
 native speedup.
 
+The separate [quantum-risk performance report](docs/quantum-risk-performance.md)
+measures tail-probability, VaR, and CVaR circuits on `default.qubit` and
+`lightning.qubit`. Reproduce it with:
+
+```bash
+python examples/quantum_risk_benchmark.py --repeats 3 --shots 1000 \
+  --output docs/quantum-risk-performance.md
+```
+
 ## Honest scope
 
-QFin 0.4 is a research prototype. It does not yet support calibration,
+QFin 0.5 is a research prototype. It does not yet support calibration,
 path-dependent products, stochastic rates/volatility, credit instruments,
 multi-state life products, dynamic policyholder behavior, production model
-governance, hardware noise, Qiskit export, or a quantum VaR/CVaR algorithm.
-Resource counts remain logical and pre-transpilation. Financial calculations
-prioritize explicit assumptions, numerical parity, and transparent limitations.
+governance, hardware noise, Qiskit export, efficient QRAM, or an end-to-end
+fault-tolerant risk algorithm. The implemented VaR search is hybrid and the
+CVaR interval is conditional on its selected threshold. Resource counts remain
+logical and pre-transpilation. Financial calculations prioritize explicit
+assumptions, numerical parity, and transparent limitations.
 
 ## Development
 
@@ -240,8 +287,10 @@ mypy src/qfin
 pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
 python -m build
 python examples/native_benchmark.py
+python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
 ```
 
 More detail is available in [docs/architecture.md](docs/architecture.md),
-[docs/circuit-design.md](docs/circuit-design.md), and
+[docs/circuit-design.md](docs/circuit-design.md),
+[docs/quantum-risk.md](docs/quantum-risk.md), and
 [docs/roadmap.md](docs/roadmap.md).

@@ -8,7 +8,7 @@ from qfin import _native
 from qfin.finance import EuropeanCall, EuropeanPut
 from qfin.finance.alm import ALMModel, ALMScenarioResult
 from qfin.finance.life import LifePolicy
-from qfin.finance.risk import CVaR, LossDistribution
+from qfin.finance.risk import CVaR, LossDistribution, TailProbability, VaR
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,18 +48,29 @@ def problem_capabilities(problem: object) -> ProblemCapabilities:
             quantum_algorithm_available=True,
             note="European option pricing is implemented with PennyLane MLAE.",
         )
-    if isinstance(problem, (CVaR, LossDistribution, ALMScenarioResult)):
+    if isinstance(problem, (TailProbability, VaR, CVaR)):
         return ProblemCapabilities(
             category="tail_risk",
             financial_model_available=True,
             classical_implementation="weighted finite-distribution VaR/CVaR",
             native_implementation_available=_native.available(),
             quantum_representation_available=True,
-            quantum_algorithm_available=False,
+            quantum_algorithm_available=True,
             note=(
-                "Losses can be encoded with QFin's distribution representation; "
-                "a quantum VaR/CVaR oracle is not yet implemented."
+                "Experimental PennyLane MLAE tail objectives are implemented. VaR "
+                "uses hybrid binary search; CVaR uses the selected VaR plus a "
+                "tail-excess amplitude. Generic loading is O(2**qubits)."
             ),
+        )
+    if isinstance(problem, (LossDistribution, ALMScenarioResult)):
+        return ProblemCapabilities(
+            category="tail_risk_input",
+            financial_model_available=True,
+            classical_implementation="weighted finite loss distribution",
+            native_implementation_available=_native.available(),
+            quantum_representation_available=True,
+            quantum_algorithm_available=False,
+            note="Wrap the loss distribution in TailProbability, VaR, or CVaR.",
         )
     if isinstance(problem, ALMModel):
         return ProblemCapabilities(

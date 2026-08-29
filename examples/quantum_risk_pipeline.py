@@ -1,4 +1,4 @@
-"""Bridge native ALM scenarios into QFin's quantum representation layer."""
+"""Run ALM scenarios through QFin's experimental quantum CVaR workflow."""
 
 import numpy as np
 
@@ -11,13 +11,26 @@ alm = qfin.ALMModel(
     curve,
 )
 scenario_result = alm.run_scenarios(
-    qfin.RateScenarioSet.parallel(curve, np.linspace(-0.02, 0.02, 64))
+    qfin.RateScenarioSet.parallel(curve, np.linspace(-0.02, 0.02, 32))
 )
-risk = qfin.CVaR(scenario_result.loss_distribution(), confidence=0.995)
-compiled = qfin.compile(risk, target_error=1.0, max_qubits=8)
+risk = qfin.CVaR(scenario_result.loss_distribution(), confidence=0.90)
+compiled = qfin.compile(risk, target_error=1.0, min_qubits=4, max_qubits=5)
 
 print(compiled.explain())
-print("Classical result:", compiled.run())
+classical = compiled.run()
+quantum = compiled.run_quantum(
+    shots=2_000,
+    schedule=(0, 1, 2),
+    seed=7,
+    likelihood_grid_size=32_769,
+    bootstrap_resamples=100,
+)
+
+print("Classical result:", classical)
+print("Quantum CVaR estimate:", quantum.expected_shortfall)
+print("Quantum conditional 95% interval:", quantum.confidence_interval_95)
+print("Quantum VaR grid estimate:", quantum.value_at_risk)
+print("Resources:", quantum.resources.to_dict())
 print("Capabilities:", qfin.problem_capabilities(risk).to_dict())
-# The loss representation is ready. QFin deliberately raises if to_pennylane()
-# is requested because a quantum CVaR oracle/estimator is not yet implemented.
+# This is a simulator research workflow. The first empirical state/oracle loader
+# scales as O(2**data_qubits), and QFin does not claim quantum advantage.

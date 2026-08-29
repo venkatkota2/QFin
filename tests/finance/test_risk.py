@@ -42,3 +42,42 @@ def test_risk_rejects_unrepresentable_moments() -> None:
 def test_risk_rejects_invalid_confidence(confidence: float) -> None:
     with pytest.raises(ValueError, match="confidence"):
         qfin.aggregate_risk(qfin.LossDistribution([1.0]), confidence=confidence)
+
+
+def test_tail_probability_has_explicit_boundary_convention() -> None:
+    distribution = qfin.LossDistribution([0.0, 1.0, 2.0, 3.0])
+    strict = qfin.evaluate_tail_probability(qfin.TailProbability(distribution, 2.0))
+    inclusive = qfin.evaluate_tail_probability(
+        qfin.TailProbability(distribution, 2.0, inclusive=True)
+    )
+    assert strict.probability == pytest.approx(0.25)
+    assert inclusive.probability == pytest.approx(0.50)
+
+
+def test_bootstrap_risk_interval_is_reproducible() -> None:
+    distribution = qfin.LossDistribution(np.arange(20, dtype=np.float64))
+    first = qfin.bootstrap_risk_interval(
+        distribution,
+        confidence=0.8,
+        resamples=100,
+        sample_size=40,
+        seed=17,
+    )
+    second = qfin.bootstrap_risk_interval(
+        distribution,
+        confidence=0.8,
+        resamples=100,
+        sample_size=40,
+        seed=17,
+    )
+    assert first == second
+    assert first.value_at_risk[0] <= 15.0 <= first.value_at_risk[1]
+    assert first.expected_shortfall[0] <= first.expected_shortfall[1]
+    assert "model" in str(first.to_dict()["caveat"])
+
+
+@pytest.mark.parametrize("problem_type", [qfin.VaR, qfin.CVaR])
+def test_compiler_risk_problem_types_validate_confidence(problem_type: object) -> None:
+    distribution = qfin.LossDistribution([0.0, 1.0])
+    with pytest.raises(ValueError, match="confidence"):
+        problem_type(distribution, 1.0)  # type: ignore[operator]

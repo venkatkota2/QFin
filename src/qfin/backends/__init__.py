@@ -6,10 +6,12 @@ from qfin.backends.pennylane import (
     PennyLaneBackend,
     StructuredPennyLaneBackend,
 )
+from qfin.backends.risk import RiskPennyLaneBackend
 
 __all__ = [
     "CompressedPennyLaneBackend",
     "DensePennyLaneBackend",
     "PennyLaneBackend",
+    "RiskPennyLaneBackend",
     "StructuredPennyLaneBackend",
 ]

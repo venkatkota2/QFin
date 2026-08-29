@@ -19,8 +19,14 @@ mypy src/qfin
 pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
 python -m build
 python examples/native_benchmark.py
+python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
 ```
 
 Every native kernel requires a Python/NumPy oracle, analytical cases where
 available, malformed-input tests, explicit tolerances, and measured evidence
 that batching justifies crossing the extension boundary.
+
+Every quantum-risk change additionally requires a finite-distribution
+reference, exact state/objective-amplitude tests, deterministic seeded
+simulator tests, logical resource accounting, and documentation that separates
+simulator feasibility from hardware or advantage claims.
