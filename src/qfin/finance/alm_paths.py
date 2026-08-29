@@ -73,11 +73,17 @@ def _scenario_present_value(
         scaled_amounts = np.broadcast_to(amounts, shocks.shape)
     else:
         scaled_amounts = amount_scales[:, remaining] * amounts[None, :]
-    return np.sum(
-        scaled_amounts
-        * np.exp(-(base_rates[None, :] + shocks + spread_shocks[:, None]) * tenors[None, :]),
-        axis=1,
-        dtype=np.float64,
+    return cast(
+        FloatArray,
+        np.sum(
+            scaled_amounts
+            * np.exp(
+                -(base_rates[None, :] + shocks + spread_shocks[:, None])
+                * tenors[None, :]
+            ),
+            axis=1,
+            dtype=np.float64,
+        ),
     )
 
 
