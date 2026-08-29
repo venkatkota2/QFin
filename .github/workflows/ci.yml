@@ -44,6 +44,12 @@ jobs:
       - name: Run quantum-risk smoke example
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: python examples/quantum_risk_pipeline.py
+      - name: Run ALM and life 0.6 smoke examples
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: |
+          python examples/multiperiod_alm.py
+          python examples/life_products.py
+          python examples/life_scenario_risk.py
       - run: python -m build
 
   package-smoke:
@@ -69,7 +75,7 @@ jobs:
           risk=qfin.compile(qfin.TailProbability(qfin.LossDistribution([0, 1]), 0.5),
           backend='classical', target_error=0.1, min_qubits=2, max_qubits=2);
           assert qfin.system_info()['native_extension'];
-          assert qfin.__version__ == '0.5.0';
+          assert qfin.__version__ == '0.6.0';
           assert result.dirty_prices.shape == (1,);
           assert risk.run().probability == 0.5;
           print(qfin.system_info())"

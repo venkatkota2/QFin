@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-08-29
+
+- Added validated multi-period `EconomicScenarioSet` paths for zero rates,
+  credit spreads, equity returns, inflation, mortality, and lapse, including a
+  transparent correlated-Gaussian generator with explicit dependence metadata.
+- Extended assets with aggregate equity and cash allocations and liabilities
+  with cash-flow-level inflation linkage.
+- Added one-period multi-factor ALM revaluation, exact residual attribution,
+  bump-and-revalue sensitivities, probability-aware loss distributions, and a
+  native multi-period roll-forward for reinvestment, liability payments,
+  allocation rebalancing, and transaction costs.
+- Added term, participating, universal-life, and annuity model points plus
+  active/disabled/dead transitions, recovery, inflation-linked benefits,
+  credited account values, bonuses, surrenders, and product-level PV reporting.
+- Added exact model-point grouping and named life assumption sets while
+  retaining the 0.4 term-life defaults and results.
+- Added a C++20 life scenario kernel that chunks both scenarios and model
+  points and returns scenario aggregates without allocating a full
+  scenario-by-policy-by-time result cube.
+- Connected multi-period ALM and life-scenario loss distributions to the
+  existing TailProbability/VaR/CVaR representation and compiler boundary
+  without claiming direct quantum implementations for the financial models.
+- Added Python/native parity, analytical product, chunk invariance,
+  attribution, sensitivity, validation, integration, example, benchmark, and
+  cross-platform CI coverage for the 0.6 vertical slice.
+- Preserved PennyLane-Lightning as the compiled quantum simulator; all new C++
+  kernels are QFin-owned financial and actuarial preprocessing only.
+
 ## 0.5.0 — 2026-08-29
 
 - Added public `TailProbability` and `VaR` problems alongside `CVaR`.

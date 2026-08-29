@@ -8,12 +8,14 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `0.5.0` connects QFin's native ALM/scenario loss distributions to
-experimental quantum tail-probability, VaR, and CVaR workflows. It adds hybrid
-MLAE threshold search, tail-excess estimation, risk-specific error/resource
-reports, bootstrap intervals, and explicit correlated-factor assumptions.
-The QFin-owned C++20 financial core introduced in 0.4 and the default
-PennyLane-Lightning simulator remain separate components.
+Version `0.6.0` adds multi-factor, multi-period ALM and richer life-insurance
+foundations. Economic paths now cover rates, credit spreads, equity, inflation,
+mortality, and lapse; native kernels roll portfolios through reinvestment and
+rebalancing and project grouped term, participating, universal-life, and
+annuity model points through active/disabled/dead states. Their scenario loss
+distributions feed the 0.5 tail-probability, VaR, and CVaR compiler boundary.
+QFin-owned C++20 finance kernels and the PennyLane-Lightning simulator remain
+separate components.
 
 ## Architecture
 
@@ -104,10 +106,18 @@ use the bond's nominal coupon frequency.
 ## Asset-liability modelling
 
 ```python
-assets = qfin.AssetPortfolio(bonds=bonds, quantities=[20, 15])
+import numpy as np
+
+assets = qfin.AssetPortfolio(
+    bonds=bonds,
+    quantities=[20, 15],
+    equity_value=5_000,
+    cash_value=500,
+)
 liabilities = qfin.LiabilityPortfolio.from_arrays(
     times=[3, 8, 15],
     amounts=[1_000, 2_000, 3_000],
+    inflation_linkage=[0.25, 0.5, 1.0],
 )
 alm = qfin.ALMModel(assets=assets, liabilities=liabilities, curve=curve)
 
@@ -117,14 +127,33 @@ print(base.funding_ratio, base.duration_gap, base.convexity_gap)
 scenarios = qfin.RateScenarioSet.parallel(curve, [-0.01, 0.0, 0.01])
 stressed = alm.run_scenarios(scenarios, chunk_size=128)
 print(stressed.surplus)
+
+economic_paths = qfin.EconomicScenarioSet.correlated_gaussian(
+    curve,
+    scenario_count=1_000,
+    periods=10,
+    correlation=np.eye(6),
+    standard_deviations=[0.0075, 0.003, 0.18, 0.012, 0.08, 0.12],
+    means=[0, 0, 0.06, 0.025, 0, 0],
+    seed=11,
+)
+paths = alm.project_paths(
+    economic_paths,
+    strategy=qfin.RebalancingStrategy(target_equity_weight=0.30),
+)
+print(paths.funding_ratio[:, -1])
 ```
 
 `duration_gap` uses the standard immunization definition
 `D_assets - (L/A) D_liabilities`. Scenario execution accepts node-aligned rate
 shock matrices and includes parallel, steepener/flattening, and triangular
-key-rate constructors. Chunks bound temporary memory; the native kernel
-aggregates portfolio PVs without materializing a scenario × instrument × cash
-flow cube.
+key-rate constructors. `EconomicScenarioSet` adds probability-aware economic
+paths. One-period revaluation reports rates/spread/equity/inflation attribution
+and sensitivities; multi-period execution models bond roll-down, reinvestment,
+short-rate cash accrual, equity returns, liability payments, inflation linkage, target-weight
+rebalancing, and transaction costs. Chunks bound temporary memory and native
+kernels return portfolio aggregates without materializing a scenario ×
+instrument × period cube.
 
 ## Life projection
 
@@ -134,14 +163,27 @@ import numpy as np
 ages = np.arange(20, 121, dtype=float)
 qx = np.minimum(0.0002 * np.exp(0.075 * (ages - 20)), 1.0)
 mortality = qfin.MortalityTable(ages, qx)
-policies = [
-    qfin.LifePolicy(age=40, sum_assured=250_000, annual_premium=700, term=20)
-]
-assumptions = qfin.ProjectionAssumptions(
+policies = qfin.PolicyModelPointSet(
+    [
+        qfin.LifePolicy(40, 250_000, 700, 20),
+        qfin.LifePolicy(
+            65,
+            0,
+            0,
+            20,
+            product_type="annuity",
+            annual_benefit=12_000,
+        ),
+    ],
+    counts=[5_000, 2_000],
+)
+assumptions = qfin.LifeAssumptionSet(
     mortality=mortality,
     curve=curve,
     lapse_rate=0.04,
     expense_per_policy=30,
+    disability_rate=0.005,
+    recovery_rate=0.20,
 )
 
 projection = qfin.project_liabilities(policies, assumptions)
@@ -149,14 +191,24 @@ print(projection.present_value)
 print(projection.expected_benefits)
 ```
 
-The first life vertical slice is an annual-step term-life expected-cash-flow
-model. Premiums and expenses occur at the start of each policy year; death
-benefits occur at year end; mortality is applied before lapse. It supports
-mortality categories, policy duration, survival, lapse, expenses, discounting,
-aggregate cash flows, per-policy PVs, and conversion into an ALM liability
-portfolio. It is a rigorous foundation, not a Prophet/AXIS/PathWise replacement.
-Standalone mortality-table interpolation remains in NumPy because it benchmarks
-faster there; C++ accelerates the batched policy-by-year projection loop.
+The annual-step foundation supports term, participating, universal-life, and
+annuity model points; exact grouping with exposure counts; active, disabled,
+and dead states; recovery, lapse, expenses, credited account values, bonuses,
+surrenders, inflation-linked benefits, product PVs, sensitivities, and
+conversion into an ALM liability portfolio. Premiums and expenses occur at the
+start of each policy year and benefits at year end; mortality precedes
+disability/recovery and lapse. `project_liability_scenarios` applies economic
+and biometric paths while chunking both axes and returns scenario aggregates
+that map directly into `LossDistribution`.
+
+This is a rigorous extensible foundation, not a Prophet/AXIS/PathWise
+replacement. Product semantics are intentionally simple and explicit.
+Standalone mortality-table interpolation remains in NumPy because it
+benchmarks faster there; C++ accelerates policy-by-year and
+scenario-by-model-point-by-year loops.
+
+See [docs/alm-life-0.6.md](docs/alm-life-0.6.md) for factor shapes, projection
+ordering, product semantics, memory behavior, and explicit limitations.
 
 ## ALM to quantum risk
 
@@ -242,7 +294,12 @@ workload thresholds. `engine="numpy"` and `engine="native"` are available for
 validation and controlled benchmarking. Every native result is parity-tested
 against its Python/NumPy reference. Tail-risk aggregation currently remains on
 NumPy under `auto` because its native crossover was not stable; advanced users
-can still request the native path explicitly.
+can still request the native path explicitly. Multi-period ALM also remains on
+NumPy under `auto`: the final 0.6 measurements range from 0.88× to 1.09× and do
+not establish a native crossover. Non-empty base and
+scenario life projections select native execution when the extension is
+available; even the measured one-policy, one-scenario, one-year case crossed
+over in favor of C++.
 
 See [docs/native-performance.md](docs/native-performance.md) for measured
 end-to-end timings, numerical differences, and crossover behavior. Reproduce
@@ -258,6 +315,15 @@ policy projections, ALM scenarios, risk aggregation, and `default.qubit` versus
 PennyLane-Lightning. It does not claim quantum advantage or promise a fixed
 native speedup.
 
+The separate [0.6 ALM/life performance report](docs/alm-life-performance.md)
+measures the multi-period ALM and scenario-life kernels, including returned
+array sizes and bounded life chunk estimates. Reproduce it with:
+
+```bash
+python examples/alm_life_benchmark.py --full --repeats 3 \
+  --output docs/alm-life-performance.md
+```
+
 The separate [quantum-risk performance report](docs/quantum-risk-performance.md)
 measures tail-probability, VaR, and CVaR circuits on `default.qubit` and
 `lightning.qubit`. Reproduce it with:
@@ -269,14 +335,15 @@ python examples/quantum_risk_benchmark.py --repeats 3 --shots 1000 \
 
 ## Honest scope
 
-QFin 0.5 is a research prototype. It does not yet support calibration,
-path-dependent products, stochastic rates/volatility, credit instruments,
-multi-state life products, dynamic policyholder behavior, production model
-governance, hardware noise, Qiskit export, efficient QRAM, or an end-to-end
-fault-tolerant risk algorithm. The implemented VaR search is hybrid and the
-CVaR interval is conditional on its selected threshold. Resource counts remain
-logical and pre-transpilation. Financial calculations prioritize explicit
-assumptions, numerical parity, and transparent limitations.
+QFin 0.6 is a research prototype. Its economic scenarios are foundations, not
+calibrated ESG models; aggregate equity and spread exposures are deliberately
+simple; life projection is annual and does not include production product
+rules, dynamic policyholder behavior, tax, reserves, guarantees, or governance
+workflows. QFin also does not yet support path-dependent derivatives,
+stochastic-volatility calibration, credit instruments, hardware noise, Qiskit
+export, efficient QRAM, or an end-to-end fault-tolerant risk algorithm. The VaR
+search is hybrid and the CVaR interval is conditional on its selected
+threshold. Quantum resource counts remain logical and pre-transpilation.
 
 ## Development
 
@@ -287,6 +354,7 @@ mypy src/qfin
 pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
 python -m build
 python examples/native_benchmark.py
+python examples/alm_life_benchmark.py
 python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
 ```
 

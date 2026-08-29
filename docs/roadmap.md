@@ -40,13 +40,20 @@
 - explicit documentation of `O(2**qubits)` generic loading and the absence of
   a quantum-advantage claim.
 
-## 0.6 — richer ALM and life products
+## 0.6 — richer ALM and life products (complete)
 
 - credit-spread, equity, inflation, mortality, and lapse scenario factors;
 - stochastic rates and multi-period reinvestment/rebalancing;
 - participating, universal-life, annuity, and multi-state policy foundations;
 - assumption sets, model-point grouping, attribution, and sensitivity reports;
 - chunked scenario × policy execution without full-cube allocation.
+
+The initial implementation deliberately uses annual life steps, simple
+product foundations, synthetic scenario generation, deterministic portable
+single-threaded kernels, and aggregate equity exposure. Product cash-flow
+semantics and scenario dependence are explicit so calibrated models can
+replace these foundations without changing the public loss-distribution
+bridge.
 
 The factor roadmap includes heavy-tailed marginals, copulas, nonlinear
 revaluation, and calibrated economic-scenario models beyond the 0.5 Gaussian

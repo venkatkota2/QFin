@@ -26,8 +26,8 @@ class YieldCurve:
     extrapolation: Literal["flat"] = "flat"
 
     def __post_init__(self) -> None:
-        times = np.ascontiguousarray(self.times, dtype=np.float64).reshape(-1)
-        rates = np.ascontiguousarray(self.zero_rates, dtype=np.float64).reshape(-1)
+        times = np.array(self.times, dtype=np.float64, order="C", copy=True).reshape(-1)
+        rates = np.array(self.zero_rates, dtype=np.float64, order="C", copy=True).reshape(-1)
         if times.size == 0 or times.shape != rates.shape:
             raise ValueError("times and zero_rates must have equal non-zero length")
         if not np.all(np.isfinite(times)) or np.any(times < 0):

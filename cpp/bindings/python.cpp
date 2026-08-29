@@ -1,3 +1,4 @@
+#include "qfin/alm.hpp"
 #include "qfin/fixed_income.hpp"
 #include "qfin/mortality.hpp"
 #include "qfin/projections.hpp"
@@ -202,6 +203,138 @@ PYBIND11_MODULE(_qfin_native, module) {
     );
 
     module.def(
+        "scenario_indexed_cashflow_present_values",
+        [](const InputArray<double>& cashflow_times,
+           const InputArray<double>& cashflow_amounts,
+           const InputArray<double>& inflation_linkage,
+           const InputArray<double>& curve_times,
+           const InputArray<double>& zero_rates,
+           const InputArray<double>& scenario_rate_shocks,
+           const InputArray<double>& scenario_inflation_rates) {
+            if (scenario_rate_shocks.ndim() != 2) {
+                throw py::value_error("scenario_rate_shocks must be two-dimensional");
+            }
+            const auto times_span = as_span(cashflow_times);
+            const auto amounts_span = as_span(cashflow_amounts);
+            const auto linkage_span = as_span(inflation_linkage);
+            const auto curve_times_span = as_span(curve_times);
+            const auto rates_span = as_span(zero_rates);
+            const auto shocks_span = as_flat_span(scenario_rate_shocks);
+            const auto inflation_span = as_span(scenario_inflation_rates);
+            std::vector<double> values;
+            {
+                py::gil_scoped_release release;
+                values = qfin::scenario_indexed_cashflow_present_values(
+                    times_span,
+                    amounts_span,
+                    linkage_span,
+                    curve_times_span,
+                    rates_span,
+                    shocks_span,
+                    inflation_span,
+                    static_cast<std::size_t>(scenario_rate_shocks.shape(0))
+                );
+            }
+            return move_array(std::move(values));
+        }
+    );
+
+    module.def(
+        "project_alm_paths",
+        [](const InputArray<double>& asset_cashflow_times,
+           const InputArray<double>& asset_cashflow_amounts,
+           const InputArray<double>& liability_cashflow_times,
+           const InputArray<double>& liability_cashflow_amounts,
+           const InputArray<double>& liability_inflation_linkage,
+           const InputArray<double>& curve_times,
+           const InputArray<double>& zero_rates,
+           const InputArray<double>& rate_shocks,
+           const InputArray<double>& credit_spread_shocks,
+           const InputArray<double>& equity_returns,
+           const InputArray<double>& inflation_rates,
+           const double period_length,
+           const double initial_equity_value,
+           const double initial_cash_value,
+           const double target_equity_weight,
+           const std::int32_t rebalance_frequency,
+           const double transaction_cost_rate,
+           const bool pay_liabilities) {
+            if (rate_shocks.ndim() != 3 || credit_spread_shocks.ndim() != 2 ||
+                equity_returns.ndim() != 2 || inflation_rates.ndim() != 2) {
+                throw py::value_error(
+                    "ALM rate paths must be three-dimensional and factor paths "
+                    "two-dimensional"
+                );
+            }
+            const auto scenario_count = static_cast<std::size_t>(rate_shocks.shape(0));
+            const auto period_count = static_cast<std::size_t>(rate_shocks.shape(1));
+            if (rate_shocks.shape(2) != curve_times.size() ||
+                credit_spread_shocks.shape(0) != rate_shocks.shape(0) ||
+                credit_spread_shocks.shape(1) != rate_shocks.shape(1) ||
+                equity_returns.shape(0) != rate_shocks.shape(0) ||
+                equity_returns.shape(1) != rate_shocks.shape(1) ||
+                inflation_rates.shape(0) != rate_shocks.shape(0) ||
+                inflation_rates.shape(1) != rate_shocks.shape(1)) {
+                throw py::value_error("ALM economic factor path dimensions must align");
+            }
+            const auto asset_times_span = as_span(asset_cashflow_times);
+            const auto asset_amounts_span = as_span(asset_cashflow_amounts);
+            const auto liability_times_span = as_span(liability_cashflow_times);
+            const auto liability_amounts_span = as_span(liability_cashflow_amounts);
+            const auto linkage_span = as_span(liability_inflation_linkage);
+            const auto curve_times_span = as_span(curve_times);
+            const auto rates_span = as_span(zero_rates);
+            const auto rate_shocks_span = as_flat_span(rate_shocks);
+            const auto spread_span = as_flat_span(credit_spread_shocks);
+            const auto equity_span = as_flat_span(equity_returns);
+            const auto inflation_span = as_flat_span(inflation_rates);
+            qfin::ALMPathProjectionResult projection;
+            {
+                py::gil_scoped_release release;
+                projection = qfin::project_alm_paths(
+                    asset_times_span,
+                    asset_amounts_span,
+                    liability_times_span,
+                    liability_amounts_span,
+                    linkage_span,
+                    curve_times_span,
+                    rates_span,
+                    rate_shocks_span,
+                    spread_span,
+                    equity_span,
+                    inflation_span,
+                    scenario_count,
+                    period_count,
+                    period_length,
+                    initial_equity_value,
+                    initial_cash_value,
+                    target_equity_weight,
+                    rebalance_frequency,
+                    transaction_cost_rate,
+                    pay_liabilities
+                );
+            }
+            py::dict result;
+            result["asset_values"] = move_array(std::move(projection.asset_values));
+            result["bond_values"] = move_array(std::move(projection.bond_values));
+            result["cash_values"] = move_array(std::move(projection.cash_values));
+            result["equity_values"] = move_array(std::move(projection.equity_values));
+            result["liability_values"] = move_array(
+                std::move(projection.liability_values)
+            );
+            result["liability_payments"] = move_array(
+                std::move(projection.liability_payments)
+            );
+            result["surplus"] = move_array(std::move(projection.surplus));
+            result["funding_ratio"] = move_array(std::move(projection.funding_ratio));
+            result["transaction_costs"] = move_array(
+                std::move(projection.transaction_costs)
+            );
+            return result;
+        }
+    );
+
+    module.def(
         "mortality_rates",
         [](const InputArray<double>& query_ages,
            const InputArray<double>& table_ages,
@@ -273,6 +406,282 @@ PYBIND11_MODULE(_qfin_native, module) {
             );
             result["present_value"] = projection.present_value;
             result["duration"] = projection.duration;
+            return result;
+        }
+    );
+
+    module.def(
+        "project_life_model_points",
+        [](const InputArray<double>& attained_ages,
+           const InputArray<double>& sums_assured,
+           const InputArray<double>& annual_premiums,
+           const InputArray<std::int32_t>& remaining_terms,
+           const InputArray<std::int32_t>& policy_durations,
+           const InputArray<std::int32_t>& original_terms,
+           const InputArray<std::int32_t>& product_codes,
+           const InputArray<double>& model_point_counts,
+           const InputArray<double>& annual_benefits,
+           const InputArray<double>& account_values,
+           const InputArray<double>& annual_charges,
+           const InputArray<double>& crediting_spreads,
+           const InputArray<double>& bonus_rates,
+           const InputArray<double>& disability_benefits,
+           const InputArray<double>& benefit_inflation_linkage,
+           const InputArray<double>& table_ages,
+           const InputArray<double>& mortality_qx,
+           const InputArray<double>& lapse_rates,
+           const InputArray<double>& disability_rates,
+           const InputArray<double>& recovery_rates,
+           const InputArray<double>& crediting_rates,
+           const InputArray<double>& expense_inflation_rates,
+           const double expense_per_policy,
+           const double mortality_multiplier,
+           const double disabled_mortality_multiplier,
+           const double premium_multiplier,
+           const double benefit_multiplier,
+           const InputArray<double>& curve_times,
+           const InputArray<double>& zero_rates) {
+            const auto attained_span = as_span(attained_ages);
+            const auto assured_span = as_span(sums_assured);
+            const auto premium_span = as_span(annual_premiums);
+            const auto remaining_span = as_span(remaining_terms);
+            const auto duration_span = as_span(policy_durations);
+            const auto original_term_span = as_span(original_terms);
+            const auto product_span = as_span(product_codes);
+            const auto count_span = as_span(model_point_counts);
+            const auto annual_benefit_span = as_span(annual_benefits);
+            const auto account_span = as_span(account_values);
+            const auto charge_span = as_span(annual_charges);
+            const auto crediting_spread_span = as_span(crediting_spreads);
+            const auto bonus_span = as_span(bonus_rates);
+            const auto disability_benefit_span = as_span(disability_benefits);
+            const auto benefit_linkage_span = as_span(benefit_inflation_linkage);
+            const auto table_age_span = as_span(table_ages);
+            const auto qx_span = as_span(mortality_qx);
+            const auto lapse_span = as_span(lapse_rates);
+            const auto disability_span = as_span(disability_rates);
+            const auto recovery_span = as_span(recovery_rates);
+            const auto crediting_span = as_span(crediting_rates);
+            const auto inflation_span = as_span(expense_inflation_rates);
+            const auto curve_time_span = as_span(curve_times);
+            const auto zero_rate_span = as_span(zero_rates);
+            qfin::LifeModelPointProjectionResult projection;
+            {
+                py::gil_scoped_release release;
+                projection = qfin::project_life_model_points(
+                    attained_span,
+                    assured_span,
+                    premium_span,
+                    remaining_span,
+                    duration_span,
+                    original_term_span,
+                    product_span,
+                    count_span,
+                    annual_benefit_span,
+                    account_span,
+                    charge_span,
+                    crediting_spread_span,
+                    bonus_span,
+                    disability_benefit_span,
+                    benefit_linkage_span,
+                    table_age_span,
+                    qx_span,
+                    lapse_span,
+                    disability_span,
+                    recovery_span,
+                    crediting_span,
+                    inflation_span,
+                    expense_per_policy,
+                    mortality_multiplier,
+                    disabled_mortality_multiplier,
+                    premium_multiplier,
+                    benefit_multiplier,
+                    curve_time_span,
+                    zero_rate_span
+                );
+            }
+            py::dict result;
+            result["expected_premiums"] = move_array(
+                std::move(projection.expected_premiums)
+            );
+            result["expected_benefits"] = move_array(
+                std::move(projection.expected_benefits)
+            );
+            result["expected_expenses"] = move_array(
+                std::move(projection.expected_expenses)
+            );
+            result["expected_surrenders"] = move_array(
+                std::move(projection.expected_surrenders)
+            );
+            result["net_liability_cashflows"] = move_array(
+                std::move(projection.net_liability_cashflows)
+            );
+            result["active"] = move_array(std::move(projection.active));
+            result["disabled"] = move_array(std::move(projection.disabled));
+            result["deaths"] = move_array(std::move(projection.deaths));
+            result["policy_present_values"] = move_array(
+                std::move(projection.model_point_present_values)
+            );
+            result["present_value"] = projection.present_value;
+            result["duration"] = projection.duration;
+            return result;
+        }
+    );
+
+    module.def(
+        "project_life_scenarios",
+        [](const InputArray<double>& attained_ages,
+           const InputArray<double>& sums_assured,
+           const InputArray<double>& annual_premiums,
+           const InputArray<std::int32_t>& remaining_terms,
+           const InputArray<std::int32_t>& policy_durations,
+           const InputArray<std::int32_t>& original_terms,
+           const InputArray<std::int32_t>& product_codes,
+           const InputArray<double>& model_point_counts,
+           const InputArray<double>& annual_benefits,
+           const InputArray<double>& account_values,
+           const InputArray<double>& annual_charges,
+           const InputArray<double>& crediting_spreads,
+           const InputArray<double>& bonus_rates,
+           const InputArray<double>& disability_benefits,
+           const InputArray<double>& benefit_inflation_linkage,
+           const InputArray<double>& table_ages,
+           const InputArray<double>& mortality_qx,
+           const InputArray<double>& lapse_rates,
+           const InputArray<double>& disability_rates,
+           const InputArray<double>& recovery_rates,
+           const InputArray<double>& crediting_rates,
+           const InputArray<double>& base_expense_inflation_rates,
+           const double expense_per_policy,
+           const double mortality_multiplier,
+           const double disabled_mortality_multiplier,
+           const double premium_multiplier,
+           const double benefit_multiplier,
+           const InputArray<double>& curve_times,
+           const InputArray<double>& zero_rates,
+           const InputArray<double>& scenario_rate_shocks,
+           const InputArray<double>& scenario_mortality_multipliers,
+           const InputArray<double>& scenario_lapse_multipliers,
+           const InputArray<double>& scenario_inflation_rates) {
+            if (scenario_rate_shocks.ndim() != 3 ||
+                scenario_mortality_multipliers.ndim() != 2 ||
+                scenario_lapse_multipliers.ndim() != 2 ||
+                scenario_inflation_rates.ndim() != 2) {
+                throw py::value_error(
+                    "life rate paths must be three-dimensional and factor paths "
+                    "two-dimensional"
+                );
+            }
+            const auto scenario_count = static_cast<std::size_t>(
+                scenario_rate_shocks.shape(0)
+            );
+            const auto period_count = static_cast<std::size_t>(
+                scenario_rate_shocks.shape(1)
+            );
+            if (scenario_rate_shocks.shape(2) != curve_times.size() ||
+                scenario_mortality_multipliers.shape(0) !=
+                    scenario_rate_shocks.shape(0) ||
+                scenario_mortality_multipliers.shape(1) !=
+                    scenario_rate_shocks.shape(1) ||
+                scenario_lapse_multipliers.shape(0) !=
+                    scenario_rate_shocks.shape(0) ||
+                scenario_lapse_multipliers.shape(1) !=
+                    scenario_rate_shocks.shape(1) ||
+                scenario_inflation_rates.shape(0) !=
+                    scenario_rate_shocks.shape(0) ||
+                scenario_inflation_rates.shape(1) !=
+                    scenario_rate_shocks.shape(1)) {
+                throw py::value_error("life economic factor path dimensions must align");
+            }
+            const auto attained_span = as_span(attained_ages);
+            const auto assured_span = as_span(sums_assured);
+            const auto premium_span = as_span(annual_premiums);
+            const auto remaining_span = as_span(remaining_terms);
+            const auto duration_span = as_span(policy_durations);
+            const auto original_term_span = as_span(original_terms);
+            const auto product_span = as_span(product_codes);
+            const auto count_span = as_span(model_point_counts);
+            const auto annual_benefit_span = as_span(annual_benefits);
+            const auto account_span = as_span(account_values);
+            const auto charge_span = as_span(annual_charges);
+            const auto crediting_spread_span = as_span(crediting_spreads);
+            const auto bonus_span = as_span(bonus_rates);
+            const auto disability_benefit_span = as_span(disability_benefits);
+            const auto benefit_linkage_span = as_span(benefit_inflation_linkage);
+            const auto table_age_span = as_span(table_ages);
+            const auto qx_span = as_span(mortality_qx);
+            const auto lapse_span = as_span(lapse_rates);
+            const auto disability_span = as_span(disability_rates);
+            const auto recovery_span = as_span(recovery_rates);
+            const auto crediting_span = as_span(crediting_rates);
+            const auto base_inflation_span = as_span(base_expense_inflation_rates);
+            const auto curve_time_span = as_span(curve_times);
+            const auto zero_rate_span = as_span(zero_rates);
+            const auto scenario_rate_span = as_flat_span(scenario_rate_shocks);
+            const auto scenario_mortality_span = as_flat_span(
+                scenario_mortality_multipliers
+            );
+            const auto scenario_lapse_span = as_flat_span(
+                scenario_lapse_multipliers
+            );
+            const auto scenario_inflation_span = as_flat_span(
+                scenario_inflation_rates
+            );
+            qfin::LifeScenarioProjectionResult projection;
+            {
+                py::gil_scoped_release release;
+                projection = qfin::project_life_scenarios(
+                    attained_span,
+                    assured_span,
+                    premium_span,
+                    remaining_span,
+                    duration_span,
+                    original_term_span,
+                    product_span,
+                    count_span,
+                    annual_benefit_span,
+                    account_span,
+                    charge_span,
+                    crediting_spread_span,
+                    bonus_span,
+                    disability_benefit_span,
+                    benefit_linkage_span,
+                    table_age_span,
+                    qx_span,
+                    lapse_span,
+                    disability_span,
+                    recovery_span,
+                    crediting_span,
+                    base_inflation_span,
+                    expense_per_policy,
+                    mortality_multiplier,
+                    disabled_mortality_multiplier,
+                    premium_multiplier,
+                    benefit_multiplier,
+                    curve_time_span,
+                    zero_rate_span,
+                    scenario_rate_span,
+                    scenario_mortality_span,
+                    scenario_lapse_span,
+                    scenario_inflation_span,
+                    scenario_count,
+                    period_count
+                );
+            }
+            py::dict result;
+            result["present_values"] = move_array(std::move(projection.present_values));
+            result["expected_premiums"] = move_array(
+                std::move(projection.expected_premiums)
+            );
+            result["expected_benefits"] = move_array(
+                std::move(projection.expected_benefits)
+            );
+            result["expected_expenses"] = move_array(
+                std::move(projection.expected_expenses)
+            );
+            result["expected_surrenders"] = move_array(
+                std::move(projection.expected_surrenders)
+            );
             return result;
         }
     );
