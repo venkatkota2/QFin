@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from importlib.util import find_spec
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,12 +17,65 @@ from qfin.backends import (
 )
 from qfin.circuits import WalshPayoffApproximation
 from qfin.finance import BlackScholes, EuropeanOption, LogNormal
+from qfin.finance.fixed_income import Engine
+from qfin.finance.risk import CVaR, RiskSummary, aggregate_risk
 from qfin.representation import DistributionEncoding
 from qfin.resources import BackendMode, ResourceReport, estimate_resources
 
 PennyLaneRuntime = (
     CompressedPennyLaneBackend | StructuredPennyLaneBackend | DensePennyLaneBackend
 )
+
+
+def _resolve_quantum_device(device_name: str) -> str:
+    if device_name != "auto":
+        return device_name
+    return (
+        "lightning.qubit"
+        if find_spec("pennylane_lightning") is not None
+        else "default.qubit"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CompiledRiskModel:
+    """Classical CVaR execution plus a quantum-ready loss representation.
+
+    QFin does not yet claim a quantum CVaR algorithm. ``run`` is explicitly a
+    classical NumPy/C++ aggregation, while ``representation`` is the bridge to
+    future quantum tail-risk work.
+    """
+
+    problem: CVaR
+    representation: DistributionEncoding
+    target_error: float
+    backend_name: str = "classical"
+    algorithm_name: str = "weighted_discrete_expected_shortfall"
+    quantum_algorithm_available: bool = False
+
+    def run(self, *, engine: Engine = "auto") -> RiskSummary:
+        return aggregate_risk(
+            self.problem.distribution,
+            confidence=self.problem.confidence,
+            engine=engine,
+        )
+
+    def to_pennylane(self) -> None:
+        from qfin.exceptions import CompilationError
+
+        raise CompilationError(
+            "QFin can encode this loss distribution, but a quantum VaR/CVaR "
+            "oracle and estimator are not implemented yet"
+        )
+
+    def explain(self) -> str:
+        return (
+            "QFin compiled a finite CVaR problem for classical execution and "
+            f"distribution encoding ({self.representation.qubits} qubits, "
+            f"confidence={self.problem.confidence:.6f}). The classical weighted-tail "
+            "algorithm is available; the quantum CVaR algorithm is intentionally "
+            "reported as unavailable."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,14 +193,15 @@ class CompiledPricingModel:
         schedule: Sequence[int] = (0, 1, 2, 4),
         shots: int = 1_000,
         backend_mode: BackendMode | None = None,
-        device_name: str = "lightning.qubit",
+        device_name: str = "auto",
     ) -> ResourceReport:
         resolved_mode = self._resolve_backend_mode(backend_mode)
+        resolved_device = _resolve_quantum_device(device_name)
         return estimate_resources(
             self.representation.qubits,
             schedule=schedule,
             shots=shots,
-            backend=f"pennylane.{device_name}",
+            backend=f"pennylane.{resolved_device}",
             backend_mode=resolved_mode,
             payoff_terms=(
                 self.payoff_approximation.parameter_count
@@ -167,12 +222,13 @@ class CompiledPricingModel:
         max_dense_dimension: int = 2_048,
         max_structured_rotations: int = 32_767,
         max_compressed_terms: int = 32_767,
-        device_name: str = "lightning.qubit",
+        device_name: str = "auto",
     ) -> PennyLaneRuntime:
         """Build the optional PennyLane runtime adapter."""
         if self.backend_name != "pennylane":
             raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         resolved_mode = self._resolve_backend_mode(mode)
+        resolved_device = _resolve_quantum_device(device_name)
         if resolved_mode == "compressed":
             if self.payoff_approximation is None:
                 raise ValueError(
@@ -182,21 +238,21 @@ class CompiledPricingModel:
                 self.representation,
                 self.normalized_payoff,
                 self.payoff_approximation,
-                device_name=device_name,
+                device_name=resolved_device,
                 max_compressed_terms=max_compressed_terms,
             )
         if resolved_mode == "structured":
             return StructuredPennyLaneBackend(
                 self.representation,
                 self.normalized_payoff,
-                device_name=device_name,
+                device_name=resolved_device,
                 max_structured_rotations=max_structured_rotations,
             )
         if resolved_mode == "dense":
             return DensePennyLaneBackend(
                 self.representation,
                 self.normalized_payoff,
-                device_name=device_name,
+                device_name=resolved_device,
                 max_dense_dimension=max_dense_dimension,
             )
         raise ValueError("mode must be 'compressed', 'structured', or 'dense'")
@@ -262,17 +318,18 @@ class CompiledPricingModel:
         max_dense_dimension: int = 2_048,
         max_structured_rotations: int = 32_767,
         max_compressed_terms: int = 32_767,
-        device_name: str = "lightning.qubit",
+        device_name: str = "auto",
     ) -> PricingResult:
         """Execute MLAE and return a validated financial result."""
         powers = tuple(int(power) for power in schedule)
         resolved_mode = self._resolve_backend_mode(backend_mode)
+        resolved_device = _resolve_quantum_device(device_name)
         backend = self.to_pennylane(
             mode=resolved_mode,
             max_dense_dimension=max_dense_dimension,
             max_structured_rotations=max_structured_rotations,
             max_compressed_terms=max_compressed_terms,
-            device_name=device_name,
+            device_name=resolved_device,
         )
         observations = backend.run_schedule(powers, shots=shots, seed=seed)
         amplitude = maximum_likelihood_amplitude_estimate(
@@ -293,7 +350,7 @@ class CompiledPricingModel:
             schedule=powers,
             shots=shots,
             backend_mode=resolved_mode,
-            device_name=device_name,
+            device_name=resolved_device,
         )
         return PricingResult(
             value=value,
@@ -312,6 +369,6 @@ class CompiledPricingModel:
             payoff_approximation=(
                 self.payoff_approximation if resolved_mode == "compressed" else None
             ),
-            backend=f"pennylane.{device_name}:{resolved_mode}",
+            backend=f"pennylane.{resolved_device}:{resolved_mode}",
             algorithm=self.algorithm_name,
         )

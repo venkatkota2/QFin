@@ -1,52 +1,58 @@
 # Roadmap
 
-## 0.1 — complete European-option vertical slice
+## 0.1 to 0.3 — European-option quantum vertical slice (complete)
 
-- Calls and puts under Black–Scholes
-- Normal, lognormal, and empirical distribution objects
-- Automatic bounds, grid, and qubit selection
-- PennyLane simulator circuits
-- Maximum-likelihood amplitude estimation
-- Black–Scholes validation and resource/error reports
+- calls and puts under Black-Scholes;
+- probability and inverse-CDF quantile representations;
+- structured and sparse Walsh/Pauli payoff circuits;
+- PennyLane execution with `lightning.qubit` by default;
+- MLAE, error decomposition, validation, and logical resources.
 
-## 0.2 — structured circuits (complete)
+## 0.4 — native finance and ALM foundation (complete)
 
-- Binary probability-tree distribution loading
-- Multiplexed, gate-decomposable payoff rotations
-- Gate-level zero-state and good-state reflections
-- Structured backend as default; dense backend retained for validation
-- Structured-versus-dense numerical equivalence tests
-- PennyLane device-level circuit specifications
+- scikit-build-core, CMake, pybind11, and a wheel-compatible C++20 extension;
+- NumPy fallback and explicit `auto`/`numpy`/`native` execution modes;
+- yield curves, fixed/zero-coupon cash flows, batch pricing, yield solving,
+  duration, convexity, DV01, accrued interest, and clean/dirty prices;
+- asset/liability portfolios, funding and immunization measures;
+- chunked parallel, twist, and key-rate scenarios;
+- mortality tables and annual term-life projection;
+- weighted loss aggregation, VaR, and expected shortfall;
+- ALM scenario losses connected to the existing distribution representation;
+- capability metadata that distinguishes classical, native, representation,
+  and quantum-algorithm availability;
+- Python/native parity tests and reproducible end-to-end benchmarks.
 
-## 0.3 — quantile and compressed payoff circuits (complete)
+## 0.5 — risk algorithm and compiler policy
 
-- Inverse-CDF lognormal representation prepared with `n` Hadamards and no
-  per-grid distribution angles
-- Tolerance-controlled sparse Walsh/Pauli payoff circuits
-- Separate representation, payoff-approximation, estimation, and total errors
-- Explicit term caps and convergence diagnostics
-- Compressed backend as default; exact earlier backends retained for validation
+- tail-probability, VaR, and CVaR quantum oracle design;
+- distribution/oracle error budgets and classical confidence intervals;
+- compiler selection across option pricing and loss-distribution problems;
+- state-preparation complexity and classical preprocessing cost reports;
+- correlation/dependence assumptions for multi-factor portfolio losses.
 
-## 0.4 — device realism and compiler policy
+## 0.6 — richer ALM and life products
 
-- Device gate-set decomposition and topology-aware resource reports
-- Noise models, error mitigation, and repeatable backend benchmarks
-- Pluggable representation and algorithm selection policies
+- credit-spread, equity, inflation, mortality, and lapse scenario factors;
+- stochastic rates and multi-period reinvestment/rebalancing;
+- participating, universal-life, annuity, and multi-state policy foundations;
+- assumption sets, model-point grouping, attribution, and sensitivity reports;
+- chunked scenario × policy execution without full-cube allocation.
 
-## 0.5 — risk
+## 0.7 — device realism
 
-- Discrete loss distributions
-- Tail probability, VaR, and CVaR
-- Classical baselines and confidence intervals
-- Portfolio aggregation with explicit dependence assumptions
+- device gate-set decomposition and topology-aware resource reports;
+- noise models, error mitigation, and repeatable backend benchmarks;
+- additional PennyLane devices only when implemented and tested;
+- Qiskit export and hardware-provider capability checks.
 
 ## Later research
 
-- Correlated multi-factor models and multiple time steps
-- Stochastic rates and stochastic volatility
-- Optimization and capital allocation
-- Block encoding, QSVT, quantum PDE/SDE methods, and calibration
-- Qiskit export and hardware-provider capability checks
+- portfolio optimization and capital allocation;
+- block encoding, QSVT, quantum PDE/SDE and linear-system methods;
+- calibration, stochastic volatility, and path-dependent products;
+- OpenMP/SIMD/Kokkos/CUDA only after portable-kernel profiling;
+- production actuarial governance, validation, and audit workflows.
 
-Each phase must retain classical validation, error accounting, and a clear
-distinction between simulator feasibility and hardware practicality.
+Every phase must retain classical validation, explicit error accounting, and a
+clear distinction between simulator feasibility and quantum advantage.

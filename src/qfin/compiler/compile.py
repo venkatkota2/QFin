@@ -7,7 +7,7 @@ from typing import Literal
 import numpy as np
 
 from qfin.circuits import WalshPayoffApproximation
-from qfin.compiler.models import CompiledPricingModel, ErrorBudget
+from qfin.compiler.models import CompiledPricingModel, CompiledRiskModel, ErrorBudget
 from qfin.exceptions import CompilationError
 from qfin.finance import (
     BlackScholes,
@@ -16,36 +16,63 @@ from qfin.finance import (
     EuropeanPut,
     GeometricBrownianMotion,
 )
+from qfin.finance.risk import CVaR
 from qfin.representation import encode, encode_quantiles
 from qfin.validation import black_scholes_price
 
 
 def compile(
-    problem: EuropeanOption,
-    market: BlackScholes,
+    problem: EuropeanOption | CVaR,
+    market: BlackScholes | None = None,
     *,
     target_error: float = 0.01,
-    backend: str = "pennylane",
+    backend: str = "auto",
     min_qubits: int = 3,
     max_qubits: int = 12,
     tail_probability: float | None = None,
     representation_method: Literal["quantile", "probability"] = "quantile",
     payoff_angle_tolerance: float = 0.1,
     payoff_max_terms: int | None = None,
-) -> CompiledPricingModel:
-    """Compile a European-option pricing problem into the QFin MVP pipeline.
+) -> CompiledPricingModel | CompiledRiskModel:
+    """Compile a supported financial problem into the QFin pipeline.
 
     ``target_error`` is stated in price units. The returned object can be
     inspected without PennyLane; PennyLane is imported only when ``run`` or
     ``to_pennylane`` executes a circuit.
     """
 
+    if isinstance(problem, CVaR):
+        if market is not None:
+            raise CompilationError("CVaR compilation does not accept a BlackScholes market")
+        if backend not in ("auto", "classical"):
+            raise CompilationError(
+                "quantum CVaR execution is not implemented; use backend='auto' or 'classical'"
+            )
+        if not isfinite(target_error) or target_error <= 0:
+            raise ValueError("target_error must be finite and greater than zero")
+        risk_representation = encode(
+            problem.distribution.as_empirical(),
+            target_error=target_error,
+            objective="expectation",
+            min_qubits=min_qubits,
+            max_qubits=max_qubits,
+            tail_probability=0.0,
+        )
+        return CompiledRiskModel(
+            problem=problem,
+            representation=risk_representation,
+            target_error=target_error,
+        )
+
     if not isinstance(problem, (EuropeanCall, EuropeanPut)):
-        raise CompilationError("QFin 0.3 supports EuropeanCall and EuropeanPut only")
+        raise CompilationError(
+            "option compilation supports EuropeanCall and EuropeanPut only"
+        )
     if not isinstance(market, BlackScholes):
-        raise CompilationError("QFin 0.3 supports the BlackScholes market model only")
-    if backend != "pennylane":
-        raise CompilationError("QFin 0.3 supports backend='pennylane' only")
+        raise CompilationError("European options require a BlackScholes market model")
+    resolved_backend = "pennylane" if backend == "auto" else backend
+    if resolved_backend != "pennylane":
+        raise CompilationError("option compilation supports backend='pennylane' only")
     if not isfinite(target_error) or target_error <= 0:
         raise ValueError("target_error must be finite and greater than zero")
     if min_qubits < 1 or max_qubits < min_qubits:
@@ -165,5 +192,5 @@ def compile(
         circuit_value=circuit_value,
         payoff_approximation_error=payoff_approximation_error,
         representation_method=representation_method,
-        backend_name=backend,
+        backend_name=resolved_backend,
     )

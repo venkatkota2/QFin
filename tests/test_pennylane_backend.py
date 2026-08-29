@@ -91,3 +91,14 @@ def test_pennylane_device_can_be_overridden(
     assert backend.device_name == "default.qubit"
     resources = small_model.resources(device_name="default.qubit")
     assert resources.backend == "pennylane.default.qubit"
+
+
+def test_auto_device_falls_back_when_lightning_is_absent(
+    small_model: qfin.CompiledPricingModel, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import qfin.compiler.models as compiler_models
+
+    monkeypatch.setattr(compiler_models, "find_spec", lambda _name: None)
+    backend = small_model.to_pennylane()
+    assert backend.device_name == "default.qubit"
+    assert small_model.resources().backend == "pennylane.default.qubit"

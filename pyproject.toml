@@ -1,10 +1,13 @@
 [build-system]
-requires = ["setuptools>=77", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = [
+  "scikit-build-core>=0.10,<1",
+  "pybind11>=2.13,<4",
+]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "qfin-quantum"
-version = "0.3.0"
+version = "0.4.0"
 description = "A finance-specific modelling and compilation layer for quantum computers"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +21,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: C++",
+  "Programming Language :: C++ :: 20",
   "Topic :: Office/Business :: Financial",
   "Topic :: Scientific/Engineering",
 ]
@@ -33,6 +38,7 @@ quantum = [
 ]
 dev = [
   "build>=1.2",
+  "cmake>=3.25",
   "mypy>=1.11,<2",
   "pennylane>=0.45,<0.46",
   "pennylane-lightning>=0.45,<0.46",
@@ -49,11 +55,17 @@ Documentation = "https://github.com/venkatkota2/qfin#readme"
 Repository = "https://github.com/venkatkota2/qfin"
 Issues = "https://github.com/venkatkota2/qfin/issues"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-qfin = ["py.typed"]
+[tool.scikit-build]
+cmake.source-dir = "cpp"
+cmake.version = ">=3.20"
+wheel.packages = ["src/qfin"]
+sdist.include = [
+  "cpp/CMakeLists.txt",
+  "cpp/bindings/*.cpp",
+  "cpp/include/qfin/*.hpp",
+  "cpp/src/*.cpp",
+  "src/qfin/py.typed",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"

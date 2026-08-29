@@ -5,6 +5,7 @@ import json
 from collections.abc import Sequence
 
 from qfin.compiler import compile
+from qfin.compiler.models import CompiledPricingModel
 from qfin.finance import BlackScholes, EuropeanCall, EuropeanPut
 
 
@@ -38,8 +39,8 @@ def _parser() -> argparse.ArgumentParser:
     price.add_argument("--seed", type=int, default=None)
     price.add_argument(
         "--device",
-        default="lightning.qubit",
-        help="PennyLane device (default: lightning.qubit)",
+        default="auto",
+        help="PennyLane device (auto prefers lightning.qubit)",
     )
     price.add_argument(
         "--circuit-backend",
@@ -75,6 +76,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         payoff_angle_tolerance=args.payoff_angle_tolerance,
         payoff_max_terms=args.payoff_max_terms,
     )
+    if not isinstance(model, CompiledPricingModel):
+        raise RuntimeError("option CLI unexpectedly produced a non-pricing model")
     if args.compile_only:
         print(model.explain())
         return 0
