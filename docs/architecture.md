@@ -192,6 +192,35 @@ approximate payoff rotations. Compiler-facing device selection defaults to
 `auto`: it resolves to `lightning.qubit` when installed and otherwise to
 PennyLane's `default.qubit`.
 
+## Device-realism boundary
+
+QFin 0.7 adds a compiler-analysis path after circuit construction:
+
+```mermaid
+flowchart TB
+    C["QFin circuit tape"] --> G["RX/RY/RZ/CNOT decomposition"]
+    G --> T["Coupling-map routing"]
+    T --> R["Target resource report"]
+    T --> O["OpenQASM 2 export"]
+    O --> Q["Optional Qiskit circuit"]
+```
+
+`DeviceTarget` contains only portable basis and connectivity assumptions. The
+built-in all-to-all and line graphs are synthetic; they are not calibration
+snapshots. Every final two-qubit gate is checked against the target edges, and
+the report retains the final logical-to-physical map so an exported objective
+measurement remains interpretable after SWAP routing.
+
+Noise is a separate analysis path. `default.mixed` executes explicitly inserted
+local depolarizing and readout bit-flip channels. Global unitary folding and
+polynomial zero-noise extrapolation report both unmitigated and mitigated error
+against the ideal circuit. No QFin C++ code applies quantum gates or channels.
+
+OpenQASM export requires PennyLane but not Qiskit. The optional Qiskit extra
+parses that program into a `QuantumCircuit`. Provider capability inspection is
+read-only: it checks static width, operations, connectivity, and control-flow
+signals without credentials, calibration access, transpilation, or execution.
+
 ## Errors, memory, and threads
 
 C++ validates buffer shapes, finite inputs, ordered offsets, probabilities,

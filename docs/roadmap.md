@@ -59,17 +59,30 @@ The factor roadmap includes heavy-tailed marginals, copulas, nonlinear
 revaluation, and calibrated economic-scenario models beyond the 0.5 Gaussian
 foundation.
 
-## 0.7 — device realism
+## 0.7 — device realism (complete)
 
 - device gate-set decomposition and topology-aware resource reports;
 - noise models, error mitigation, and repeatable backend benchmarks;
 - additional PennyLane devices only when implemented and tested;
 - Qiskit export and hardware-provider capability checks.
 
+The built-in coupling targets are synthetic and the provider interface is
+read-only. QFin does not claim hardware execution merely because an exported
+circuit can be parsed or a backend exposes enough static primitives.
+
+## 0.8 — scalable representation research
+
+- factorized and problem-structured loaders that avoid generic empirical
+  angle tables where financial structure permits;
+- state-preparation strategy comparison with explicit construction costs;
+- block-encoding and QSVT feasibility metadata before algorithm claims;
+- hardware-target feedback in representation and algorithm selection;
+- portfolio-optimization problem objects with strong classical baselines.
+
 ## Later research
 
-- portfolio optimization and capital allocation;
-- block encoding, QSVT, quantum PDE/SDE and linear-system methods;
+- capital allocation and production portfolio constraints;
+- quantum PDE/SDE and linear-system methods;
 - calibration, stochastic volatility, and path-dependent products;
 - OpenMP/SIMD/Kokkos/CUDA only after portable-kernel profiling;
 - production actuarial governance, validation, and audit workflows.

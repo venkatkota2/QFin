@@ -8,12 +8,11 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `0.6.0` adds multi-factor, multi-period ALM and richer life-insurance
-foundations. Economic paths now cover rates, credit spreads, equity, inflation,
-mortality, and lapse; native kernels roll portfolios through reinvestment and
-rebalancing and project grouped term, participating, universal-life, and
-annuity model points through active/disabled/dead states. Their scenario loss
-distributions feed the 0.5 tail-probability, VaR, and CVaR compiler boundary.
+Version `0.7.0` adds device gate-set decomposition, topology-aware routing and
+resource reports, explicit mixed-state noise experiments, zero-noise
+extrapolation, OpenQASM/Qiskit export, and read-only provider capability
+inspection. The 0.6 multi-factor ALM and life foundations remain the classical
+financial inputs to the tail-probability, VaR, and CVaR compiler boundary.
 QFin-owned C++20 finance kernels and the PennyLane-Lightning simulator remain
 separate components.
 
@@ -48,6 +47,12 @@ source .venv/bin/activate       # Windows: .venv\Scripts\activate
 python -m pip install -e ".[quantum]"
 ```
 
+Optional Qiskit circuit export is installed separately:
+
+```bash
+python -m pip install -e ".[quantum,qiskit]"
+```
+
 Python 3.11 or newer is supported. Wheels produced by QFin include the native
 extension without requiring the installer to run CMake. A source/editable build
 needs a C++20 compiler; the build backend provisions CMake and pybind11
@@ -71,7 +76,11 @@ print(qfin.system_info())
 #   'native_cpp_standard': 'C++20',
 #   'native_compiler': '<compiler id/version>',
 #   'pennylane_lightning': True,
+#   'qiskit': True,
 #   'preferred_quantum_device': 'lightning.qubit',
+#   'tested_quantum_devices': (
+#       'lightning.qubit', 'default.qubit', 'default.mixed'
+#   ),
 #   ...
 # }
 ```
@@ -287,6 +296,46 @@ back to `default.qubit` for a PennyLane-only installation.
 `model.run(device_name="default.qubit")` remains an explicit portable override.
 The structured and dense circuit backends remain numerical references.
 
+## Device realism and export
+
+QFin now separates ideal runtime selection from portable target analysis:
+
+```python
+targeted = model.device_resources(
+    schedule=(0, 1, 2, 4),
+    shots=2_000,
+    target="linear",
+)
+print(targeted.maximum_routed_depth)
+print(targeted.circuits[-1].routing_swaps)
+
+noise = model.noise_analysis(
+    qfin.NoiseModel(
+        depolarizing_probability=0.001,
+        readout_bit_flip_probability=0.002,
+    ),
+    power=0,
+)
+print(noise.noisy_absolute_error, noise.mitigated_absolute_error)
+
+qasm = model.to_openqasm(power=1, target="linear")
+print(qasm.resources.objective_physical_wire, qasm.sha256)
+qiskit_circuit = model.to_qiskit(power=1, target="linear")  # optional extra
+```
+
+The all-to-all and linear targets are synthetic research topologies using the
+portable `RX/RY/RZ/CNOT` basis. They are not vendor hardware profiles. QFin
+reports the logical-to-physical permutation and verifies every routed
+two-qubit edge. Noise experiments use explicit local channels on
+`default.mixed`; mitigation reports whether extrapolation actually improved
+the selected run.
+
+Only `lightning.qubit`, `default.qubit`, and `default.mixed` are registered as
+tested. Additional device names are rejected until implemented and tested.
+Qiskit support exports a `QuantumCircuit` and can inspect static BackendV2-style
+capabilities; it does not authenticate or submit hardware work. See
+[docs/device-realism-0.7.md](docs/device-realism-0.7.md).
+
 ## Performance and dispatch
 
 `engine="auto"` selects a reference or native path only at conservative
@@ -333,17 +382,27 @@ python examples/quantum_risk_benchmark.py --repeats 3 --shots 1000 \
   --output docs/quantum-risk-performance.md
 ```
 
+The [0.7 device-realism report](docs/device-realism-performance.md) records
+ideal simulator parity, gate routing, synthetic noise/ZNE, OpenQASM export,
+and Qiskit parsing from one reproducible environment:
+
+```bash
+python examples/device_realism_benchmark.py --repeats 5 \
+  --output docs/device-realism-performance.md
+```
+
 ## Honest scope
 
-QFin 0.6 is a research prototype. Its economic scenarios are foundations, not
+QFin 0.7 is a research prototype. Its economic scenarios are foundations, not
 calibrated ESG models; aggregate equity and spread exposures are deliberately
 simple; life projection is annual and does not include production product
 rules, dynamic policyholder behavior, tax, reserves, guarantees, or governance
 workflows. QFin also does not yet support path-dependent derivatives,
-stochastic-volatility calibration, credit instruments, hardware noise, Qiskit
-export, efficient QRAM, or an end-to-end fault-tolerant risk algorithm. The VaR
-search is hybrid and the CVaR interval is conditional on its selected
-threshold. Quantum resource counts remain logical and pre-transpilation.
+stochastic-volatility calibration, credit instruments, calibrated hardware
+noise, provider execution, efficient QRAM, or an end-to-end fault-tolerant risk
+algorithm. The VaR search is hybrid and the CVaR interval is conditional on its
+selected threshold. Portable target counts stop before pulse-level scheduling,
+calibration, and error correction.
 
 ## Development
 
@@ -356,9 +415,12 @@ python -m build
 python examples/native_benchmark.py
 python examples/alm_life_benchmark.py
 python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
+python examples/device_realism.py
+python examples/device_realism_benchmark.py --repeats 1
 ```
 
 More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/circuit-design.md](docs/circuit-design.md),
+[docs/device-realism-0.7.md](docs/device-realism-0.7.md),
 [docs/quantum-risk.md](docs/quantum-risk.md), and
 [docs/roadmap.md](docs/roadmap.md).

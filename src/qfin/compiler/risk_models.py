@@ -4,16 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from importlib.util import find_spec
 from math import isfinite
+from typing import Any, Literal
 
 import numpy as np
 
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
+from qfin.backends.devices import DeviceTarget, resolve_quantum_device
+from qfin.backends.interop import QasmExport, export_openqasm, export_qiskit
+from qfin.backends.noise import NoiseMitigationReport, NoiseModel, analyze_noise
 from qfin.backends.risk import RiskPennyLaneBackend
 from qfin.finance.fixed_income import Engine
 from qfin.finance.risk import (
     CVaR,
+    LossDistribution,
     RiskConfidenceInterval,
     RiskSummary,
     TailProbability,
@@ -30,15 +34,15 @@ from qfin.representation import (
     tail_excess_objective,
     tail_probability_objective,
 )
-from qfin.resources import RiskProblemKind, RiskResourceReport, estimate_risk_resources
+from qfin.resources import (
+    DeviceResourceReport,
+    RiskProblemKind,
+    RiskResourceReport,
+    estimate_device_resources,
+    estimate_risk_resources,
+)
 
 RiskProblem = TailProbability | VaR | CVaR
-
-
-def _resolve_quantum_device(device_name: str) -> str:
-    if device_name != "auto":
-        return device_name
-    return "lightning.qubit" if find_spec("pennylane_lightning") is not None else "default.qubit"
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,7 +237,7 @@ class CompiledRiskModel:
             raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         return RiskPennyLaneBackend(
             self.representation,
-            device_name=_resolve_quantum_device(device_name),
+            device_name=resolve_quantum_device(device_name),
             max_structured_rotations=max_structured_rotations,
         )
 
@@ -247,7 +251,7 @@ class CompiledRiskModel:
     ) -> RiskResourceReport:
         probabilities = self.representation.probabilities
         occupied = int(np.count_nonzero(probabilities > 0))
-        resolved_device = _resolve_quantum_device(device_name)
+        resolved_device = resolve_quantum_device(device_name, require_available=False)
         return estimate_risk_resources(
             self.representation.qubits,
             input_points=self.problem.distribution.losses.size,
@@ -257,6 +261,112 @@ class CompiledRiskModel:
             shots=shots,
             backend=f"pennylane.{resolved_device}",
             threshold_evaluations=threshold_evaluations,
+        )
+
+    def _representative_objective(self) -> QuantumObjectiveEncoding:
+        """Return one explicit objective used for target and export analysis."""
+
+        if isinstance(self.problem, TailProbability):
+            return tail_probability_objective(
+                self.representation,
+                self.problem.threshold,
+                inclusive=self.problem.inclusive,
+            )
+        encoded_distribution = LossDistribution(
+            self.representation.grid,
+            self.representation.probabilities,
+        )
+        encoded_summary = aggregate_risk(
+            encoded_distribution,
+            confidence=self.problem.confidence,
+            engine="numpy",
+        )
+        if isinstance(self.problem, VaR):
+            return cdf_objective(self.representation, encoded_summary.var)
+        return tail_excess_objective(self.representation, encoded_summary.var)
+
+    def _representative_runtime(
+        self,
+        *,
+        max_structured_rotations: int = 32_767,
+    ) -> Any:
+        runtime = self.to_pennylane(
+            max_structured_rotations=max_structured_rotations,
+        )
+        return runtime.objective_backend(self._representative_objective())
+
+    def device_resources(
+        self,
+        *,
+        schedule: Sequence[int] = (0, 1, 2, 4),
+        shots: int = 1_000,
+        target: DeviceTarget | Literal["all_to_all", "linear"] = "all_to_all",
+        threshold_evaluations: int | None = None,
+        max_structured_rotations: int = 32_767,
+    ) -> DeviceResourceReport:
+        """Profile a representative objective and multiply the hybrid workflow."""
+
+        logical = self.resources(
+            schedule=schedule,
+            shots=shots,
+            threshold_evaluations=threshold_evaluations,
+        )
+        return estimate_device_resources(
+            self._representative_runtime(max_structured_rotations=max_structured_rotations),
+            schedule=schedule,
+            shots=shots,
+            target=target,
+            objective_evaluations=logical.objective_evaluations,
+        )
+
+    def noise_analysis(
+        self,
+        noise_model: NoiseModel,
+        *,
+        power: int = 0,
+        shots: int | None = None,
+        seed: int | None = 0,
+        scale_factors: tuple[float, ...] = (1.0, 3.0, 5.0),
+        extrapolation_order: int = 1,
+    ) -> NoiseMitigationReport:
+        """Analyze one representative risk-objective circuit under explicit noise."""
+
+        return analyze_noise(
+            self._representative_runtime(),
+            noise_model,
+            power=power,
+            shots=shots,
+            seed=seed,
+            scale_factors=scale_factors,
+            extrapolation_order=extrapolation_order,
+        )
+
+    def to_openqasm(
+        self,
+        *,
+        power: int = 0,
+        target: DeviceTarget | Literal["all_to_all", "linear"] = "all_to_all",
+    ) -> QasmExport:
+        """Export one representative risk-objective circuit as OpenQASM 2."""
+
+        return export_openqasm(
+            self._representative_runtime(),
+            power=power,
+            target=target,
+        )
+
+    def to_qiskit(
+        self,
+        *,
+        power: int = 0,
+        target: DeviceTarget | Literal["all_to_all", "linear"] = "all_to_all",
+    ) -> Any:
+        """Export one representative objective to an optional Qiskit circuit."""
+
+        return export_qiskit(
+            self._representative_runtime(),
+            power=power,
+            target=target,
         )
 
     @staticmethod
@@ -379,7 +489,7 @@ class CompiledRiskModel:
         if bootstrap_resamples == 1 or bootstrap_resamples < 0:
             raise ValueError("bootstrap_resamples must be zero or at least two")
         powers = tuple(int(power) for power in schedule)
-        resolved_device = _resolve_quantum_device(device_name)
+        resolved_device = resolve_quantum_device(device_name)
         runtime = self.to_pennylane(
             device_name=resolved_device,
             max_structured_rotations=max_structured_rotations,
