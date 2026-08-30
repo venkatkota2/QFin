@@ -14,6 +14,7 @@ from qfin.finance.alm import (
 )
 from qfin.finance.life import LifePolicy, PolicyModelPointSet
 from qfin.finance.life_scenarios import LifeScenarioResult
+from qfin.finance.optimization import MeanVarianceProblem
 from qfin.finance.risk import CVaR, LossDistribution, TailProbability, VaR
 
 
@@ -44,6 +45,22 @@ class ProblemCapabilities:
 def problem_capabilities(problem: object) -> ProblemCapabilities:
     """Report implemented boundaries without implying unsupported quantum paths."""
 
+    if isinstance(problem, MeanVarianceProblem):
+        return ProblemCapabilities(
+            category="portfolio_optimization",
+            financial_model_available=True,
+            classical_implementation=(
+                "continuous mean-variance optimization with SciPy SLSQP and an "
+                "equality-constrained closed form"
+            ),
+            native_implementation_available=False,
+            quantum_representation_available=False,
+            quantum_algorithm_available=False,
+            note=(
+                "QFin 0.8 selects the validated classical baseline. Covariance block-encoding "
+                "and QSVT reports are feasibility metadata, not implemented algorithms."
+            ),
+        )
     if isinstance(problem, (EuropeanCall, EuropeanPut)):
         return ProblemCapabilities(
             category="derivative_pricing",

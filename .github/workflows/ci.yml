@@ -56,6 +56,9 @@ jobs:
       - name: Run device-realism 0.7 smoke example
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: python examples/device_realism.py
+      - name: Run scalable-representation 0.8 smoke example
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python examples/scalable_representation.py
       - run: python -m build
 
   package-smoke:
@@ -80,10 +83,17 @@ jobs:
           result=qfin.price_bonds([qfin.FixedRateBond(1, 0.02)], curve);
           risk=qfin.compile(qfin.TailProbability(qfin.LossDistribution([0, 1]), 0.5),
           backend='classical', target_error=0.1, min_qubits=2, max_qubits=2);
+          factors=qfin.encode_independent_factors([qfin.Normal(), qfin.Normal()],
+          qubits_per_factor=2);
+          strategy=qfin.compare_state_preparation_strategies(factors).require_selected();
+          optimization=qfin.compile(qfin.MeanVarianceProblem([0.04, 0.08],
+          [[0.02, 0.0], [0.0, 0.05]]));
           assert qfin.system_info()['native_extension'];
-          assert qfin.__version__ == '0.7.0';
+          assert qfin.__version__ == '0.8.0';
           assert result.dirty_prices.shape == (1,);
           assert risk.run().probability == 0.5;
+          assert strategy.strategy == 'factorized_marginal_loader';
+          assert optimization.run().success;
           print(qfin.system_info())"
       - uses: actions/upload-artifact@v4
         with:

@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "qfin-quantum"
-version = "0.7.0"
+version = "0.8.0"
 description = "A finance-specific modelling and compilation layer for quantum computers"
 readme = "README.md"
 requires-python = ">=3.11"

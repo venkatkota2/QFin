@@ -8,6 +8,7 @@ from qfin.backends.interop import (
 )
 from qfin.backends.noise import NoiseMitigationReport, NoiseModel
 from qfin.circuits import (
+    FactorizedPreparation,
     PayoffRotation,
     ProbabilityTreePreparation,
     UniformQuantilePreparation,
@@ -15,6 +16,7 @@ from qfin.circuits import (
     WalshTerm,
 )
 from qfin.compiler import (
+    CompiledOptimizationModel,
     CompiledPricingModel,
     CompiledRiskModel,
     ErrorBudget,
@@ -31,6 +33,7 @@ from qfin.exceptions import (
     BackendUnavailableError,
     CompilationError,
     NativeBackendUnavailableError,
+    OptimizationError,
     QFinError,
     ResourceLimitError,
 )
@@ -63,9 +66,12 @@ from qfin.finance import (
     LifeSensitivityReport,
     LogNormal,
     LossDistribution,
+    MeanVarianceProblem,
     MortalityTable,
     Normal,
+    OptimizationMethod,
     PolicyModelPointSet,
+    PortfolioOptimizationResult,
     ProjectionAssumptions,
     RateScenarioSet,
     RebalancingStrategy,
@@ -87,23 +93,34 @@ from qfin.finance import (
     yield_from_prices,
 )
 from qfin.representation import (
+    BlockEncodingFeasibility,
     DistributionEncoding,
+    FactorizedDistributionEncoding,
+    LinearFactorTransform,
+    MaterializedFactorGrid,
     QuantumObjectiveEncoding,
+    StatePreparationCost,
+    StatePreparationStrategyReport,
+    analyze_block_encoding,
     cdf_objective,
+    compare_state_preparation_strategies,
     encode,
+    encode_gaussian_factors,
+    encode_independent_factors,
     encode_quantiles,
     tail_excess_objective,
     tail_probability_objective,
 )
 from qfin.resources import (
     DeviceResourceReport,
+    OptimizationResourceReport,
     RiskResourceReport,
     TranspiledCircuitResources,
 )
 from qfin.system import SystemInfo, system_info
 from qfin.validation import black_scholes_price
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 __all__ = [
     "ALMFactorAttribution",
@@ -116,10 +133,12 @@ __all__ = [
     "AssetPortfolio",
     "BackendUnavailableError",
     "BlackScholes",
+    "BlockEncodingFeasibility",
     "BondBatchAnalytics",
     "CVaR",
     "CashFlow",
     "CompilationError",
+    "CompiledOptimizationModel",
     "CompiledPricingModel",
     "CompiledRiskModel",
     "DeviceResourceReport",
@@ -131,6 +150,8 @@ __all__ = [
     "EuropeanCall",
     "EuropeanPut",
     "FactorScenarios",
+    "FactorizedDistributionEncoding",
+    "FactorizedPreparation",
     "FixedRateBond",
     "GaussianFactorModel",
     "GeometricBrownianMotion",
@@ -140,15 +161,22 @@ __all__ = [
     "LifeProjectionResult",
     "LifeScenarioResult",
     "LifeSensitivityReport",
+    "LinearFactorTransform",
     "LogNormal",
     "LossDistribution",
+    "MaterializedFactorGrid",
+    "MeanVarianceProblem",
     "MortalityTable",
     "NativeBackendUnavailableError",
     "NoiseMitigationReport",
     "NoiseModel",
     "Normal",
+    "OptimizationError",
+    "OptimizationMethod",
+    "OptimizationResourceReport",
     "PayoffRotation",
     "PolicyModelPointSet",
+    "PortfolioOptimizationResult",
     "PricingResult",
     "ProbabilityTreePreparation",
     "ProblemCapabilities",
@@ -167,6 +195,8 @@ __all__ = [
     "RiskErrorBudget",
     "RiskResourceReport",
     "RiskSummary",
+    "StatePreparationCost",
+    "StatePreparationStrategyReport",
     "SystemInfo",
     "TailProbability",
     "TailProbabilitySummary",
@@ -179,12 +209,16 @@ __all__ = [
     "YieldSolveResult",
     "__version__",
     "aggregate_risk",
+    "analyze_block_encoding",
     "available_tested_devices",
     "black_scholes_price",
     "bootstrap_risk_interval",
     "cdf_objective",
+    "compare_state_preparation_strategies",
     "compile",
     "encode",
+    "encode_gaussian_factors",
+    "encode_independent_factors",
     "encode_quantiles",
     "evaluate_tail_probability",
     "inspect_qiskit_backend",

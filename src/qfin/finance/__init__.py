@@ -41,6 +41,11 @@ from qfin.finance.life_scenarios import (
     project_liability_scenarios,
 )
 from qfin.finance.models import BlackScholes
+from qfin.finance.optimization import (
+    MeanVarianceProblem,
+    OptimizationMethod,
+    PortfolioOptimizationResult,
+)
 from qfin.finance.processes import GeometricBrownianMotion
 from qfin.finance.risk import (
     CVaR,
@@ -86,9 +91,12 @@ __all__ = [
     "LifeSensitivityReport",
     "LogNormal",
     "LossDistribution",
+    "MeanVarianceProblem",
     "MortalityTable",
     "Normal",
+    "OptimizationMethod",
     "PolicyModelPointSet",
+    "PortfolioOptimizationResult",
     "ProjectionAssumptions",
     "RateScenarioSet",
     "RebalancingStrategy",

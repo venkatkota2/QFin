@@ -22,6 +22,10 @@ class SystemInfo(TypedDict):
     tested_quantum_devices: tuple[str, ...]
     noise_simulator: str | None
     openqasm_export: bool
+    factorized_state_preparation: bool
+    portfolio_optimization: str
+    block_encoding_implemented: bool
+    qsvt_implemented: bool
 
 
 def system_info() -> SystemInfo:
@@ -49,6 +53,10 @@ def system_info() -> SystemInfo:
         "tested_quantum_devices": devices,
         "noise_simulator": "default.mixed" if pennylane else None,
         "openqasm_export": pennylane,
+        "factorized_state_preparation": True,
+        "portfolio_optimization": "classical-scipy",
+        "block_encoding_implemented": False,
+        "qsvt_implemented": False,
     }
 
 

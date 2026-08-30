@@ -70,7 +70,7 @@ The built-in coupling targets are synthetic and the provider interface is
 read-only. QFin does not claim hardware execution merely because an exported
 circuit can be parsed or a backend exposes enough static primitives.
 
-## 0.8 — scalable representation research
+## 0.8 — scalable representation research (complete)
 
 - factorized and problem-structured loaders that avoid generic empirical
   angle tables where financial structure permits;
@@ -79,8 +79,26 @@ circuit can be parsed or a backend exposes enough static primitives.
 - hardware-target feedback in representation and algorithm selection;
 - portfolio-optimization problem objects with strong classical baselines.
 
+The factorized loader is implemented for independent latent registers and can
+attach a classical affine interpretation for correlated Gaussian outputs. It
+does not yet implement reversible arithmetic for that map or a general
+multivariate payoff oracle. Block-encoding/QSVT reports expose mathematical
+preconditions while keeping both implementation flags false. Mean-variance
+optimization deliberately selects SciPy because no quantum optimizer exists.
+
+## 0.9 — structured multivariate payoff oracles
+
+- reversible affine factor transforms with numerical and resource validation;
+- sparse linear, quadratic, and piecewise financial exposure objectives;
+- tail-risk compilation from factorized registers without joint-table
+  materialization;
+- approximation-error allocation for factor transforms and payoff synthesis;
+- target-transpiled comparisons against the generic empirical loader.
+
 ## Later research
 
+- QUBO/variational portfolio research only after exact formulation and strong
+  continuous/discrete classical baselines;
 - capital allocation and production portfolio constraints;
 - quantum PDE/SDE and linear-system methods;
 - calibration, stochastic volatility, and path-dependent products;

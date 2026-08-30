@@ -221,6 +221,37 @@ parses that program into a `QuantumCircuit`. Provider capability inspection is
 read-only: it checks static width, operations, connectivity, and control-flow
 signals without credentials, calibration access, transpilation, or execution.
 
+## Scalable representation and optimization policy
+
+QFin 0.8 introduces independent latent registers as a second multivariate
+representation boundary:
+
+```mermaid
+flowchart TB
+    F["Financial factors"] --> M["Marginal encodings"]
+    M --> P["Factorized preparation"]
+    M --> S["Strategy and target costs"]
+    P --> A["Future structured payoff arithmetic"]
+    S --> C["Compiler policy"]
+```
+
+The circuit loader composes existing marginal Hadamard or probability-tree
+preparations and never allocates a joint angle table. A Gaussian correlation
+map can be attached as classical basis-state interpretation metadata. The map
+is not yet reversible quantum arithmetic, and general payoff evaluation is not
+silently flattened behind this interface.
+
+Strategy reports compare implemented loaders under wire, parameter, memory,
+and portability limits. The option compiler caps qubit search to target width;
+the risk compiler can select its classical path under `backend="auto"` when a
+generic loader cannot fit. Explicit PennyLane requests fail instead of
+ignoring the constraint.
+
+`MeanVarianceProblem` enters the same compiler as a financial problem but is
+routed to a continuous SciPy baseline. Block-encoding and QSVT analysis records
+matrix preconditions separately from implementation flags. This prevents a
+PSD covariance matrix from being mistaken for an available quantum optimizer.
+
 ## Errors, memory, and threads
 
 C++ validates buffer shapes, finite inputs, ordered offsets, probabilities,

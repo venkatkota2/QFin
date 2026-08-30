@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-08-30
+
+- Added factorized marginal encodings that store and prepare independent
+  latent registers without allocating a Cartesian-product probability table.
+- Added an executable `FactorizedPreparation` circuit composed from uniform
+  quantile or probability-tree marginal loaders, plus guarded small-grid
+  materialization for classical validation only.
+- Added structured Gaussian-factor encodings with explicit classical affine
+  correlation metadata; reversible quantum arithmetic is deliberately not
+  claimed.
+- Added state-preparation candidate reports covering parameters, stored values,
+  memory, high-level gates/depth, scaling, portability, and target compatibility.
+- Fed device wire, construction-parameter, and memory limits into option/risk
+  compiler policy, including an explicit classical fallback for infeasible
+  `backend="auto"` risk workflows.
+- Added block-encoding and QSVT mathematical-feasibility reports that always
+  distinguish preconditions from QFin implementation availability.
+- Added validated continuous mean-variance portfolio problems, bounded and
+  target-return constraints, analytical gradients, SciPy SLSQP and closed-form
+  classical baselines, compiler integration, and resource metadata.
+- Added examples, measured construction/optimization benchmarks, strict typing,
+  numerical tests, documentation, and cross-platform CI coverage.
+- Preserved the research-prototype positioning: no reversible factor transform,
+  block-encoding oracle, QSVT circuit, QUBO, or quantum optimizer is claimed.
+
 ## 0.7.0 — 2026-08-30
 
 - Added a tested device registry that prefers `lightning.qubit`, retains
