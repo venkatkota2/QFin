@@ -19,3 +19,7 @@ class ResourceLimitError(QFinError):
 
 class NativeBackendUnavailableError(QFinError):
     """Raised when native execution is explicitly requested but unavailable."""
+
+
+class OptimizationError(QFinError):
+    """Raised when a validated classical optimization problem cannot be solved."""

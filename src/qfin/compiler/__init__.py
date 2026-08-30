@@ -7,6 +7,7 @@ from qfin.compiler.models import (
     ErrorBudget,
     PricingResult,
 )
+from qfin.compiler.optimization_models import CompiledOptimizationModel
 from qfin.compiler.risk_models import (
     CompiledRiskModel,
     QuantumRiskResult,
@@ -16,6 +17,7 @@ from qfin.compiler.risk_models import (
 )
 
 __all__ = [
+    "CompiledOptimizationModel",
     "CompiledPricingModel",
     "CompiledRiskModel",
     "ErrorBudget",

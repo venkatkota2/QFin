@@ -34,6 +34,7 @@ from qfin.representation import (
     tail_excess_objective,
     tail_probability_objective,
 )
+from qfin.representation.strategies import StatePreparationStrategyReport
 from qfin.resources import (
     DeviceResourceReport,
     RiskProblemKind,
@@ -204,6 +205,7 @@ class CompiledRiskModel:
     encoded_value: float
     representation_error: float
     representation_converged: bool
+    state_preparation_strategy: StatePreparationStrategyReport
     backend_name: str = "pennylane"
     algorithm_name: str = "maximum_likelihood_amplitude_estimation"
     quantum_algorithm_available: bool = True

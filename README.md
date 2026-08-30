@@ -8,13 +8,12 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `0.7.0` adds device gate-set decomposition, topology-aware routing and
-resource reports, explicit mixed-state noise experiments, zero-noise
-extrapolation, OpenQASM/Qiskit export, and read-only provider capability
-inspection. The 0.6 multi-factor ALM and life foundations remain the classical
-financial inputs to the tail-probability, VaR, and CVaR compiler boundary.
-QFin-owned C++20 finance kernels and the PennyLane-Lightning simulator remain
-separate components.
+Version `0.8.0` adds factorized financial representations, explicit
+state-preparation construction costs, target-aware compiler policy,
+block-encoding/QSVT feasibility metadata, and continuous mean-variance
+portfolio problems with strong classical solvers. The 0.7 device-realism and
+0.6 ALM/life foundations remain intact. QFin-owned C++20 finance kernels and
+the PennyLane-Lightning simulator remain separate components.
 
 ## Architecture
 
@@ -81,6 +80,10 @@ print(qfin.system_info())
 #   'tested_quantum_devices': (
 #       'lightning.qubit', 'default.qubit', 'default.mixed'
 #   ),
+#   'factorized_state_preparation': True,
+#   'portfolio_optimization': 'classical-scipy',
+#   'block_encoding_implemented': False,
+#   'qsvt_implemented': False,
 #   ...
 # }
 ```
@@ -336,6 +339,58 @@ Qiskit support exports a `QuantumCircuit` and can inspect static BackendV2-style
 capabilities; it does not authenticate or submit hardware work. See
 [docs/device-realism-0.7.md](docs/device-realism-0.7.md).
 
+## Scalable representations and optimization
+
+Independent or latent factors can be encoded without constructing a joint
+probability table:
+
+```python
+factor_model = qfin.GaussianFactorModel(
+    ("rates", "equity", "inflation"),
+    correlation,
+    means=means,
+    standard_deviations=volatilities,
+)
+encoding = qfin.encode_gaussian_factors(
+    factor_model,
+    qubits_per_factor=4,
+)
+strategy = qfin.compare_state_preparation_strategies(
+    encoding,
+    target=qfin.DeviceTarget.linear(encoding.total_qubits),
+)
+print(encoding.stored_marginal_points, encoding.joint_grid_points)
+print(strategy.require_selected().to_dict())
+```
+
+`FactorizedPreparation` executes each marginal loader on its own register. A
+small Cartesian product can be materialized behind an explicit guard for
+validation, but the production loader does not require it. Gaussian
+correlation is currently a classical affine interpretation of independent
+latent registers; QFin does not yet synthesize that transform as reversible
+quantum arithmetic.
+
+Portfolio optimization is intentionally classical in 0.8:
+
+```python
+problem = qfin.MeanVarianceProblem(
+    expected_returns=expected_returns,
+    covariance=covariance,
+    risk_aversion=3.0,
+    asset_names=asset_names,
+)
+compiled = qfin.compile(problem)
+result = compiled.run()
+print(result.weights, result.utility_improvement)
+print(compiled.block_encoding_feasibility().to_dict())
+```
+
+The compiler selects SciPy SLSQP (or the supported equality-constrained
+closed form) because QFin has no implemented QUBO, variational optimizer,
+block-encoding oracle, or QSVT circuit. Feasibility reports make this boundary
+machine-readable. See
+[docs/scalable-representation-0.8.md](docs/scalable-representation-0.8.md).
+
 ## Performance and dispatch
 
 `engine="auto"` selects a reference or native path only at conservative
@@ -391,9 +446,18 @@ python examples/device_realism_benchmark.py --repeats 5 \
   --output docs/device-realism-performance.md
 ```
 
+The [0.8 scalable-representation report](docs/scalable-representation-performance.md)
+measures factorized versus flattened construction, continuous portfolio
+optimization, and classical feasibility analysis:
+
+```bash
+python examples/scalable_representation_benchmark.py --repeats 5 \
+  --output docs/scalable-representation-performance.md
+```
+
 ## Honest scope
 
-QFin 0.7 is a research prototype. Its economic scenarios are foundations, not
+QFin 0.8 is a research prototype. Its economic scenarios are foundations, not
 calibrated ESG models; aggregate equity and spread exposures are deliberately
 simple; life projection is annual and does not include production product
 rules, dynamic policyholder behavior, tax, reserves, guarantees, or governance
@@ -402,7 +466,10 @@ stochastic-volatility calibration, credit instruments, calibrated hardware
 noise, provider execution, efficient QRAM, or an end-to-end fault-tolerant risk
 algorithm. The VaR search is hybrid and the CVaR interval is conditional on its
 selected threshold. Portable target counts stop before pulse-level scheduling,
-calibration, and error correction.
+calibration, and error correction. Factorized loading does not remove the cost
+of a general multivariate payoff oracle. Affine factor arithmetic,
+block-encoding, QSVT, QUBO construction, and quantum portfolio optimization are
+not implemented.
 
 ## Development
 
@@ -417,10 +484,13 @@ python examples/alm_life_benchmark.py
 python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
 python examples/device_realism.py
 python examples/device_realism_benchmark.py --repeats 1
+python examples/scalable_representation.py
+python examples/scalable_representation_benchmark.py --repeats 1
 ```
 
 More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/circuit-design.md](docs/circuit-design.md),
 [docs/device-realism-0.7.md](docs/device-realism-0.7.md),
+[docs/scalable-representation-0.8.md](docs/scalable-representation-0.8.md),
 [docs/quantum-risk.md](docs/quantum-risk.md), and
 [docs/roadmap.md](docs/roadmap.md).

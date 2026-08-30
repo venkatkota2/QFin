@@ -5,12 +5,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from math import log2
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 from qfin.exceptions import BackendUnavailableError
+
+if TYPE_CHECKING:
+    from qfin.representation.factorized import FactorizedDistributionEncoding
 
 
 def _qml() -> Any:
@@ -57,9 +60,7 @@ def probability_tree_angles(
             right_mass = float(np.sum(values[midpoint:end]))
             branch_mass = left_mass + right_mass
             if branch_mass > 0:
-                level_angles[prefix] = 2.0 * np.arctan2(
-                    np.sqrt(right_mass), np.sqrt(left_mass)
-                )
+                level_angles[prefix] = 2.0 * np.arctan2(np.sqrt(right_mass), np.sqrt(left_mass))
         level_angles.setflags(write=False)
         levels.append(level_angles)
     return tuple(levels)
@@ -72,9 +73,7 @@ class ProbabilityTreePreparation:
     levels: tuple[NDArray[np.float64], ...]
 
     @classmethod
-    def from_probabilities(
-        cls, probabilities: NDArray[np.float64]
-    ) -> ProbabilityTreePreparation:
+    def from_probabilities(cls, probabilities: NDArray[np.float64]) -> ProbabilityTreePreparation:
         return cls(levels=probability_tree_angles(probabilities))
 
     @property
@@ -131,3 +130,78 @@ class UniformQuantilePreparation:
         qml = _qml()
         for wire in wire_tuple:
             qml.Hadamard(wires=wire)
+
+
+MarginalPreparation = ProbabilityTreePreparation | UniformQuantilePreparation
+
+
+@dataclass(frozen=True, slots=True)
+class FactorizedPreparation:
+    """Prepare independent marginal registers without a joint angle table."""
+
+    loaders: tuple[MarginalPreparation, ...]
+
+    def __post_init__(self) -> None:
+        if not self.loaders:
+            raise ValueError("at least one marginal loader is required")
+
+    @classmethod
+    def from_encoding(
+        cls,
+        encoding: FactorizedDistributionEncoding,
+    ) -> FactorizedPreparation:
+        loaders: list[MarginalPreparation] = []
+        for factor in encoding.factors:
+            if factor.state_preparation_method == "uniform_quantile_hadamard":
+                loaders.append(UniformQuantilePreparation(factor.qubits))
+            else:
+                loaders.append(ProbabilityTreePreparation.from_probabilities(factor.probabilities))
+        return cls(tuple(loaders))
+
+    @property
+    def factor_count(self) -> int:
+        return len(self.loaders)
+
+    @property
+    def qubits_per_factor(self) -> tuple[int, ...]:
+        return tuple(loader.qubits for loader in self.loaders)
+
+    @property
+    def total_qubits(self) -> int:
+        return sum(self.qubits_per_factor)
+
+    @property
+    def gate_count(self) -> int:
+        return sum(
+            loader.gate_count
+            if isinstance(loader, UniformQuantilePreparation)
+            else loader.rotation_count
+            for loader in self.loaders
+        )
+
+    @property
+    def parameter_count(self) -> int:
+        return sum(loader.parameter_count for loader in self.loaders)
+
+    def apply(self, wires: Sequence[int]) -> None:
+        """Queue each marginal loader on one contiguous wire block."""
+
+        wire_tuple = tuple(wires)
+        if len(wire_tuple) != self.total_qubits:
+            raise ValueError("wires must contain one entry per factor qubit")
+        start = 0
+        for loader in self.loaders:
+            end = start + loader.qubits
+            loader.apply(wire_tuple[start:end])
+            start = end
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "method": "factorized_marginal_loader",
+            "factor_count": self.factor_count,
+            "qubits_per_factor": list(self.qubits_per_factor),
+            "total_qubits": self.total_qubits,
+            "gate_count": self.gate_count,
+            "parameter_count": self.parameter_count,
+            "joint_angle_table_constructed": False,
+        }

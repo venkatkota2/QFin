@@ -1,5 +1,7 @@
 """Financial-to-quantum compiler entry point."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import replace
 from math import exp, isfinite
@@ -10,14 +12,16 @@ from numpy.typing import NDArray
 
 from qfin.circuits import WalshPayoffApproximation
 from qfin.compiler.models import CompiledPricingModel, ErrorBudget
+from qfin.compiler.optimization_models import CompiledOptimizationModel
 from qfin.compiler.risk_models import CompiledRiskModel, RiskErrorBudget, RiskProblem
-from qfin.exceptions import CompilationError
+from qfin.exceptions import CompilationError, ResourceLimitError
 from qfin.finance import (
     BlackScholes,
     EuropeanCall,
     EuropeanOption,
     EuropeanPut,
     GeometricBrownianMotion,
+    MeanVarianceProblem,
 )
 from qfin.finance.risk import (
     CVaR,
@@ -33,6 +37,10 @@ from qfin.representation import (
     encode_quantiles,
     tail_probability_objective,
 )
+from qfin.representation.strategies import (
+    RepresentationTarget,
+    compare_state_preparation_strategies,
+)
 from qfin.resources import RiskProblemKind
 from qfin.validation import black_scholes_price
 
@@ -40,7 +48,7 @@ RiskObjective = Literal["expectation"] | Callable[[NDArray[np.float64]], NDArray
 
 
 def compile(
-    problem: EuropeanOption | RiskProblem,
+    problem: EuropeanOption | RiskProblem | MeanVarianceProblem,
     market: BlackScholes | None = None,
     *,
     target_error: float = 0.01,
@@ -48,16 +56,29 @@ def compile(
     min_qubits: int = 3,
     max_qubits: int = 12,
     tail_probability: float | None = None,
-    representation_method: Literal["quantile", "probability"] = "quantile",
+    representation_method: Literal["auto", "quantile", "probability"] = "auto",
     payoff_angle_tolerance: float = 0.1,
     payoff_max_terms: int | None = None,
-) -> CompiledPricingModel | CompiledRiskModel:
+    representation_target: RepresentationTarget | None = None,
+    max_state_preparation_parameters: int = 32_767,
+    max_state_preparation_memory_bytes: int = 256 * 1024 * 1024,
+) -> CompiledPricingModel | CompiledRiskModel | CompiledOptimizationModel:
     """Compile a supported financial problem into the QFin pipeline.
 
     ``target_error`` is stated in price units. The returned object can be
     inspected without PennyLane; PennyLane is imported only when ``run`` or
     ``to_pennylane`` executes a circuit.
     """
+
+    if isinstance(problem, MeanVarianceProblem):
+        if market is not None:
+            raise CompilationError("portfolio optimization does not accept a BlackScholes market")
+        if backend not in ("auto", "classical"):
+            raise CompilationError(
+                "portfolio optimization has no implemented PennyLane algorithm; "
+                "use backend='auto' or 'classical'"
+            )
+        return CompiledOptimizationModel(problem)
 
     if isinstance(problem, (TailProbability, VaR, CVaR)):
         if market is not None:
@@ -71,9 +92,12 @@ def compile(
         return _compile_risk_problem(
             problem,
             target_error=target_error,
-            backend="pennylane" if backend == "auto" else backend,
+            backend=backend,
             min_qubits=min_qubits,
             max_qubits=max_qubits,
+            representation_target=representation_target,
+            max_state_preparation_parameters=max_state_preparation_parameters,
+            max_state_preparation_memory_bytes=max_state_preparation_memory_bytes,
         )
 
     if not isinstance(problem, (EuropeanCall, EuropeanPut)):
@@ -87,8 +111,8 @@ def compile(
         raise ValueError("target_error must be finite and greater than zero")
     if min_qubits < 1 or max_qubits < min_qubits:
         raise ValueError("require 1 <= min_qubits <= max_qubits")
-    if representation_method not in ("quantile", "probability"):
-        raise ValueError("representation_method must be 'quantile' or 'probability'")
+    if representation_method not in ("auto", "quantile", "probability"):
+        raise ValueError("representation_method must be 'auto', 'quantile', or 'probability'")
     if not isfinite(payoff_angle_tolerance) or payoff_angle_tolerance <= 0:
         raise ValueError("payoff_angle_tolerance must be finite and positive")
     if payoff_max_terms is not None and payoff_max_terms < 1:
@@ -110,7 +134,19 @@ def compile(
     def discounted_payoff(grid: np.ndarray) -> np.ndarray:
         return discount_factor * problem.payoff(grid)
 
-    encoder = encode_quantiles if representation_method == "quantile" else encode
+    resolved_representation_method = (
+        "quantile" if representation_method == "auto" else representation_method
+    )
+    effective_max_qubits = max_qubits
+    if representation_target is not None:
+        available_data_wires = representation_target.wires - 2
+        if available_data_wires < min_qubits:
+            raise ResourceLimitError(
+                f"target {representation_target.name!r} leaves {available_data_wires} data "
+                f"wires after objective/work ancillas, below min_qubits={min_qubits}"
+            )
+        effective_max_qubits = min(max_qubits, available_data_wires)
+    encoder = encode_quantiles if resolved_representation_method == "quantile" else encode
     representation = None
     raw_payoff = None
     discrete_value = 0.0
@@ -121,14 +157,14 @@ def compile(
     # not know an exact expectation. For the Black-Scholes MVP an analytical
     # benchmark is available, so use it to prevent false convergence when two
     # coarse grids both miss a low-probability, non-zero payoff region.
-    for candidate in range(min_qubits, max_qubits + 1):
+    for candidate in range(min_qubits, effective_max_qubits + 1):
         candidate_representation = encoder(
             distribution,
             target_error=budget.discretization,
             objective=discounted_payoff,
             qubits=candidate,
             min_qubits=min_qubits,
-            max_qubits=max_qubits,
+            max_qubits=effective_max_qubits,
             tail_probability=tail_probability,
         )
         candidate_payoff = problem.payoff(candidate_representation.grid)
@@ -158,7 +194,7 @@ def compile(
     representation_error = abs(discrete_value - classical_value)
     representation_converged = representation_error <= representation_tolerance
     payoff_approximation: WalshPayoffApproximation | None = None
-    if representation_method == "quantile":
+    if resolved_representation_method == "quantile":
         payoff_approximation = WalshPayoffApproximation.fit(
             normalized_payoff,
             financial_multiplier=discount_factor * payoff_scale,
@@ -174,6 +210,14 @@ def compile(
         else discount_factor * payoff_scale * payoff_approximation.approximate_amplitude
     )
     payoff_approximation_error = abs(circuit_value - discrete_value)
+    strategy = compare_state_preparation_strategies(
+        representation,
+        target=representation_target,
+        ancilla_qubits=2,
+        max_parameters=max_state_preparation_parameters,
+        max_memory_bytes=max_state_preparation_memory_bytes,
+    )
+    strategy.require_selected()
     raw_payoff.setflags(write=False)
     normalized_payoff.setflags(write=False)
 
@@ -195,7 +239,8 @@ def compile(
         payoff_approximation=payoff_approximation,
         circuit_value=circuit_value,
         payoff_approximation_error=payoff_approximation_error,
-        representation_method=representation_method,
+        representation_method=resolved_representation_method,
+        state_preparation_strategy=strategy,
         backend_name=resolved_backend,
     )
 
@@ -263,23 +308,29 @@ def _compile_risk_problem(
     backend: str,
     min_qubits: int,
     max_qubits: int,
+    representation_target: RepresentationTarget | None,
+    max_state_preparation_parameters: int,
+    max_state_preparation_memory_bytes: int,
 ) -> CompiledRiskModel:
     budget = RiskErrorBudget.allocate(target_error)
     if min_qubits < 1 or max_qubits < min_qubits:
         raise ValueError("require 1 <= min_qubits <= max_qubits")
+    effective_max_qubits = max_qubits
+    if representation_target is not None and representation_target.wires - 2 >= min_qubits:
+        effective_max_qubits = min(max_qubits, representation_target.wires - 2)
     classical_value = _risk_value(problem, problem.distribution)
     objective = _risk_objective(problem, classical_value)
     representation: DistributionEncoding | None = None
     encoded_value = 0.0
     representation_error = float("inf")
-    for candidate in range(min_qubits, max_qubits + 1):
+    for candidate in range(min_qubits, effective_max_qubits + 1):
         candidate_representation = encode(
             problem.distribution.as_empirical(),
             target_error=budget.distribution,
             objective=objective,
             qubits=candidate,
             min_qubits=min_qubits,
-            max_qubits=max_qubits,
+            max_qubits=effective_max_qubits,
             tail_probability=0.0,
         )
         candidate_value = _encoded_problem_value(problem, candidate_representation)
@@ -293,6 +344,20 @@ def _compile_risk_problem(
         if candidate_error <= budget.distribution:
             break
     assert representation is not None
+    strategy = compare_state_preparation_strategies(
+        representation,
+        target=representation_target,
+        ancilla_qubits=2,
+        max_parameters=max_state_preparation_parameters,
+        max_memory_bytes=max_state_preparation_memory_bytes,
+    )
+    if backend == "pennylane":
+        strategy.require_selected()
+        resolved_backend = "pennylane"
+    elif backend == "classical":
+        resolved_backend = "classical"
+    else:
+        resolved_backend = "pennylane" if strategy.selected is not None else "classical"
 
     problem_kind: RiskProblemKind
     if isinstance(problem, TailProbability):
@@ -314,6 +379,7 @@ def _compile_risk_problem(
         encoded_value=encoded_value,
         representation_error=representation_error,
         representation_converged=representation_error <= budget.distribution,
-        backend_name=backend,
+        state_preparation_strategy=strategy,
+        backend_name=resolved_backend,
         algorithm_name=algorithm_name,
     )

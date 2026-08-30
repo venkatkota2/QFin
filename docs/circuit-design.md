@@ -121,3 +121,27 @@ Noise analysis is separate from target routing. It uses explicit local channel
 assumptions on `default.mixed`, global unitary folding, and polynomial
 zero-noise extrapolation. This separation prevents topology counts from being
 misrepresented as calibrated hardware accuracy.
+
+## 7. Factorized marginal preparation (v0.8)
+
+For factors `j=1,...,m`, QFin prepares
+
+```text
+|psi> = tensor_j |psi_j>
+```
+
+by applying the existing loader for each marginal to a disjoint contiguous
+wire block. The construction stores `sum_j 2**q_j` marginal values rather than
+`product_j 2**q_j` joint values. Nonuniform marginals require
+`sum_j (2**q_j - 1)` probability-tree angles; quantile marginals use only
+`sum_j q_j` Hadamards and no loading angles.
+
+Small tests materialize the Cartesian product and compare its probabilities
+with the PennyLane circuit. Materialization is guarded and is not part of the
+loader. An attached affine correlation transform changes the classical
+interpretation of basis labels only; no reversible multiply/add circuit is
+claimed in v0.8.
+
+State-preparation reports retain rejected generic and dense candidates so the
+exponential costs remain visible. Only implemented portable candidates within
+the requested target, parameter, and memory limits can be compiler-selected.

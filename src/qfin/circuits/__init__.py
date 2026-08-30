@@ -6,6 +6,7 @@ from qfin.circuits.reflections import (
     zero_reflection_operation_count,
 )
 from qfin.circuits.state_preparation import (
+    FactorizedPreparation,
     ProbabilityTreePreparation,
     UniformQuantilePreparation,
     probability_tree_angles,
@@ -13,6 +14,7 @@ from qfin.circuits.state_preparation import (
 from qfin.circuits.walsh_payoff import WalshPayoffApproximation, WalshTerm
 
 __all__ = [
+    "FactorizedPreparation",
     "PayoffRotation",
     "ProbabilityTreePreparation",
     "UniformQuantilePreparation",

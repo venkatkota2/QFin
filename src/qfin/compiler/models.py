@@ -22,6 +22,7 @@ from qfin.circuits import WalshPayoffApproximation
 from qfin.compiler.risk_models import CompiledRiskModel as CompiledRiskModel
 from qfin.finance import BlackScholes, EuropeanOption, LogNormal
 from qfin.representation import DistributionEncoding
+from qfin.representation.strategies import StatePreparationStrategyReport
 from qfin.resources import (
     BackendMode,
     DeviceResourceReport,
@@ -129,6 +130,7 @@ class CompiledPricingModel:
     circuit_value: float
     payoff_approximation_error: float
     representation_method: str
+    state_preparation_strategy: StatePreparationStrategyReport
     backend_name: str = "pennylane"
     algorithm_name: str = "maximum_likelihood_amplitude_estimation"
 
@@ -341,6 +343,7 @@ class CompiledPricingModel:
             f"{self.representation.discretization_error:.6g}\n"
             f"Encoding: {self.representation.encoding_method}; "
             f"state preparation={self.representation.state_preparation_method}\n"
+            f"Selection: {self.state_preparation_strategy.selection_reason}\n"
             f"{payoff_report}\n"
             f"Circuit: {circuit_report}, gate-level reflections\n"
             f"Algorithm: MLAE on PennyLane; payoff scale={self.payoff_scale:.6f}\n"
