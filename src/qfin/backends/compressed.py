@@ -89,24 +89,35 @@ class CompressedPennyLaneBackend:
         self._apply_distribution()
         self.payoff_loader.apply(self.data_wires, self.objective_wire)
 
+    def queue_circuit(self, power: int = 0) -> None:
+        """Queue one decomposable MLAE circuit on the active PennyLane tape."""
+
+        if power < 0:
+            raise ValueError("power must be non-negative")
+        qml = self._qml()
+        self._apply_a()
+        for _ in range(power):
+            qml.PauliZ(wires=self.objective_wire)
+            qml.adjoint(self._apply_a)()
+            apply_zero_reflection(self.register_wires, work_wire=self.work_wire)
+            self._apply_a()
+
+    def circuit_tape(self, power: int = 0) -> Any:
+        """Return a measurement-free tape for decomposition and export."""
+
+        qml = self._qml()
+        return qml.tape.make_qscript(lambda: self.queue_circuit(power))()
+
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
         if power < 0:
             raise ValueError("power must be non-negative")
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
-        objective_wire = self.objective_wire
-        register_wires = self.register_wires
-        work_wire = self.work_wire
 
         @qml.qnode(device)  # type: ignore[untyped-decorator]
         def circuit() -> Any:
-            self._apply_a()
-            for _ in range(power):
-                qml.PauliZ(wires=objective_wire)
-                qml.adjoint(self._apply_a)()
-                apply_zero_reflection(register_wires, work_wire=work_wire)
-                self._apply_a()
-            return qml.probs(wires=objective_wire)
+            self.queue_circuit(power)
+            return qml.probs(wires=self.objective_wire)
 
         if shots is not None:
             return qml.set_shots(circuit, shots=shots)
@@ -164,9 +175,7 @@ class CompressedPennyLaneBackend:
             circuit_seed = None if seed is None else seed + index
             probability = self.probability(power, shots=shots, seed=circuit_seed)
             successes = int(np.clip(round(probability * shots), 0, shots))
-            observations.append(
-                CircuitObservation(power=power, successes=successes, shots=shots)
-            )
+            observations.append(CircuitObservation(power=power, successes=successes, shots=shots))
         return tuple(observations)
 
     def draw(self, power: int = 0) -> str:

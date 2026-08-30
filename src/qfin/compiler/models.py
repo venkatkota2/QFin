@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from importlib.util import find_spec
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -15,19 +15,22 @@ from qfin.backends import (
     DensePennyLaneBackend,
     StructuredPennyLaneBackend,
 )
+from qfin.backends.devices import DeviceTarget, resolve_quantum_device
+from qfin.backends.interop import QasmExport, export_openqasm, export_qiskit
+from qfin.backends.noise import NoiseMitigationReport, NoiseModel, analyze_noise
 from qfin.circuits import WalshPayoffApproximation
 from qfin.compiler.risk_models import CompiledRiskModel as CompiledRiskModel
 from qfin.finance import BlackScholes, EuropeanOption, LogNormal
 from qfin.representation import DistributionEncoding
-from qfin.resources import BackendMode, ResourceReport, estimate_resources
+from qfin.resources import (
+    BackendMode,
+    DeviceResourceReport,
+    ResourceReport,
+    estimate_device_resources,
+    estimate_resources,
+)
 
 PennyLaneRuntime = CompressedPennyLaneBackend | StructuredPennyLaneBackend | DensePennyLaneBackend
-
-
-def _resolve_quantum_device(device_name: str) -> str:
-    if device_name != "auto":
-        return device_name
-    return "lightning.qubit" if find_spec("pennylane_lightning") is not None else "default.qubit"
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,7 +148,7 @@ class CompiledPricingModel:
         device_name: str = "auto",
     ) -> ResourceReport:
         resolved_mode = self._resolve_backend_mode(backend_mode)
-        resolved_device = _resolve_quantum_device(device_name)
+        resolved_device = resolve_quantum_device(device_name, require_available=False)
         return estimate_resources(
             self.representation.qubits,
             schedule=schedule,
@@ -177,7 +180,7 @@ class CompiledPricingModel:
         if self.backend_name != "pennylane":
             raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         resolved_mode = self._resolve_backend_mode(mode)
-        resolved_device = _resolve_quantum_device(device_name)
+        resolved_device = resolve_quantum_device(device_name)
         if resolved_mode == "compressed":
             if self.payoff_approximation is None:
                 raise ValueError("compressed backend requires representation_method='quantile'")
@@ -204,9 +207,105 @@ class CompiledPricingModel:
             )
         raise ValueError("mode must be 'compressed', 'structured', or 'dense'")
 
-    def to_qiskit(self) -> None:
-        """Make the planned but unavailable backend boundary explicit."""
-        raise NotImplementedError("Qiskit export is planned after the PennyLane MVP")
+    def _portable_runtime(
+        self,
+        *,
+        mode: BackendMode | None = None,
+        max_structured_rotations: int = 32_767,
+        max_compressed_terms: int = 32_767,
+    ) -> CompressedPennyLaneBackend | StructuredPennyLaneBackend:
+        resolved_mode = self._resolve_backend_mode(mode)
+        if resolved_mode == "dense":
+            raise ValueError(
+                "dense QubitUnitary is a numerical reference and cannot be used for "
+                "portable device analysis or export"
+            )
+        runtime = self.to_pennylane(
+            mode=resolved_mode,
+            max_structured_rotations=max_structured_rotations,
+            max_compressed_terms=max_compressed_terms,
+        )
+        if not isinstance(runtime, (CompressedPennyLaneBackend, StructuredPennyLaneBackend)):
+            raise TypeError("portable runtime unexpectedly resolved to the dense backend")
+        return runtime
+
+    def device_resources(
+        self,
+        *,
+        schedule: Sequence[int] = (0, 1, 2, 4),
+        shots: int = 1_000,
+        target: DeviceTarget | Literal["all_to_all", "linear"] = "all_to_all",
+        backend_mode: BackendMode | None = None,
+        max_structured_rotations: int = 32_767,
+        max_compressed_terms: int = 32_767,
+    ) -> DeviceResourceReport:
+        """Return gate-set and routing resources for a portable target."""
+
+        runtime = self._portable_runtime(
+            mode=backend_mode,
+            max_structured_rotations=max_structured_rotations,
+            max_compressed_terms=max_compressed_terms,
+        )
+        return estimate_device_resources(
+            runtime,
+            schedule=schedule,
+            shots=shots,
+            target=target,
+        )
+
+    def noise_analysis(
+        self,
+        noise_model: NoiseModel,
+        *,
+        power: int = 0,
+        shots: int | None = None,
+        seed: int | None = 0,
+        scale_factors: tuple[float, ...] = (1.0, 3.0, 5.0),
+        extrapolation_order: int = 1,
+        backend_mode: BackendMode | None = None,
+    ) -> NoiseMitigationReport:
+        """Evaluate an explicit ``default.mixed`` model and polynomial ZNE."""
+
+        runtime = self._portable_runtime(mode=backend_mode)
+        return analyze_noise(
+            runtime,
+            noise_model,
+            power=power,
+            shots=shots,
+            seed=seed,
+            scale_factors=scale_factors,
+            extrapolation_order=extrapolation_order,
+        )
+
+    def to_openqasm(
+        self,
+        *,
+        power: int = 0,
+        target: DeviceTarget | Literal["all_to_all", "linear"] = "all_to_all",
+        backend_mode: BackendMode | None = None,
+    ) -> QasmExport:
+        """Export one decomposed and routed objective circuit as OpenQASM 2."""
+
+        return export_openqasm(
+            self._portable_runtime(mode=backend_mode),
+            power=power,
+            target=target,
+        )
+
+    def to_qiskit(
+        self,
+        *,
+        power: int = 0,
+        target: DeviceTarget | Literal["all_to_all", "linear"] = "all_to_all",
+        backend_mode: BackendMode | None = None,
+    ) -> Any:
+        """Export one objective circuit to an optional Qiskit ``QuantumCircuit``."""
+
+        return export_qiskit(
+            self._portable_runtime(mode=backend_mode),
+            power=power,
+            target=target,
+        )
 
     def explain(self) -> str:
         """Return a compact, human-readable compiler decision report."""
@@ -266,7 +365,7 @@ class CompiledPricingModel:
         """Execute MLAE and return a validated financial result."""
         powers = tuple(int(power) for power in schedule)
         resolved_mode = self._resolve_backend_mode(backend_mode)
-        resolved_device = _resolve_quantum_device(device_name)
+        resolved_device = resolve_quantum_device(device_name)
         backend = self.to_pennylane(
             mode=resolved_mode,
             max_dense_dimension=max_dense_dimension,

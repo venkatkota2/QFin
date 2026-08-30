@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "qfin-quantum"
-version = "0.6.0"
+version = "0.7.0"
 description = "A finance-specific modelling and compilation layer for quantum computers"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,9 @@ dependencies = [
 quantum = [
   "pennylane>=0.45,<0.46",
   "pennylane-lightning>=0.45,<0.46",
+]
+qiskit = [
+  "qiskit>=2.5,<3",
 ]
 dev = [
   "build>=1.2",

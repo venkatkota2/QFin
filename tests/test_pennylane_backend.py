@@ -36,9 +36,7 @@ def test_structured_and_dense_backends_are_numerically_equivalent(
     structured = small_model.to_pennylane(mode="structured")
     dense = small_model.to_pennylane(mode="dense")
     for power in (0, 1, 2):
-        assert structured.probability(power) == pytest.approx(
-            dense.probability(power), abs=1e-10
-        )
+        assert structured.probability(power) == pytest.approx(dense.probability(power), abs=1e-10)
 
 
 def test_default_circuit_contains_no_dense_unitaries(
@@ -60,9 +58,7 @@ def test_compressed_backend_matches_its_reported_amplitude(
     small_model: qfin.CompiledPricingModel,
 ) -> None:
     backend = small_model.to_pennylane(mode="compressed")
-    assert backend.probability(0) == pytest.approx(
-        backend.theoretical_amplitude(), abs=1e-10
-    )
+    assert backend.probability(0) == pytest.approx(backend.theoretical_amplitude(), abs=1e-10)
     assert backend.distribution_loader.parameter_count == 0
 
 
@@ -79,9 +75,7 @@ def test_end_to_end_quantum_run_is_close_to_discrete_value(
     assert result.backend == "pennylane.lightning.qubit:compressed"
     assert result.payoff_approximation is not None
     assert result.to_dict()["payoff_approximation"] is not None
-    assert result.estimation_error == pytest.approx(
-        abs(result.value - result.circuit_value)
-    )
+    assert result.estimation_error == pytest.approx(abs(result.value - result.circuit_value))
 
 
 def test_pennylane_device_can_be_overridden(
@@ -96,9 +90,13 @@ def test_pennylane_device_can_be_overridden(
 def test_auto_device_falls_back_when_lightning_is_absent(
     small_model: qfin.CompiledPricingModel, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import qfin.compiler.models as compiler_models
+    import qfin.backends.devices as devices
 
-    monkeypatch.setattr(compiler_models, "find_spec", lambda _name: None)
+    monkeypatch.setattr(
+        devices,
+        "find_spec",
+        lambda name: None if name == "pennylane_lightning" else object(),
+    )
     backend = small_model.to_pennylane()
     assert backend.device_name == "default.qubit"
     assert small_model.resources().backend == "pennylane.default.qubit"

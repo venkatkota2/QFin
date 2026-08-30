@@ -32,6 +32,9 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
+      - name: Install optional Qiskit export dependency
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python -m pip install -e ".[qiskit]"
       - name: Verify compiled backends
         run: >-
           python -c "import qfin; info=qfin.system_info();
@@ -50,6 +53,9 @@ jobs:
           python examples/multiperiod_alm.py
           python examples/life_products.py
           python examples/life_scenario_risk.py
+      - name: Run device-realism 0.7 smoke example
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python examples/device_realism.py
       - run: python -m build
 
   package-smoke:
@@ -75,7 +81,7 @@ jobs:
           risk=qfin.compile(qfin.TailProbability(qfin.LossDistribution([0, 1]), 0.5),
           backend='classical', target_error=0.1, min_qubits=2, max_qubits=2);
           assert qfin.system_info()['native_extension'];
-          assert qfin.__version__ == '0.6.0';
+          assert qfin.__version__ == '0.7.0';
           assert result.dirty_prices.shape == (1,);
           assert risk.run().probability == 0.5;
           print(qfin.system_info())"

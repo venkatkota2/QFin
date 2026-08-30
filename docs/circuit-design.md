@@ -96,3 +96,28 @@ existing structured circuit, and PennyLane-Lightning performs simulation.
 The first risk oracle is exact on the encoded grid but not asymptotically
 compact: distribution and objective rotations are both `O(2**n)`. Resource
 reports expose that cost, threshold evaluations, and classical preprocessing.
+
+## 6. Device decomposition and routing (v0.7)
+
+The compressed and structured runtimes now expose measurement-free circuit
+tapes without changing their execution semantics. QFin recursively decomposes
+those tapes into the portable basis
+
+```text
+{RX, RY, RZ, CNOT}
+```
+
+and then routes CNOT edges over an explicit coupling graph. Inserted SWAPs are
+decomposed to three CNOTs. Reports retain pre-routing and post-routing depth,
+gate counts, used edges, and the final logical-to-physical permutation.
+
+The all-to-all and line targets are synthetic comparison surfaces. They are
+not calibrated processors. OpenQASM export measures every physical wire and
+reports the routed location of the objective qubit. Numerical tests load the
+exported Qiskit circuit as a state vector and compare that physical objective
+probability with the original PennyLane circuit.
+
+Noise analysis is separate from target routing. It uses explicit local channel
+assumptions on `default.mixed`, global unitary folding, and polynomial
+zero-noise extrapolation. This separation prevents topology counts from being
+misrepresented as calibrated hardware accuracy.

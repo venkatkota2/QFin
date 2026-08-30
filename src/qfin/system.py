@@ -6,6 +6,7 @@ from importlib.util import find_spec
 from typing import TypedDict
 
 from qfin import _native
+from qfin.backends.devices import available_tested_devices
 
 
 class SystemInfo(TypedDict):
@@ -16,7 +17,11 @@ class SystemInfo(TypedDict):
     native_compiler: str | None
     pennylane: bool
     pennylane_lightning: bool
+    qiskit: bool
     preferred_quantum_device: str | None
+    tested_quantum_devices: tuple[str, ...]
+    noise_simulator: str | None
+    openqasm_export: bool
 
 
 def system_info() -> SystemInfo:
@@ -28,7 +33,9 @@ def system_info() -> SystemInfo:
     extension = _native.require() if native else None
     pennylane = find_spec("pennylane") is not None
     lightning = find_spec("pennylane_lightning") is not None
+    qiskit = find_spec("qiskit") is not None
     preferred = "lightning.qubit" if lightning else ("default.qubit" if pennylane else None)
+    devices = available_tested_devices()
     return {
         "qfin_version": __version__,
         "native_extension": native,
@@ -37,7 +44,11 @@ def system_info() -> SystemInfo:
         "native_compiler": None if extension is None else str(extension.compiler),
         "pennylane": pennylane,
         "pennylane_lightning": lightning,
+        "qiskit": qiskit,
         "preferred_quantum_device": preferred,
+        "tested_quantum_devices": devices,
+        "noise_simulator": "default.mixed" if pennylane else None,
+        "openqasm_export": pennylane,
     }
 
 

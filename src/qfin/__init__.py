@@ -1,5 +1,12 @@
 """QFin public API."""
 
+from qfin.backends.devices import DeviceTarget, available_tested_devices
+from qfin.backends.interop import (
+    ProviderCapabilityReport,
+    QasmExport,
+    inspect_qiskit_backend,
+)
+from qfin.backends.noise import NoiseMitigationReport, NoiseModel
 from qfin.circuits import (
     PayoffRotation,
     ProbabilityTreePreparation,
@@ -88,11 +95,15 @@ from qfin.representation import (
     tail_excess_objective,
     tail_probability_objective,
 )
-from qfin.resources import RiskResourceReport
+from qfin.resources import (
+    DeviceResourceReport,
+    RiskResourceReport,
+    TranspiledCircuitResources,
+)
 from qfin.system import SystemInfo, system_info
 from qfin.validation import black_scholes_price
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     "ALMFactorAttribution",
@@ -111,6 +122,8 @@ __all__ = [
     "CompilationError",
     "CompiledPricingModel",
     "CompiledRiskModel",
+    "DeviceResourceReport",
+    "DeviceTarget",
     "DistributionEncoding",
     "EconomicScenarioSet",
     "EmpiricalDistribution",
@@ -131,6 +144,8 @@ __all__ = [
     "LossDistribution",
     "MortalityTable",
     "NativeBackendUnavailableError",
+    "NoiseMitigationReport",
+    "NoiseModel",
     "Normal",
     "PayoffRotation",
     "PolicyModelPointSet",
@@ -138,7 +153,9 @@ __all__ = [
     "ProbabilityTreePreparation",
     "ProblemCapabilities",
     "ProjectionAssumptions",
+    "ProviderCapabilityReport",
     "QFinError",
+    "QasmExport",
     "QuantumObjectiveEncoding",
     "QuantumRiskResult",
     "QuantumThresholdEstimate",
@@ -153,6 +170,7 @@ __all__ = [
     "SystemInfo",
     "TailProbability",
     "TailProbabilitySummary",
+    "TranspiledCircuitResources",
     "UniformQuantilePreparation",
     "VaR",
     "WalshPayoffApproximation",
@@ -161,6 +179,7 @@ __all__ = [
     "YieldSolveResult",
     "__version__",
     "aggregate_risk",
+    "available_tested_devices",
     "black_scholes_price",
     "bootstrap_risk_interval",
     "cdf_objective",
@@ -168,6 +187,7 @@ __all__ = [
     "encode",
     "encode_quantiles",
     "evaluate_tail_probability",
+    "inspect_qiskit_backend",
     "life_sensitivities",
     "price_bonds",
     "price_bonds_from_yield",

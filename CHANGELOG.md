@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-08-30
+
+- Added a tested device registry that prefers `lightning.qubit`, retains
+  `default.qubit` and `default.mixed`, and rejects unverified device claims.
+- Added synthetic all-to-all, linear, and validated custom `DeviceTarget`
+  topologies using a portable RX/RY/RZ/CNOT gate basis.
+- Added recursive gate-set decomposition, topology routing, SWAP accounting,
+  final-edge validation, logical-to-physical wire maps, and workflow-level
+  shot/gate/depth reports for pricing and risk objectives.
+- Added explicit local depolarizing/readout noise assumptions, deterministic or
+  finite-shot `default.mixed` experiments, global folding, and polynomial
+  zero-noise extrapolation with honest before/after error reporting.
+- Implemented OpenQASM 2 and optional Qiskit circuit export, including
+  reproducible digests and routed objective-wire metadata.
+- Added static Qiskit BackendV2-style capability inspection without provider
+  authentication, calibration claims, or job submission.
+- Added numerical routed-circuit equivalence tests, Qiskit parsing tests,
+  repeatable device/noise examples, and measured 0.7 backend evidence.
+- Preserved QFin C++ for finance kernels and PennyLane-Lightning for quantum
+  simulation; no QFin state-vector or mixed-state simulator was introduced.
+
 ## 0.6.0 — 2026-08-29
 
 - Added validated multi-period `EconomicScenarioSet` paths for zero rates,
