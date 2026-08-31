@@ -7,6 +7,13 @@ from qfin.compiler.factorized_models import (
     FactorQuantumTailResult,
     StructuredOracleErrorBudget,
 )
+from qfin.compiler.factorized_risk_models import (
+    CompiledFactorRiskModel,
+    FactorQuantumObjectiveEstimate,
+    FactorQuantumRiskResult,
+    FactorQuantumVaRSearch,
+    StructuredRiskErrorBudget,
+)
 from qfin.compiler.models import (
     CompiledPricingModel,
     ErrorBudget,
@@ -22,12 +29,16 @@ from qfin.compiler.risk_models import (
 )
 
 __all__ = [
+    "CompiledFactorRiskModel",
     "CompiledFactorTailModel",
     "CompiledOptimizationModel",
     "CompiledPricingModel",
     "CompiledRiskModel",
     "ErrorBudget",
+    "FactorQuantumObjectiveEstimate",
+    "FactorQuantumRiskResult",
     "FactorQuantumTailResult",
+    "FactorQuantumVaRSearch",
     "PricingResult",
     "ProblemCapabilities",
     "QuantumRiskResult",
@@ -35,6 +46,7 @@ __all__ = [
     "QuantumVaRSearch",
     "RiskErrorBudget",
     "StructuredOracleErrorBudget",
+    "StructuredRiskErrorBudget",
     "compile",
     "problem_capabilities",
 ]

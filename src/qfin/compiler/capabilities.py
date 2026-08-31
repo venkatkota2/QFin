@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from qfin import _native
-from qfin.finance import EuropeanCall, EuropeanPut, FactorTailProbability
+from qfin.finance import (
+    EuropeanCall,
+    EuropeanPut,
+    FactorCVaR,
+    FactorTailProbability,
+    FactorVaR,
+)
 from qfin.finance.alm import (
     ALMFactorScenarioResult,
     ALMModel,
@@ -45,6 +51,22 @@ class ProblemCapabilities:
 def problem_capabilities(problem: object) -> ProblemCapabilities:
     """Report implemented boundaries without implying unsupported quantum paths."""
 
+    if isinstance(problem, (FactorVaR, FactorCVaR)):
+        return ProblemCapabilities(
+            category="structured_tail_risk",
+            financial_model_available=True,
+            classical_implementation=(
+                "memory-bounded streamed factor-grid VaR/CVaR with fixed-point parity"
+            ),
+            native_implementation_available=False,
+            quantum_representation_available=True,
+            quantum_algorithm_available=True,
+            note=(
+                "VaR uses hybrid MLAE search over occupied reversible loss codes. "
+                "CVaR adds a reversible positive tail-excess register and bitwise MLAE. "
+                "Lightning simulates the circuits; no joint lookup table is loaded."
+            ),
+        )
     if isinstance(problem, FactorTailProbability):
         return ProblemCapabilities(
             category="structured_tail_risk",
@@ -73,7 +95,7 @@ def problem_capabilities(problem: object) -> ProblemCapabilities:
             quantum_representation_available=False,
             quantum_algorithm_available=False,
             note=(
-                "QFin 0.9 selects the validated classical baseline. Covariance block-encoding "
+                "QFin 1.0 selects the validated classical baseline. Covariance block-encoding "
                 "and QSVT reports are feasibility metadata, not implemented algorithms."
             ),
         )

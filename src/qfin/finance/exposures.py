@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from math import isfinite
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -193,9 +193,7 @@ class FactorizedLossModel:
             ]
         )
         values = (
-            latent
-            if self.encoding.transform is None
-            else self.encoding.transform.apply(latent)
+            latent if self.encoding.transform is None else self.encoding.transform.apply(latent)
         )
         losses = self.objective.evaluate(values, self.encoding.value_names)
         probabilities = np.ones(flat.size, dtype=np.float64)
@@ -246,6 +244,192 @@ class FactorTailProbabilitySummary:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class FactorVaR:
+    """Value-at-risk problem over a factorized loss model."""
+
+    model: FactorizedLossModel
+    confidence: float = 0.995
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.confidence) or not 0 < self.confidence < 1:
+            raise ValueError("confidence must lie strictly between zero and one")
+
+
+@dataclass(frozen=True, slots=True)
+class FactorCVaR:
+    """Expected-shortfall problem over a factorized loss model."""
+
+    model: FactorizedLossModel
+    confidence: float = 0.995
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.confidence) or not 0 < self.confidence < 1:
+            raise ValueError("confidence must lie strictly between zero and one")
+
+
+FactorRiskProblem = FactorVaR | FactorCVaR
+
+
+@dataclass(frozen=True, slots=True)
+class FactorRiskSummary:
+    """Memory-bounded classical VaR/CVaR reference on a factor grid."""
+
+    problem_kind: Literal["value_at_risk", "conditional_value_at_risk"]
+    confidence: float
+    mean: float
+    standard_deviation: float
+    minimum: float
+    maximum: float
+    value_at_risk: float
+    expected_shortfall: float
+    evaluated_points: int
+    streamed_point_visits: int
+    chunks: int
+    cdf_evaluations: int
+    joint_table_materialized: bool = False
+
+    @property
+    def var(self) -> float:
+        return self.value_at_risk
+
+    @property
+    def cvar(self) -> float:
+        return self.expected_shortfall
+
+    @property
+    def value(self) -> float:
+        return self.var if self.problem_kind == "value_at_risk" else self.cvar
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "problem_kind": self.problem_kind,
+            "confidence": self.confidence,
+            "mean": self.mean,
+            "standard_deviation": self.standard_deviation,
+            "minimum": self.minimum,
+            "maximum": self.maximum,
+            "value_at_risk": self.value_at_risk,
+            "expected_shortfall": self.expected_shortfall,
+            "evaluated_points": self.evaluated_points,
+            "streamed_point_visits": self.streamed_point_visits,
+            "chunks": self.chunks,
+            "cdf_evaluations": self.cdf_evaluations,
+            "joint_table_materialized": self.joint_table_materialized,
+        }
+
+
+_SIGN_MASK = 1 << 63
+_UINT64_MASK = (1 << 64) - 1
+
+
+def _float_order_key(value: float) -> int:
+    """Map a finite IEEE-754 double to a monotonically ordered integer."""
+
+    bits = int(np.asarray(value, dtype=np.float64).view(np.uint64))
+    return (~bits & _UINT64_MASK) if bits & _SIGN_MASK else bits ^ _SIGN_MASK
+
+
+def _float_from_order_key(key: int) -> float:
+    bits = (~key & _UINT64_MASK) if key < _SIGN_MASK else key ^ _SIGN_MASK
+    return float(np.asarray(bits, dtype=np.uint64).view(np.float64))
+
+
+def evaluate_factor_risk(
+    problem: FactorRiskProblem,
+    *,
+    chunk_size: int = 65_536,
+    max_points: int = 1_048_576,
+) -> FactorRiskSummary:
+    """Evaluate exact encoded-grid VaR/CVaR without a joint loss table.
+
+    The weighted quantile is selected by a 64-bit monotone search over the
+    IEEE-754 value domain. This deliberately trades repeated streamed passes
+    for bounded memory and is a correctness oracle, not the fast execution path.
+    """
+
+    if chunk_size < 1 or max_points < 1:
+        raise ValueError("chunk_size and max_points must be positive")
+    points = problem.model.joint_grid_points
+    if points > max_points:
+        raise ValueError(
+            f"factorized validation requires {points} streamed points, "
+            f"above max_points={max_points}"
+        )
+
+    total_mass = 0.0
+    weighted_sum = 0.0
+    weighted_square_sum = 0.0
+    minimum = float("inf")
+    maximum = float("-inf")
+    chunks_per_pass = 0
+    for start in range(0, points, chunk_size):
+        stop = min(start + chunk_size, points)
+        _, losses, weights = problem.model.chunk(start, stop)
+        total_mass += float(np.sum(weights))
+        weighted_sum += float(np.dot(losses, weights))
+        weighted_square_sum += float(np.dot(losses * losses, weights))
+        minimum = min(minimum, float(np.min(losses)))
+        maximum = max(maximum, float(np.max(losses)))
+        chunks_per_pass += 1
+    if not isfinite(total_mass) or total_mass <= 0:
+        raise ValueError("factorized loss model must have positive finite probability mass")
+
+    target_mass = problem.confidence * total_mass
+    cdf_evaluations = 0
+
+    def cdf(threshold: float) -> float:
+        nonlocal cdf_evaluations
+        mass = 0.0
+        for start in range(0, points, chunk_size):
+            stop = min(start + chunk_size, points)
+            _, losses, weights = problem.model.chunk(start, stop)
+            mass += float(np.sum(weights[losses <= threshold]))
+        cdf_evaluations += 1
+        return mass
+
+    if cdf(minimum) >= target_mass:
+        value_at_risk = minimum
+    else:
+        lower_key = _float_order_key(minimum)
+        upper_key = _float_order_key(maximum)
+        while lower_key + 1 < upper_key:
+            middle_key = (lower_key + upper_key) // 2
+            if cdf(_float_from_order_key(middle_key)) >= target_mass:
+                upper_key = middle_key
+            else:
+                lower_key = middle_key
+        value_at_risk = _float_from_order_key(upper_key)
+
+    weighted_excess = 0.0
+    for start in range(0, points, chunk_size):
+        stop = min(start + chunk_size, points)
+        _, losses, weights = problem.model.chunk(start, stop)
+        weighted_excess += float(np.dot(np.maximum(losses - value_at_risk, 0.0), weights))
+
+    mean = weighted_sum / total_mass
+    variance = max(weighted_square_sum / total_mass - mean * mean, 0.0)
+    expected_shortfall = value_at_risk + (weighted_excess / total_mass / (1.0 - problem.confidence))
+    passes = 2 + cdf_evaluations
+    kind: Literal["value_at_risk", "conditional_value_at_risk"] = (
+        "value_at_risk" if isinstance(problem, FactorVaR) else "conditional_value_at_risk"
+    )
+    return FactorRiskSummary(
+        problem_kind=kind,
+        confidence=problem.confidence,
+        mean=mean,
+        standard_deviation=float(np.sqrt(variance)),
+        minimum=minimum,
+        maximum=maximum,
+        value_at_risk=value_at_risk,
+        expected_shortfall=expected_shortfall,
+        evaluated_points=points,
+        streamed_point_visits=passes * points,
+        chunks=passes * chunks_per_pass,
+        cdf_evaluations=cdf_evaluations,
+    )
+
+
 def evaluate_factor_tail_probability(
     problem: FactorTailProbability,
     *,
@@ -280,10 +464,15 @@ def evaluate_factor_tail_probability(
 
 
 __all__ = [
+    "FactorCVaR",
+    "FactorRiskProblem",
+    "FactorRiskSummary",
     "FactorTailProbability",
     "FactorTailProbabilitySummary",
+    "FactorVaR",
     "FactorizedLossModel",
     "HingeExposure",
     "SparseExposureObjective",
+    "evaluate_factor_risk",
     "evaluate_factor_tail_probability",
 ]

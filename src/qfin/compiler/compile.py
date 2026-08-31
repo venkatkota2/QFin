@@ -15,6 +15,10 @@ from qfin.compiler.factorized_models import (
     CompiledFactorTailModel,
     compile_factor_tail_problem,
 )
+from qfin.compiler.factorized_risk_models import (
+    CompiledFactorRiskModel,
+    compile_factor_risk_problem,
+)
 from qfin.compiler.models import CompiledPricingModel, ErrorBudget
 from qfin.compiler.optimization_models import CompiledOptimizationModel
 from qfin.compiler.risk_models import CompiledRiskModel, RiskErrorBudget, RiskProblem
@@ -24,7 +28,9 @@ from qfin.finance import (
     EuropeanCall,
     EuropeanOption,
     EuropeanPut,
+    FactorCVaR,
     FactorTailProbability,
+    FactorVaR,
     GeometricBrownianMotion,
     MeanVarianceProblem,
 )
@@ -53,7 +59,14 @@ RiskObjective = Literal["expectation"] | Callable[[NDArray[np.float64]], NDArray
 
 
 def compile(
-    problem: EuropeanOption | RiskProblem | MeanVarianceProblem | FactorTailProbability,
+    problem: (
+        EuropeanOption
+        | RiskProblem
+        | MeanVarianceProblem
+        | FactorTailProbability
+        | FactorVaR
+        | FactorCVaR
+    ),
     market: BlackScholes | None = None,
     *,
     target_error: float = 0.01,
@@ -79,6 +92,7 @@ def compile(
     | CompiledRiskModel
     | CompiledOptimizationModel
     | CompiledFactorTailModel
+    | CompiledFactorRiskModel
 ):
     """Compile a supported financial problem into the QFin pipeline.
 
@@ -86,6 +100,27 @@ def compile(
     inspected without PennyLane; PennyLane is imported only when ``run`` or
     ``to_pennylane`` executes a circuit.
     """
+
+    if isinstance(problem, (FactorVaR, FactorCVaR)):
+        if market is not None:
+            raise CompilationError(
+                "factorized risk compilation does not accept a BlackScholes market"
+            )
+        return compile_factor_risk_problem(
+            problem,
+            target_error=target_error,
+            backend=backend,
+            representation_target=representation_target,
+            max_state_preparation_parameters=max_state_preparation_parameters,
+            max_state_preparation_memory_bytes=max_state_preparation_memory_bytes,
+            arithmetic_scale=arithmetic_scale,
+            max_loss_qubits=max_arithmetic_qubits,
+            max_affine_output_qubits=max_affine_output_qubits,
+            max_validation_points=max_factor_validation_points,
+            validation_chunk_size=factor_validation_chunk_size,
+            max_integer_monomials=max_integer_monomials,
+            max_total_wires=max_factorized_wires,
+        )
 
     if isinstance(problem, FactorTailProbability):
         if market is not None:

@@ -6,7 +6,10 @@ from qfin.backends.devices import (
     resolve_device_target,
     resolve_quantum_device,
 )
-from qfin.backends.factorized import FactorizedTailPennyLaneBackend
+from qfin.backends.factorized import (
+    FactorizedExcessPennyLaneBackend,
+    FactorizedTailPennyLaneBackend,
+)
 from qfin.backends.pennylane import (
     CompressedPennyLaneBackend,
     DensePennyLaneBackend,
@@ -19,6 +22,7 @@ __all__ = [
     "CompressedPennyLaneBackend",
     "DensePennyLaneBackend",
     "DeviceTarget",
+    "FactorizedExcessPennyLaneBackend",
     "FactorizedTailPennyLaneBackend",
     "PennyLaneBackend",
     "RiskPennyLaneBackend",

@@ -9,6 +9,12 @@ gate-decomposable state preparation, maximum-likelihood amplitude estimation
 This milestone demonstrates a correct financial-to-quantum abstraction. It
 does not claim hardware readiness or quantum advantage.
 
+QFin 1.0 additionally implements VaR/CVaR directly over the reversible
+factorized loss register, avoiding the generic joint objective table for its
+supported sparse exposure algebra. See
+[`structured-factor-risk-1.0.md`](structured-factor-risk-1.0.md); the generic
+finite-distribution path documented here remains supported and unchanged.
+
 ## Public problems
 
 ```python

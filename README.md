@@ -8,12 +8,12 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `0.9.0` adds reversible fixed-point affine transforms, sparse linear,
-quadratic, and piecewise financial loss arithmetic, and tail-risk compilation
-directly from factorized registers without a joint probability or payoff
-table. The 0.8 scalable-representation, 0.7 device-realism, and 0.6 ALM/life
-foundations remain intact. QFin-owned C++20 finance kernels and the
-PennyLane-Lightning simulator remain separate components.
+Version `1.0.0` adds memory-bounded factorized VaR/CVaR references, hybrid MLAE
+search over occupied reversible loss codes, and a reversible positive
+tail-excess register whose bits reconstruct CVaR without a joint payoff table.
+The 0.9 structured arithmetic, 0.8 scalable representation, 0.7 device realism,
+and 0.6 ALM/life foundations remain intact. QFin-owned C++20 finance kernels
+and the PennyLane-Lightning simulator remain separate components.
 
 ## Architecture
 
@@ -83,6 +83,7 @@ print(qfin.system_info())
 #   'factorized_state_preparation': True,
 #   'structured_arithmetic_oracles': True,
 #   'factorized_tail_risk': True,
+#   'structured_factor_var_cvar': True,
 #   'portfolio_optimization': 'classical-scipy',
 #   'block_encoding_implemented': False,
 #   'qsvt_implemented': False,
@@ -322,6 +323,44 @@ to exponential lookup tables. Arithmetic can be deeper than the generic
 loader on tiny problems, and no quantum-advantage or hardware-runtime claim is
 made. See [docs/structured-oracles-0.9.md](docs/structured-oracles-0.9.md).
 
+## Structured factor VaR and CVaR
+
+The same factorized loss model now feeds discrete VaR and CVaR directly:
+
+```python
+risk = qfin.FactorCVaR(
+    qfin.FactorizedLossModel(encoding, loss),
+    confidence=0.995,
+)
+compiled = qfin.compile(
+    risk,
+    target_error=100_000,
+    backend="auto",
+)
+
+reference = compiled.run()
+print(reference.var, reference.cvar)
+print(compiled.resources().to_dict())
+
+# Small research circuits only:
+quantum = compiled.run_quantum(shots=2_000, schedule=(0, 1, 2))
+print(quantum.value, quantum.classical_value)
+```
+
+The classical reference finds the exact encoded-grid quantile with repeated
+bounded-memory CDF passes. Compilation validates a bounded histogram of loss
+codes in financial units. Quantum VaR reuses one loss register across a hybrid
+search of occupied codes. Quantum CVaR conditionally subtracts the selected
+VaR into an excess register, estimates each excess bit with MLAE, and applies
+the discrete tail-excess identity. Resource reports count every threshold,
+excess bit, circuit, shot, oracle query, and the widest runtime.
+
+This is an experimental simulator workflow. Its VaR interval combines local
+MLAE intervals; its CVaR interval is conditional on the selected VaR and
+combines marginal bit intervals. Neither is a simultaneous-coverage result.
+See
+[docs/structured-factor-risk-1.0.md](docs/structured-factor-risk-1.0.md).
+
 ## European option quantum pipeline
 
 ```python
@@ -419,7 +458,7 @@ structured-tail compiler can synthesize it as reversible fixed-point
 arithmetic when the marginals use affine probability grids; ordinary loading
 does not allocate those work registers.
 
-Portfolio optimization remains intentionally classical in 0.9:
+Portfolio optimization remains intentionally classical in 1.0:
 
 ```python
 problem = qfin.MeanVarianceProblem(
@@ -514,9 +553,18 @@ python examples/structured_oracle_benchmark.py --full --repeats 3 \
   --output docs/structured-oracle-performance.md
 ```
 
+The [1.0 structured factor-risk report](docs/structured-factor-risk-performance.md)
+measures the bounded-memory VaR/CVaR reference against a deliberately
+materialized NumPy oracle and times the reusable threshold and excess-bit
+circuits:
+
+```bash
+python examples/structured_factor_risk_benchmark.py
+```
+
 ## Honest scope
 
-QFin 0.9 is a research prototype. Its economic scenarios are foundations, not
+QFin 1.0 is a research prototype. Its economic scenarios are foundations, not
 calibrated ESG models; aggregate equity and spread exposures are deliberately
 simple; life projection is annual and does not include production product
 rules, dynamic policyholder behavior, tax, reserves, guarantees, or governance
@@ -548,6 +596,8 @@ python examples/scalable_representation.py
 python examples/scalable_representation_benchmark.py --repeats 1
 python examples/structured_factor_tail.py
 python examples/structured_oracle_benchmark.py --repeats 1
+python examples/structured_factor_risk.py
+python examples/structured_factor_risk_benchmark.py
 ```
 
 More detail is available in [docs/architecture.md](docs/architecture.md),
@@ -555,5 +605,6 @@ More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/device-realism-0.7.md](docs/device-realism-0.7.md),
 [docs/scalable-representation-0.8.md](docs/scalable-representation-0.8.md),
 [docs/structured-oracles-0.9.md](docs/structured-oracles-0.9.md),
+[docs/structured-factor-risk-1.0.md](docs/structured-factor-risk-1.0.md),
 [docs/quantum-risk.md](docs/quantum-risk.md), and
 [docs/roadmap.md](docs/roadmap.md).

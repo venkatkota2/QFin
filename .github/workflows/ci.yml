@@ -62,6 +62,9 @@ jobs:
       - name: Run structured-oracle 0.9 smoke example
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: python examples/structured_factor_tail.py
+      - name: Run structured factor-risk 1.0 smoke example
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python examples/structured_factor_risk.py
       - run: python -m build
 
   package-smoke:
@@ -93,14 +96,17 @@ jobs:
           qfin.SparseExposureObjective(linear={'factor_0': 1.0})), threshold=0.0);
           factor_compiled=qfin.compile(factor_risk, backend='classical',
           arithmetic_scale=1.0);
+          factor_cvar=qfin.compile(qfin.FactorCVaR(factor_risk.model, confidence=0.75),
+          backend='classical', target_error=0.2, arithmetic_scale=1.0);
           optimization=qfin.compile(qfin.MeanVarianceProblem([0.04, 0.08],
           [[0.02, 0.0], [0.0, 0.05]]));
           assert qfin.system_info()['native_extension'];
-          assert qfin.__version__ == '0.9.0';
+          assert qfin.__version__ == '1.0.0';
           assert result.dirty_prices.shape == (1,);
           assert risk.run().probability == 0.5;
           assert strategy.strategy == 'factorized_marginal_loader';
           assert 0 <= factor_compiled.run().probability <= 1;
+          assert factor_cvar.run().cvar >= factor_cvar.run().var;
           assert optimization.run().success;
           print(qfin.system_info())"
       - uses: actions/upload-artifact@v4
