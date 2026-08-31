@@ -191,3 +191,33 @@ routing logic. Arithmetic may be substantially deeper on tiny grids even when
 it stores fewer classical values at larger factor counts. No gate-count,
 hardware-runtime, fault-tolerant, or quantum-advantage claim follows from
 avoiding the joint lookup table.
+
+## 9. Structured factorized VaR/CVaR (v1.0)
+
+The v0.9 loss register is compiled once and reused across VaR thresholds. For
+candidate integer code `v`, QFin marks `loss >= v + 1`, estimates that amplitude
+with MLAE, and uses its complement as `CDF(v)`. A classical binary search visits
+only occupied loss codes. Local MLAE intervals are propagated through CDF
+monotonicity; they are not a simultaneous-coverage construction.
+
+CVaR uses a second unsigned register of the same width. A comparator marks
+`loss >= v + 1`; controlled `OutPoly` subtraction writes
+
+```text
+excess = loss - v
+```
+
+on that branch and zero otherwise. The branch comparator is uncomputed before
+Grover reflection. For an `r`-bit excess register, QFin runs one MLAE objective
+per bit and reconstructs
+
+```text
+E[excess] = sum_(b=0)^(r-1) 2**(r-1-b) P(excess_b = 1).
+```
+
+Dividing by the fixed-point scale and `1-alpha`, then adding the selected VaR,
+implements the coherent discrete tail-excess identity. This avoids an
+exponential amplitude-rotation table but does not make the full workflow
+constant-cost: resource reports include every threshold objective and all `r`
+bit objectives. CVaR intervals combine marginal bit intervals conditional on
+the selected VaR and are explicitly labelled with that limitation.

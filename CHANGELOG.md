@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 1.0.0 — 2026-08-31
+
+- Added `FactorVaR` and `FactorCVaR` public problems over structured
+  `FactorizedLossModel` inputs.
+- Added an exact memory-bounded VaR/CVaR reference using streamed CDF and
+  tail-excess passes, with explicit point-visit and chunk accounting.
+- Added fixed-point VaR/CVaR parity in financial units using a bounded
+  loss-code histogram, automatic precision selection, and separate
+  quantization/estimation error allocation.
+- Added hybrid MLAE VaR search over occupied loss codes while reusing the 0.9
+  reversible loss register and threshold comparator construction.
+- Added reversible positive tail-excess subtraction and bitwise MLAE
+  reconstruction of discrete CVaR without a joint payoff lookup table.
+- Added full hybrid resource counts for threshold objectives, excess bits,
+  circuits, shots, oracle queries, and maximum runtime width, plus conservative
+  target-decomposed estimates.
+- Added classical/materialized parity, no-materialization, circuit-register,
+  quantum VaR/CVaR, fallback, resource, validation, and capability tests.
+- Added runnable examples, reproducible measured benchmarks, architecture and
+  circuit documentation, and explicit statistical/simulator limitations.
+
 ## 0.9.0 — 2026-08-31
 
 - Added sparse constant, linear, quadratic, and positive-part financial

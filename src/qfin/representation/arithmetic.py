@@ -15,7 +15,12 @@ from qfin.exceptions import BackendUnavailableError, ResourceLimitError
 from qfin.representation.factorized import FactorizedDistributionEncoding
 
 if TYPE_CHECKING:
-    from qfin.finance.exposures import FactorTailProbability, SparseExposureObjective
+    from qfin.finance.exposures import (
+        FactorRiskProblem,
+        FactorRiskSummary,
+        FactorTailProbability,
+        SparseExposureObjective,
+    )
 
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.int64]
@@ -174,9 +179,7 @@ class IntegerPolynomialPlan:
         for register, coefficient in enumerate(self.linear):
             result += coefficient * values[:, register]
         for term in self.quadratic:
-            result += (
-                term.coefficient * values[:, term.left] * values[:, term.right]
-            )
+            result += term.coefficient * values[:, term.left] * values[:, term.right]
         return result
 
     def apply(
@@ -386,9 +389,7 @@ def compile_affine_transform(
         raise ValueError("scale must be finite and positive")
     if max_output_qubits < 1:
         raise ValueError("max_output_qubits must be positive")
-    lower, step, base, coefficients, names = _real_affine_map(
-        encoding, tolerance=grid_tolerance
-    )
+    lower, step, base, coefficients, names = _real_affine_map(encoding, tolerance=grid_tolerance)
     selected = names if output_names is None else tuple(output_names)
     if not selected or len(set(selected)) != len(selected):
         raise ValueError("output_names must be non-empty and unique")
@@ -402,9 +403,7 @@ def compile_affine_transform(
     for name in selected:
         row_index = names.index(name)
         base_ticks = round(scale * float(base[row_index]))
-        coefficient_ticks = tuple(
-            round(scale * float(value)) for value in coefficients[row_index]
-        )
+        coefficient_ticks = tuple(round(scale * float(value)) for value in coefficients[row_index])
         raw_min = base_ticks
         raw_max = base_ticks
         for coefficient, maximum in zip(coefficient_ticks, maxima, strict=True):
@@ -554,10 +553,12 @@ class StructuredLossOraclePlan:
     @property
     def integer_monomials(self) -> int:
         affine = 0 if self.affine is None else self.affine.integer_monomials
-        return self.polynomial.monomial_count + affine + sum(
-            hinge.polynomial.monomial_count
-            for hinge in self.hinges
-            if hinge.mode != "inactive"
+        return (
+            self.polynomial.monomial_count
+            + affine
+            + sum(
+                hinge.polynomial.monomial_count for hinge in self.hinges if hinge.mode != "inactive"
+            )
         )
 
     def decode_loss(self, codes: IntArray) -> FloatArray:
@@ -660,12 +661,8 @@ def _objective_polynomial_in_indices(
         else:
             quadratic[left_index, right_index] += 0.5 * coefficient
             quadratic[right_index, left_index] += 0.5 * coefficient
-    constant_index = float(
-        objective.constant + linear @ base + base @ quadratic @ base
-    )
-    linear_index = np.asarray(
-        coefficients.T @ (linear + 2.0 * quadratic @ base), dtype=np.float64
-    )
+    constant_index = float(objective.constant + linear @ base + base @ quadratic @ base)
+    linear_index = np.asarray(coefficients.T @ (linear + 2.0 * quadratic @ base), dtype=np.float64)
     quadratic_index = np.asarray(coefficients.T @ quadratic @ coefficients, dtype=np.float64)
     return constant_index, linear_index, quadratic_index
 
@@ -704,9 +701,7 @@ def compile_structured_loss_oracle(
     maxima = tuple(2**qubits - 1 for qubits in encoding.qubits_per_factor)
     coefficient_rounding_bound += sum(
         abs(integer / loss_scale - real) * maximum
-        for integer, real, maximum in zip(
-            linear_ticks, linear_real, maxima, strict=True
-        )
+        for integer, real, maximum in zip(linear_ticks, linear_real, maxima, strict=True)
     )
     for left in range(encoding.factor_count):
         for right in range(left, encoding.factor_count):
@@ -719,9 +714,7 @@ def compile_structured_loss_oracle(
             if coefficient != 0:
                 quadratic_terms.append(IntegerQuadraticTerm(left, right, coefficient))
             coefficient_rounding_bound += (
-                abs(coefficient / loss_scale - real_value)
-                * maxima[left]
-                * maxima[right]
+                abs(coefficient / loss_scale - real_value) * maxima[left] * maxima[right]
             )
 
     piecewise_names = tuple(dict.fromkeys(term.factor for term in objective.piecewise))
@@ -868,6 +861,150 @@ class StructuredTailOracleValidation:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class StructuredRiskOracleValidation:
+    """Streamed VaR/CVaR parity for a fixed-point structured loss register."""
+
+    exact_value_at_risk: float
+    exact_expected_shortfall: float
+    oracle_value_at_risk: float
+    oracle_expected_shortfall: float
+    value_at_risk_error: float
+    expected_shortfall_error: float
+    maximum_loss_error: float
+    root_mean_square_loss_error: float
+    occupied_codes: tuple[int, ...]
+    code_probabilities: tuple[float, ...]
+    evaluated_points: int
+    chunks: int
+    classical_streamed_point_visits: int
+    joint_table_materialized: bool = False
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "exact_value_at_risk": self.exact_value_at_risk,
+            "exact_expected_shortfall": self.exact_expected_shortfall,
+            "oracle_value_at_risk": self.oracle_value_at_risk,
+            "oracle_expected_shortfall": self.oracle_expected_shortfall,
+            "value_at_risk_error": self.value_at_risk_error,
+            "expected_shortfall_error": self.expected_shortfall_error,
+            "maximum_loss_error": self.maximum_loss_error,
+            "root_mean_square_loss_error": self.root_mean_square_loss_error,
+            "occupied_loss_codes": len(self.occupied_codes),
+            "loss_code_bins": len(self.code_probabilities),
+            "evaluated_points": self.evaluated_points,
+            "chunks": self.chunks,
+            "classical_streamed_point_visits": self.classical_streamed_point_visits,
+            "joint_table_materialized": self.joint_table_materialized,
+        }
+
+    def probability_at_code(self, code: int) -> float:
+        if code < 0 or code >= len(self.code_probabilities):
+            return 0.0
+        return self.code_probabilities[code]
+
+    def cdf_at_code(self, code: int) -> float:
+        if code < 0:
+            return 0.0
+        stop = min(code + 1, len(self.code_probabilities))
+        return float(sum(self.code_probabilities[:stop]))
+
+    def tail_at_code(self, code: int) -> float:
+        if code <= 0:
+            return 1.0
+        if code >= len(self.code_probabilities):
+            return 0.0
+        return float(sum(self.code_probabilities[code:]))
+
+    def excess_bit_probabilities(self, threshold_code: int) -> tuple[float, ...]:
+        """Return MSB-first probabilities for ``max(code-threshold, 0)`` bits."""
+
+        width = max(1, (len(self.code_probabilities) - 1).bit_length())
+        probabilities = [0.0] * width
+        for code in self.occupied_codes:
+            excess = max(code - threshold_code, 0)
+            weight = self.code_probabilities[code]
+            for wire_index in range(width):
+                bit_weight = 1 << (width - 1 - wire_index)
+                if excess & bit_weight:
+                    probabilities[wire_index] += weight
+        return tuple(probabilities)
+
+
+def validate_structured_risk_oracle(
+    problem: FactorRiskProblem,
+    plan: StructuredLossOraclePlan,
+    *,
+    exact_summary: FactorRiskSummary | None = None,
+    chunk_size: int = 65_536,
+    max_points: int = 1_048_576,
+) -> StructuredRiskOracleValidation:
+    """Validate factorized VaR/CVaR against a bounded loss-code histogram."""
+
+    from qfin.finance.exposures import evaluate_factor_risk
+    from qfin.finance.risk import LossDistribution, aggregate_risk
+
+    if chunk_size < 1 or max_points < 1:
+        raise ValueError("chunk_size and max_points must be positive")
+    points = problem.model.joint_grid_points
+    if points > max_points:
+        raise ValueError(
+            f"oracle validation requires {points} streamed points, above max_points={max_points}"
+        )
+    reference = exact_summary or evaluate_factor_risk(
+        problem,
+        chunk_size=chunk_size,
+        max_points=max_points,
+    )
+    histogram = np.zeros(2**plan.loss_qubits, dtype=np.float64)
+    maximum_error = 0.0
+    weighted_squared_error = 0.0
+    total_mass = 0.0
+    chunks = 0
+    for start in range(0, points, chunk_size):
+        stop = min(start + chunk_size, points)
+        indices, exact_losses, probabilities = problem.model.chunk(start, stop)
+        codes = plan.evaluate_codes(indices)
+        histogram += np.bincount(
+            codes,
+            weights=probabilities,
+            minlength=histogram.size,
+        )
+        approximate_losses = plan.decode_loss(codes)
+        differences = approximate_losses - exact_losses
+        maximum_error = max(maximum_error, float(np.max(np.abs(differences))))
+        weighted_squared_error += float(np.sum(probabilities * differences**2))
+        total_mass += float(np.sum(probabilities))
+        chunks += 1
+    if total_mass <= 0 or not isfinite(total_mass):
+        raise ValueError("factorized loss model must have positive finite probability mass")
+    histogram /= total_mass
+    occupied = np.flatnonzero(histogram > 0)
+    encoded = aggregate_risk(
+        LossDistribution(
+            plan.decode_loss(occupied.astype(np.int64)),
+            histogram[occupied],
+        ),
+        confidence=problem.confidence,
+        engine="numpy",
+    )
+    return StructuredRiskOracleValidation(
+        exact_value_at_risk=reference.var,
+        exact_expected_shortfall=reference.cvar,
+        oracle_value_at_risk=encoded.var,
+        oracle_expected_shortfall=encoded.cvar,
+        value_at_risk_error=abs(encoded.var - reference.var),
+        expected_shortfall_error=abs(encoded.cvar - reference.cvar),
+        maximum_loss_error=maximum_error,
+        root_mean_square_loss_error=sqrt(max(weighted_squared_error / total_mass, 0.0)),
+        occupied_codes=tuple(int(code) for code in occupied),
+        code_probabilities=tuple(float(value) for value in histogram),
+        evaluated_points=points,
+        chunks=chunks,
+        classical_streamed_point_visits=reference.streamed_point_visits,
+    )
+
+
 def validate_structured_tail_oracle(
     problem: FactorTailProbability,
     plan: StructuredLossOraclePlan,
@@ -931,9 +1068,11 @@ __all__ = [
     "IntegerQuadraticTerm",
     "ReversibleAffineTransformPlan",
     "StructuredLossOraclePlan",
+    "StructuredRiskOracleValidation",
     "StructuredTailOracleValidation",
     "compile_affine_transform",
     "compile_structured_loss_oracle",
     "validate_affine_transform",
+    "validate_structured_risk_oracle",
     "validate_structured_tail_oracle",
 ]

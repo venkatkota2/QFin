@@ -103,6 +103,22 @@ validation time remains exponential. Quantile inverse-CDF grids, arbitrary
 multivariate functions, calibrated non-Gaussian dependence, and compact
 fault-tolerant synthesis remain later research.
 
+## 1.0 — structured factorized VaR/CVaR (complete)
+
+- memory-bounded exact encoded-grid VaR/CVaR without a joint loss table;
+- fixed-point VaR/CVaR parity and precision selection in financial units;
+- hybrid MLAE VaR search across occupied reversible loss codes;
+- reversible positive tail-excess subtraction and bitwise CVaR estimation;
+- complete threshold/bit/circuit/shot/oracle-query resource accounting; and
+- public examples, measured benchmarks, backend guards, and Lightning parity.
+
+The classical reference uses repeated streamed CDF passes: it bounds memory
+but is deliberately slower than materialized NumPy on every measured small and
+medium case. The quantum path remains hybrid. VaR intervals combine local MLAE
+intervals and CVaR intervals are conditional on the selected VaR; neither is a
+simultaneous statistical guarantee. No QRAM, hardware runtime, or quantum
+advantage claim is made.
+
 ## Later research
 
 - QUBO/variational portfolio research only after exact formulation and strong

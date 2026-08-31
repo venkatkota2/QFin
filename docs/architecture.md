@@ -221,6 +221,22 @@ explicit PennyLane request raises on an unmet condition; it never silently
 relabels a classical result as quantum. Target comparison against the generic
 empirical loader is available only behind an explicit small joint-grid guard.
 
+QFin 1.0 reuses that loss register for `FactorVaR` and `FactorCVaR`. The exact
+financial reference searches the ordered floating-point loss domain with
+repeated streamed CDF passes, then evaluates positive tail excess in one more
+pass. Fixed-point validation stores only a bounded loss-code histogram. The
+quantum VaR controller searches occupied codes by estimating the complement of
+`P(loss >= code + 1)`; it never rebuilds the loss arithmetic for each financial
+scenario.
+
+For CVaR, a comparator conditionally subtracts the selected VaR code into a
+same-width excess register and is uncomputed. MLAE estimates each excess bit,
+whose binary weights reconstruct expected excess before conversion back to
+financial units. This makes the lookup-table avoidance executable, but adds
+one work register and one objective per loss bit. Reports count the complete
+hybrid workload rather than presenting one representative circuit as the
+whole algorithm.
+
 ## Existing option circuit
 
 The v0.3 compressed circuit remains unchanged. For grid labels `x_i`,

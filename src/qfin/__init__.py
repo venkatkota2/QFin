@@ -16,12 +16,16 @@ from qfin.circuits import (
     WalshTerm,
 )
 from qfin.compiler import (
+    CompiledFactorRiskModel,
     CompiledFactorTailModel,
     CompiledOptimizationModel,
     CompiledPricingModel,
     CompiledRiskModel,
     ErrorBudget,
+    FactorQuantumObjectiveEstimate,
+    FactorQuantumRiskResult,
     FactorQuantumTailResult,
+    FactorQuantumVaRSearch,
     PricingResult,
     ProblemCapabilities,
     QuantumRiskResult,
@@ -29,6 +33,7 @@ from qfin.compiler import (
     QuantumVaRSearch,
     RiskErrorBudget,
     StructuredOracleErrorBudget,
+    StructuredRiskErrorBudget,
     compile,
     problem_capabilities,
 )
@@ -57,10 +62,14 @@ from qfin.finance import (
     EmpiricalDistribution,
     EuropeanCall,
     EuropeanPut,
+    FactorCVaR,
     FactorizedLossModel,
+    FactorRiskProblem,
+    FactorRiskSummary,
     FactorScenarios,
     FactorTailProbability,
     FactorTailProbabilitySummary,
+    FactorVaR,
     FixedRateBond,
     GaussianFactorModel,
     GeometricBrownianMotion,
@@ -92,6 +101,7 @@ from qfin.finance import (
     YieldSolveResult,
     aggregate_risk,
     bootstrap_risk_interval,
+    evaluate_factor_risk,
     evaluate_factor_tail_probability,
     evaluate_tail_probability,
     life_sensitivities,
@@ -117,6 +127,7 @@ from qfin.representation import (
     StatePreparationCost,
     StatePreparationStrategyReport,
     StructuredLossOraclePlan,
+    StructuredRiskOracleValidation,
     StructuredTailOracleValidation,
     analyze_block_encoding,
     cdf_objective,
@@ -130,6 +141,7 @@ from qfin.representation import (
     tail_excess_objective,
     tail_probability_objective,
     validate_affine_transform,
+    validate_structured_risk_oracle,
     validate_structured_tail_oracle,
 )
 from qfin.resources import (
@@ -137,13 +149,14 @@ from qfin.resources import (
     OptimizationResourceReport,
     RiskResourceReport,
     StructuredFactorResourceReport,
+    StructuredRiskResourceReport,
     StructuredTargetComparison,
     TranspiledCircuitResources,
 )
 from qfin.system import SystemInfo, system_info
 from qfin.validation import black_scholes_price
 
-__version__ = "0.9.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "ALMFactorAttribution",
@@ -163,6 +176,7 @@ __all__ = [
     "CVaR",
     "CashFlow",
     "CompilationError",
+    "CompiledFactorRiskModel",
     "CompiledFactorTailModel",
     "CompiledOptimizationModel",
     "CompiledPricingModel",
@@ -175,10 +189,17 @@ __all__ = [
     "ErrorBudget",
     "EuropeanCall",
     "EuropeanPut",
+    "FactorCVaR",
+    "FactorQuantumObjectiveEstimate",
+    "FactorQuantumRiskResult",
     "FactorQuantumTailResult",
+    "FactorQuantumVaRSearch",
+    "FactorRiskProblem",
+    "FactorRiskSummary",
     "FactorScenarios",
     "FactorTailProbability",
     "FactorTailProbabilitySummary",
+    "FactorVaR",
     "FactorizedDistributionEncoding",
     "FactorizedLossModel",
     "FactorizedPreparation",
@@ -236,6 +257,9 @@ __all__ = [
     "StructuredFactorResourceReport",
     "StructuredLossOraclePlan",
     "StructuredOracleErrorBudget",
+    "StructuredRiskErrorBudget",
+    "StructuredRiskOracleValidation",
+    "StructuredRiskResourceReport",
     "StructuredTailOracleValidation",
     "StructuredTargetComparison",
     "SystemInfo",
@@ -263,6 +287,7 @@ __all__ = [
     "encode_gaussian_factors",
     "encode_independent_factors",
     "encode_quantiles",
+    "evaluate_factor_risk",
     "evaluate_factor_tail_probability",
     "evaluate_tail_probability",
     "inspect_qiskit_backend",
@@ -276,6 +301,7 @@ __all__ = [
     "tail_excess_objective",
     "tail_probability_objective",
     "validate_affine_transform",
+    "validate_structured_risk_oracle",
     "validate_structured_tail_oracle",
     "yield_from_prices",
 ]

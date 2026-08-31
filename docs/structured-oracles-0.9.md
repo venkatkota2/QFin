@@ -6,6 +6,10 @@ validation, compiler policy, circuit construction, and reporting. QFin-owned
 C++ continues to accelerate classical finance kernels. PennyLane-Lightning
 continues to perform compiled quantum simulation.
 
+This document records the 0.9 milestone boundary. Structured VaR/CVaR was
+subsequently implemented in 1.0; see
+[`structured-factor-risk-1.0.md`](structured-factor-risk-1.0.md).
+
 ## Public model
 
 `SparseExposureObjective` supports:

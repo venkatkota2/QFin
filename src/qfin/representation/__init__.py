@@ -8,10 +8,12 @@ from qfin.representation.arithmetic import (
     IntegerQuadraticTerm,
     ReversibleAffineTransformPlan,
     StructuredLossOraclePlan,
+    StructuredRiskOracleValidation,
     StructuredTailOracleValidation,
     compile_affine_transform,
     compile_structured_loss_oracle,
     validate_affine_transform,
+    validate_structured_risk_oracle,
     validate_structured_tail_oracle,
 )
 from qfin.representation.encoding import DistributionEncoding, encode, encode_quantiles
@@ -54,6 +56,7 @@ __all__ = [
     "StatePreparationCost",
     "StatePreparationStrategyReport",
     "StructuredLossOraclePlan",
+    "StructuredRiskOracleValidation",
     "StructuredTailOracleValidation",
     "analyze_block_encoding",
     "cdf_objective",
@@ -67,5 +70,6 @@ __all__ = [
     "tail_excess_objective",
     "tail_probability_objective",
     "validate_affine_transform",
+    "validate_structured_risk_oracle",
     "validate_structured_tail_oracle",
 ]

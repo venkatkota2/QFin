@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from qfin.resources.device import DeviceResourceReport
 
@@ -103,4 +104,50 @@ class StructuredTargetComparison:
         }
 
 
-__all__ = ["StructuredFactorResourceReport", "StructuredTargetComparison"]
+@dataclass(frozen=True, slots=True)
+class StructuredRiskResourceReport:
+    """Logical workload for factorized VaR/CVaR hybrid MLAE execution."""
+
+    base_oracle: StructuredFactorResourceReport
+    problem_kind: Literal["value_at_risk", "conditional_value_at_risk"]
+    schedule: tuple[int, ...]
+    shots_per_circuit: int
+    threshold_objectives: int
+    excess_bit_objectives: int
+    objective_evaluations: int
+    total_circuit_executions: int
+    total_shots: int
+    oracle_queries: int
+    tail_runtime_qubits: int
+    excess_runtime_qubits: int
+    maximum_runtime_qubits: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "base_oracle": self.base_oracle.to_dict(),
+            "problem_kind": self.problem_kind,
+            "schedule": list(self.schedule),
+            "shots_per_circuit": self.shots_per_circuit,
+            "threshold_objectives": self.threshold_objectives,
+            "excess_bit_objectives": self.excess_bit_objectives,
+            "objective_evaluations": self.objective_evaluations,
+            "total_circuit_executions": self.total_circuit_executions,
+            "total_shots": self.total_shots,
+            "oracle_queries": self.oracle_queries,
+            "tail_runtime_qubits": self.tail_runtime_qubits,
+            "excess_runtime_qubits": self.excess_runtime_qubits,
+            "maximum_runtime_qubits": self.maximum_runtime_qubits,
+            "joint_probability_table_materialized": False,
+            "joint_payoff_table_materialized": False,
+            "caveat": (
+                "Counts include every hybrid threshold and excess-bit objective. "
+                "They are logical simulator-workload estimates, not fault-tolerant costs."
+            ),
+        }
+
+
+__all__ = [
+    "StructuredFactorResourceReport",
+    "StructuredRiskResourceReport",
+    "StructuredTargetComparison",
+]
