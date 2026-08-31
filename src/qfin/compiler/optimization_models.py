@@ -43,7 +43,7 @@ class CompiledOptimizationModel:
 
     def to_pennylane(self) -> None:
         raise CompilationError(
-            "portfolio optimization has no implemented quantum algorithm in QFin 0.8"
+            "portfolio optimization has no implemented quantum algorithm in QFin 0.9"
         )
 
     def explain(self) -> str:

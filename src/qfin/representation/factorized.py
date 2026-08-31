@@ -22,9 +22,9 @@ FactorEncodingMethod = Literal["quantile", "probability"]
 class LinearFactorTransform:
     """Classical interpretation of independent latent quantum registers.
 
-    The transform is metadata used to interpret basis-state values. QFin 0.8
-    does not claim to implement the affine map as reversible quantum
-    arithmetic.
+    The transform remains lightweight financial metadata. QFin 0.9 can compile
+    it into a separate fixed-point reversible arithmetic plan when every
+    marginal uses an affine probability grid.
     """
 
     matrix: FloatArray
@@ -73,7 +73,8 @@ class LinearFactorTransform:
             "outputs": self.outputs,
             "output_names": list(self.output_names),
             "quantum_arithmetic_implemented": False,
-            "interpretation": "classical affine interpretation of latent basis states",
+            "reversible_arithmetic_compiler_available": True,
+            "interpretation": "classical affine metadata until explicitly compiled",
         }
 
 
@@ -217,8 +218,8 @@ class FactorizedDistributionEncoding:
             "transform": None if self.transform is None else self.transform.to_dict(),
             "caveat": (
                 "The loader prepares independent latent registers. Any listed affine "
-                "transform is a classical basis-state interpretation; reversible quantum "
-                "arithmetic for that transform is not implemented."
+                "transform remains metadata in this object; the structured-tail compiler "
+                "can synthesize it for affine probability grids without changing the loader."
             ),
         }
 
@@ -286,10 +287,16 @@ def encode_gaussian_factors(
     model: GaussianFactorModel,
     *,
     qubits_per_factor: int | Sequence[int] = 3,
+    method: FactorEncodingMethod = "quantile",
     target_error: float = 1e-3,
     tail_probability: float = 1e-6,
 ) -> FactorizedDistributionEncoding:
-    """Encode independent Gaussian drivers plus a classical correlation map."""
+    """Encode independent Gaussian drivers plus an affine correlation map.
+
+    Select ``method="probability"`` when the map will be compiled into QFin's
+    reversible fixed-point arithmetic. Quantile grids retain the cheaper
+    Hadamard loader but are not affine in the basis-state integer.
+    """
 
     eigenvalues, eigenvectors = np.linalg.eigh(model.correlation)
     correlation_root = eigenvectors @ np.diag(np.sqrt(np.maximum(eigenvalues, 0.0)))
@@ -305,12 +312,12 @@ def encode_gaussian_factors(
         tuple(Normal(0.0, 1.0) for _ in range(model.factor_count)),
         qubits_per_factor=qubits_per_factor,
         factor_names=latent_names,
-        method="quantile",
+        method=method,
         target_error=target_error,
         tail_probability=tail_probability,
         transform=transform,
         dependence_assumption=(
-            "independent latent Gaussian registers with a classical affine correlation map"
+            "independent latent Gaussian registers with an affine correlation map"
         ),
     )
 

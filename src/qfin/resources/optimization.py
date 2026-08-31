@@ -39,7 +39,7 @@ class OptimizationResourceReport:
             "quantum_algorithm_available": self.quantum_algorithm_available,
             "binary_encoding_qubits": self.binary_encoding_qubits,
             "caveat": (
-                "QFin 0.8 implements a continuous classical baseline only. No QUBO, "
+                "QFin 0.9 implements a continuous classical baseline only. No QUBO, "
                 "variational optimizer, annealer, or quantum advantage is claimed."
             ),
         }

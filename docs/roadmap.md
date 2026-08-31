@@ -86,7 +86,7 @@ multivariate payoff oracle. Block-encoding/QSVT reports expose mathematical
 preconditions while keeping both implementation flags false. Mean-variance
 optimization deliberately selects SciPy because no quantum optimizer exists.
 
-## 0.9 — structured multivariate payoff oracles
+## 0.9 — structured multivariate payoff oracles (complete)
 
 - reversible affine factor transforms with numerical and resource validation;
 - sparse linear, quadratic, and piecewise financial exposure objectives;
@@ -94,6 +94,14 @@ optimization deliberately selects SciPy because no quantum optimizer exists.
   materialization;
 - approximation-error allocation for factor transforms and payoff synthesis;
 - target-transpiled comparisons against the generic empirical loader.
+
+The first compiler accepts affine probability grids and sparse constant,
+linear, quadratic, and univariate positive-part objectives. It uses fixed-point
+out-of-place arithmetic and a reversible comparator. Exact validation streams
+the encoded Cartesian domain without allocating it, so memory is bounded while
+validation time remains exponential. Quantile inverse-CDF grids, arbitrary
+multivariate functions, calibrated non-Gaussian dependence, and compact
+fault-tolerant synthesis remain later research.
 
 ## Later research
 

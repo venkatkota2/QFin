@@ -14,6 +14,14 @@ from qfin.finance.alm import (
 )
 from qfin.finance.curves import YieldCurve
 from qfin.finance.distributions import EmpiricalDistribution, LogNormal, Normal
+from qfin.finance.exposures import (
+    FactorizedLossModel,
+    FactorTailProbability,
+    FactorTailProbabilitySummary,
+    HingeExposure,
+    SparseExposureObjective,
+    evaluate_factor_tail_probability,
+)
 from qfin.finance.factors import FactorScenarios, GaussianFactorModel
 from qfin.finance.fixed_income import (
     BondBatchAnalytics,
@@ -80,9 +88,13 @@ __all__ = [
     "EuropeanOption",
     "EuropeanPut",
     "FactorScenarios",
+    "FactorTailProbability",
+    "FactorTailProbabilitySummary",
+    "FactorizedLossModel",
     "FixedRateBond",
     "GaussianFactorModel",
     "GeometricBrownianMotion",
+    "HingeExposure",
     "LiabilityPortfolio",
     "LifeAssumptionSet",
     "LifePolicy",
@@ -102,6 +114,7 @@ __all__ = [
     "RebalancingStrategy",
     "RiskConfidenceInterval",
     "RiskSummary",
+    "SparseExposureObjective",
     "TailProbability",
     "TailProbabilitySummary",
     "VaR",
@@ -109,6 +122,7 @@ __all__ = [
     "YieldSolveResult",
     "aggregate_risk",
     "bootstrap_risk_interval",
+    "evaluate_factor_tail_probability",
     "evaluate_tail_probability",
     "life_sensitivities",
     "price_bonds",

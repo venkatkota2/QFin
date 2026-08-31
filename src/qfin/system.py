@@ -23,6 +23,8 @@ class SystemInfo(TypedDict):
     noise_simulator: str | None
     openqasm_export: bool
     factorized_state_preparation: bool
+    structured_arithmetic_oracles: bool
+    factorized_tail_risk: bool
     portfolio_optimization: str
     block_encoding_implemented: bool
     qsvt_implemented: bool
@@ -54,6 +56,8 @@ def system_info() -> SystemInfo:
         "noise_simulator": "default.mixed" if pennylane else None,
         "openqasm_export": pennylane,
         "factorized_state_preparation": True,
+        "structured_arithmetic_oracles": True,
+        "factorized_tail_risk": True,
         "portfolio_optimization": "classical-scipy",
         "block_encoding_implemented": False,
         "qsvt_implemented": False,
