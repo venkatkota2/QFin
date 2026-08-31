@@ -11,6 +11,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin.circuits import WalshPayoffApproximation
+from qfin.compiler.factorized_models import (
+    CompiledFactorTailModel,
+    compile_factor_tail_problem,
+)
 from qfin.compiler.models import CompiledPricingModel, ErrorBudget
 from qfin.compiler.optimization_models import CompiledOptimizationModel
 from qfin.compiler.risk_models import CompiledRiskModel, RiskErrorBudget, RiskProblem
@@ -20,6 +24,7 @@ from qfin.finance import (
     EuropeanCall,
     EuropeanOption,
     EuropeanPut,
+    FactorTailProbability,
     GeometricBrownianMotion,
     MeanVarianceProblem,
 )
@@ -48,7 +53,7 @@ RiskObjective = Literal["expectation"] | Callable[[NDArray[np.float64]], NDArray
 
 
 def compile(
-    problem: EuropeanOption | RiskProblem | MeanVarianceProblem,
+    problem: EuropeanOption | RiskProblem | MeanVarianceProblem | FactorTailProbability,
     market: BlackScholes | None = None,
     *,
     target_error: float = 0.01,
@@ -62,13 +67,46 @@ def compile(
     representation_target: RepresentationTarget | None = None,
     max_state_preparation_parameters: int = 32_767,
     max_state_preparation_memory_bytes: int = 256 * 1024 * 1024,
-) -> CompiledPricingModel | CompiledRiskModel | CompiledOptimizationModel:
+    arithmetic_scale: float | None = None,
+    max_arithmetic_qubits: int = 16,
+    max_affine_output_qubits: int = 16,
+    max_factor_validation_points: int = 1_048_576,
+    factor_validation_chunk_size: int = 65_536,
+    max_integer_monomials: int = 4_096,
+    max_factorized_wires: int = 28,
+) -> (
+    CompiledPricingModel
+    | CompiledRiskModel
+    | CompiledOptimizationModel
+    | CompiledFactorTailModel
+):
     """Compile a supported financial problem into the QFin pipeline.
 
     ``target_error`` is stated in price units. The returned object can be
     inspected without PennyLane; PennyLane is imported only when ``run`` or
     ``to_pennylane`` executes a circuit.
     """
+
+    if isinstance(problem, FactorTailProbability):
+        if market is not None:
+            raise CompilationError(
+                "factorized tail compilation does not accept a BlackScholes market"
+            )
+        return compile_factor_tail_problem(
+            problem,
+            target_error=target_error,
+            backend=backend,
+            representation_target=representation_target,
+            max_state_preparation_parameters=max_state_preparation_parameters,
+            max_state_preparation_memory_bytes=max_state_preparation_memory_bytes,
+            arithmetic_scale=arithmetic_scale,
+            max_loss_qubits=max_arithmetic_qubits,
+            max_affine_output_qubits=max_affine_output_qubits,
+            max_validation_points=max_factor_validation_points,
+            validation_chunk_size=factor_validation_chunk_size,
+            max_integer_monomials=max_integer_monomials,
+            max_total_wires=max_factorized_wires,
+        )
 
     if isinstance(problem, MeanVarianceProblem):
         if market is not None:

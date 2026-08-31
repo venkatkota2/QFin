@@ -17,6 +17,10 @@ from qfin.resources.risk import (
     RiskResourceReport,
     estimate_risk_resources,
 )
+from qfin.resources.structured import (
+    StructuredFactorResourceReport,
+    StructuredTargetComparison,
+)
 
 __all__ = [
     "BackendMode",
@@ -25,6 +29,8 @@ __all__ = [
     "ResourceReport",
     "RiskProblemKind",
     "RiskResourceReport",
+    "StructuredFactorResourceReport",
+    "StructuredTargetComparison",
     "TranspiledCircuitResources",
     "estimate_device_resources",
     "estimate_optimization_resources",

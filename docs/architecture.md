@@ -182,6 +182,45 @@ assumption for multi-factor scenario generation. It is deliberately separate
 from the quantum representation so calibrated copulas, heavy-tailed marginals,
 and nonlinear portfolio revaluation can replace it later.
 
+## Structured factor tail-risk compiler
+
+`FactorizedLossModel` combines a factorized encoding with a
+`SparseExposureObjective`. The objective admits a constant, named sparse
+linear and quadratic terms, and explicit univariate positive parts. This
+bounded algebra is deliberate: QFin never hides an arbitrary multivariate
+callable behind an exponential payoff lookup table.
+
+For affine probability grids, the compiler expresses polynomial exposures in
+the latent basis-state integers. Positive-part terms compile the required
+observed factor into an out-of-place fixed-point register, use
+`IntegerComparator` to mark the active branch, and apply a controlled
+`OutPoly` addition to the loss register. A second comparator marks whether the
+loss crosses the requested tail threshold. The state preparation, arithmetic,
+and comparator form the `A` operator used by the existing MLAE Grover iterate.
+
+```mermaid
+flowchart TB
+    F["Factor marginals"] --> P["Factorized preparation"]
+    P --> A["Affine and sparse loss arithmetic"]
+    A --> T["Tail comparator"]
+    T --> M["MLAE through PennyLane-Lightning"]
+    A --> V["Streamed classical parity"]
+```
+
+Register widths are calculated over the complete encoded integer domain so
+unsigned modular arithmetic cannot wrap in a valid basis state. Fixed-point
+precision is increased until the probability mass whose exact and quantized
+tail classifications disagree fits the combined transform/payoff budget, or a
+resource guard stops compilation. The classical reference streams the full
+encoded domain in chunks. This bounds memory but does not change exponential
+validation time.
+
+`backend="auto"` selects PennyLane only when arithmetic convergence, state
+preparation, target width, monomial count, and runtime width all pass. An
+explicit PennyLane request raises on an unmet condition; it never silently
+relabels a classical result as quantum. Target comparison against the generic
+empirical loader is available only behind an explicit small joint-grid guard.
+
 ## Existing option circuit
 
 The v0.3 compressed circuit remains unchanged. For grid labels `x_i`,
@@ -231,15 +270,16 @@ flowchart TB
     F["Financial factors"] --> M["Marginal encodings"]
     M --> P["Factorized preparation"]
     M --> S["Strategy and target costs"]
-    P --> A["Future structured payoff arithmetic"]
+    P --> A["Structured payoff arithmetic"]
     S --> C["Compiler policy"]
+    A --> C
 ```
 
 The circuit loader composes existing marginal Hadamard or probability-tree
 preparations and never allocates a joint angle table. A Gaussian correlation
-map can be attached as classical basis-state interpretation metadata. The map
-is not yet reversible quantum arithmetic, and general payoff evaluation is not
-silently flattened behind this interface.
+map can be attached as basis-state interpretation metadata. The 0.9 compiler
+can synthesize that map on affine probability grids. General payoff evaluation
+is still not silently flattened behind this interface.
 
 Strategy reports compare implemented loaders under wire, parameter, memory,
 and portability limits. The option compiler caps qubit search to target width;

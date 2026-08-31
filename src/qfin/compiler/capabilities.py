@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from qfin import _native
-from qfin.finance import EuropeanCall, EuropeanPut
+from qfin.finance import EuropeanCall, EuropeanPut, FactorTailProbability
 from qfin.finance.alm import (
     ALMFactorScenarioResult,
     ALMModel,
@@ -45,6 +45,22 @@ class ProblemCapabilities:
 def problem_capabilities(problem: object) -> ProblemCapabilities:
     """Report implemented boundaries without implying unsupported quantum paths."""
 
+    if isinstance(problem, FactorTailProbability):
+        return ProblemCapabilities(
+            category="structured_tail_risk",
+            financial_model_available=True,
+            classical_implementation=(
+                "streamed factor-grid loss evaluation without joint-table materialization"
+            ),
+            native_implementation_available=False,
+            quantum_representation_available=True,
+            quantum_algorithm_available=True,
+            note=(
+                "QFin compiles affine probability grids and sparse linear, quadratic, "
+                "or positive-part exposures into experimental reversible fixed-point "
+                "PennyLane arithmetic. Lightning simulates the resulting circuit."
+            ),
+        )
     if isinstance(problem, MeanVarianceProblem):
         return ProblemCapabilities(
             category="portfolio_optimization",
@@ -57,7 +73,7 @@ def problem_capabilities(problem: object) -> ProblemCapabilities:
             quantum_representation_available=False,
             quantum_algorithm_available=False,
             note=(
-                "QFin 0.8 selects the validated classical baseline. Covariance block-encoding "
+                "QFin 0.9 selects the validated classical baseline. Covariance block-encoding "
                 "and QSVT reports are feasibility metadata, not implemented algorithms."
             ),
         )

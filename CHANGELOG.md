@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-08-31
+
+- Added sparse constant, linear, quadratic, and positive-part financial
+  exposure objects over factorized encodings.
+- Added out-of-place reversible fixed-point affine transforms and sparse loss
+  arithmetic using PennyLane `OutPoly` and `IntegerComparator`, with unsigned
+  register sizing that prevents modular wrap on the validated domain.
+- Added streamed factorized loss and tail-probability references that bound
+  working memory and never construct a joint probability or payoff table.
+- Added `FactorTailProbability` compiler support, explicit transform/payoff/
+  estimation probability-error allocations, automatic fixed-point precision
+  selection, target and wire guards, and truthful classical fallback policy.
+- Added a PennyLane MLAE runtime for factorized preparation, arithmetic loss
+  evaluation, comparator marking, and Grover amplification. PennyLane-Lightning
+  remains the quantum simulator; QFin does not implement simulation kernels.
+- Added logical arithmetic reports and guarded target-transpiled comparisons
+  against the generic empirical loader, including decomposition depth, routed
+  gates, and SWAPs.
+- Added basis-state circuit parity, streamed reference, resource-guard,
+  compiler-policy, backend, example, and benchmark coverage.
+- Preserved explicit limitations: affine probability grids only, bounded
+  validation time, no arbitrary payoff callable, and no quantum-advantage,
+  hardware-runtime, or fault-tolerant resource claim.
+
 ## 0.8.0 — 2026-08-30
 
 - Added factorized marginal encodings that store and prepare independent

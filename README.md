@@ -8,12 +8,12 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `0.8.0` adds factorized financial representations, explicit
-state-preparation construction costs, target-aware compiler policy,
-block-encoding/QSVT feasibility metadata, and continuous mean-variance
-portfolio problems with strong classical solvers. The 0.7 device-realism and
-0.6 ALM/life foundations remain intact. QFin-owned C++20 finance kernels and
-the PennyLane-Lightning simulator remain separate components.
+Version `0.9.0` adds reversible fixed-point affine transforms, sparse linear,
+quadratic, and piecewise financial loss arithmetic, and tail-risk compilation
+directly from factorized registers without a joint probability or payoff
+table. The 0.8 scalable-representation, 0.7 device-realism, and 0.6 ALM/life
+foundations remain intact. QFin-owned C++20 finance kernels and the
+PennyLane-Lightning simulator remain separate components.
 
 ## Architecture
 
@@ -81,6 +81,8 @@ print(qfin.system_info())
 #       'lightning.qubit', 'default.qubit', 'default.mixed'
 #   ),
 #   'factorized_state_preparation': True,
+#   'structured_arithmetic_oracles': True,
+#   'factorized_tail_risk': True,
 #   'portfolio_optimization': 'classical-scipy',
 #   'block_encoding_implemented': False,
 #   'qsvt_implemented': False,
@@ -274,6 +276,52 @@ losses = scenarios.linear_loss_distribution([20_000, -4_000, 35_000])
 This Gaussian linear-factor model is a transparent foundation, not an
 assumption that real financial or insurance tails are Gaussian.
 
+## Structured factor tail risk
+
+Affine factor models can now feed a sparse financial loss oracle without
+flattening the joint factor grid:
+
+```python
+factor_model = qfin.GaussianFactorModel(
+    ("rates", "equity"),
+    correlation=np.array([[1.0, -0.25], [-0.25, 1.0]]),
+    means=np.array([0.02, 0.05]),
+    standard_deviations=np.array([0.015, 0.12]),
+)
+encoding = qfin.encode_gaussian_factors(
+    factor_model,
+    qubits_per_factor=2,
+    method="probability",
+)
+loss = qfin.SparseExposureObjective(
+    linear={"rates": 100.0, "equity": 1.5},
+    quadratic={("rates", "equity"): 10.0},
+    piecewise=(qfin.HingeExposure("equity", 0.05, 0.75),),
+)
+risk = qfin.FactorTailProbability(
+    qfin.FactorizedLossModel(encoding, loss),
+    threshold=2.0,
+)
+compiled = qfin.compile(risk, target_error=0.05, backend="auto")
+
+print(compiled.run().probability)
+print(compiled.resources().to_dict())
+```
+
+QFin pulls constant, linear, and quadratic exposures back to the latent
+integer registers. Positive-part terms use an out-of-place fixed-point affine
+register, reversible comparison, and controlled addition. Exact encoded-grid
+validation streams bounded chunks and never constructs the joint probability
+or payoff table. The compiler separately allocates probability error to factor
+transform quantization, payoff synthesis, and amplitude estimation.
+
+The first structured compiler requires affine grids, so use
+`method="probability"`; inverse-CDF quantile grids are rejected with an
+actionable error. Arbitrary Python payoff callables are not silently converted
+to exponential lookup tables. Arithmetic can be deeper than the generic
+loader on tiny problems, and no quantum-advantage or hardware-runtime claim is
+made. See [docs/structured-oracles-0.9.md](docs/structured-oracles-0.9.md).
+
 ## European option quantum pipeline
 
 ```python
@@ -366,11 +414,12 @@ print(strategy.require_selected().to_dict())
 `FactorizedPreparation` executes each marginal loader on its own register. A
 small Cartesian product can be materialized behind an explicit guard for
 validation, but the production loader does not require it. Gaussian
-correlation is currently a classical affine interpretation of independent
-latent registers; QFin does not yet synthesize that transform as reversible
-quantum arithmetic.
+correlation remains lightweight affine metadata on the encoding. The 0.9
+structured-tail compiler can synthesize it as reversible fixed-point
+arithmetic when the marginals use affine probability grids; ordinary loading
+does not allocate those work registers.
 
-Portfolio optimization is intentionally classical in 0.8:
+Portfolio optimization remains intentionally classical in 0.9:
 
 ```python
 problem = qfin.MeanVarianceProblem(
@@ -455,9 +504,19 @@ python examples/scalable_representation_benchmark.py --repeats 5 \
   --output docs/scalable-representation-performance.md
 ```
 
+The [0.9 structured-oracle report](docs/structured-oracle-performance.md)
+measures streamed construction, fixed-point numerical differences, guarded
+generic comparisons after portable decomposition/routing, and
+`default.qubit` versus `lightning.qubit` execution:
+
+```bash
+python examples/structured_oracle_benchmark.py --full --repeats 3 \
+  --output docs/structured-oracle-performance.md
+```
+
 ## Honest scope
 
-QFin 0.8 is a research prototype. Its economic scenarios are foundations, not
+QFin 0.9 is a research prototype. Its economic scenarios are foundations, not
 calibrated ESG models; aggregate equity and spread exposures are deliberately
 simple; life projection is annual and does not include production product
 rules, dynamic policyholder behavior, tax, reserves, guarantees, or governance
@@ -467,9 +526,10 @@ noise, provider execution, efficient QRAM, or an end-to-end fault-tolerant risk
 algorithm. The VaR search is hybrid and the CVaR interval is conditional on its
 selected threshold. Portable target counts stop before pulse-level scheduling,
 calibration, and error correction. Factorized loading does not remove the cost
-of a general multivariate payoff oracle. Affine factor arithmetic,
-block-encoding, QSVT, QUBO construction, and quantum portfolio optimization are
-not implemented.
+of a general multivariate payoff oracle. Structured arithmetic is limited to
+affine grids and sparse quadratic/positive-part objectives; it is not a general
+payoff compiler. Block-encoding, QSVT, QUBO construction, and quantum portfolio
+optimization are not implemented.
 
 ## Development
 
@@ -486,11 +546,14 @@ python examples/device_realism.py
 python examples/device_realism_benchmark.py --repeats 1
 python examples/scalable_representation.py
 python examples/scalable_representation_benchmark.py --repeats 1
+python examples/structured_factor_tail.py
+python examples/structured_oracle_benchmark.py --repeats 1
 ```
 
 More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/circuit-design.md](docs/circuit-design.md),
 [docs/device-realism-0.7.md](docs/device-realism-0.7.md),
 [docs/scalable-representation-0.8.md](docs/scalable-representation-0.8.md),
+[docs/structured-oracles-0.9.md](docs/structured-oracles-0.9.md),
 [docs/quantum-risk.md](docs/quantum-risk.md), and
 [docs/roadmap.md](docs/roadmap.md).

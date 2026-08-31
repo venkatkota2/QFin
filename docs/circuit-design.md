@@ -145,3 +145,49 @@ claimed in v0.8.
 State-preparation reports retain rejected generic and dense candidates so the
 exponential costs remain visible. Only implemented portable candidates within
 the requested target, parameter, and memory limits can be compiler-selected.
+
+## 8. Structured multivariate loss arithmetic (v0.9)
+
+Probability-grid marginal labels are affine in their unsigned basis integer:
+
+```text
+z_j(i_j) = lower_j + step_j i_j.
+```
+
+An optional observed-factor transform `x = b + Mz` is therefore affine in the
+register integers. QFin rounds its base and coefficients to a selected
+fixed-point scale, adds a non-negative shift, and evaluates each requested
+output with PennyLane `OutPoly` into a separate unsigned register. Width is
+chosen from the complete integer-domain minimum and maximum so no valid input
+wraps modulo the output register.
+
+Constant, linear, and quadratic exposures are algebraically pulled back to the
+latent integer registers and evaluated into one loss register. A positive-part
+term
+
+```text
+s max(x_j - k, 0)
+```
+
+uses the affine register for `x_j`, `IntegerComparator` for the branch, and a
+controlled `OutPoly` addition. The comparator is uncomputed after the addition.
+Finally, a loss-threshold comparator flips the objective qubit. The resulting
+state-preparation-plus-arithmetic operator replaces the generic empirical
+payoff multiplexer inside the same MLAE iterate.
+
+QFin validates two numerical layers:
+
+1. fixed-point affine codes against the real affine map; and
+2. exact losses/tail classifications against the compiled arithmetic codes.
+
+The total probability target is allocated to transform quantization, payoff
+synthesis, and MLAE estimation. Classification disagreement is measured by
+streaming all encoded points in bounded chunks. This is a numerical oracle for
+small research circuits, not an asymptotically efficient certification method.
+
+Portable resource comparisons recursively decompose both the arithmetic and a
+guarded generic reference to `RX/RY/RZ/CNOT`, then apply the same topology
+routing logic. Arithmetic may be substantially deeper on tiny grids even when
+it stores fewer classical values at larger factor counts. No gate-count,
+hardware-runtime, fault-tolerant, or quantum-advantage claim follows from
+avoiding the joint lookup table.
