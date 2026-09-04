@@ -158,7 +158,7 @@ def test_auto_risk_backend_falls_back_when_target_cannot_fit_loader() -> None:
 def test_system_info_reports_milestone_capability_boundaries() -> None:
     info = qfin.system_info()
 
-    assert info["qfin_version"] == "1.0.0"
+    assert info["qfin_version"] == "1.1.0"
     assert info["factorized_state_preparation"] is True
     assert info["portfolio_optimization"] == "classical-scipy"
     assert info["block_encoding_implemented"] is False

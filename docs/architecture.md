@@ -72,22 +72,28 @@ the larger pricing, scenario, or policy-projection kernels.
 
 ## Curves and fixed income
 
-`YieldCurve` stores strictly increasing year fractions and continuously
-compounded zero rates. The first implementation uses linear interpolation and
-flat extrapolation. Curve objects are reused during portfolio/scenario calls;
-the native kernel never reconstructs a curve for each instrument.
+`YieldCurve` stores strictly increasing year fractions and canonical
+continuously compounded zero rates while retaining source quote metadata. It
+supports validated zero, discount-factor, forward, and market-node inputs;
+four interpolation methods; and explicit extrapolation. Curve objects are
+reused during portfolio/scenario calls; the native kernel never reconstructs a
+curve for each instrument.
 
-`FixedRateBond` emits regular coupons plus a possible final stub and principal.
+`FixedRateBond` emits floating-time or dated regular/stub coupons and principal
+under explicit schedule, business-day, day-count, and settlement conventions.
 Curve valuation computes
 
 ```text
 PV = sum_i CF_i exp(-r(t_i) t_i).
 ```
 
-The first and second parallel-shift derivatives produce duration, convexity,
-and DV01. Yield-to-maturity functions use nominal compounding at each bond's
-coupon frequency and a monotone bisection bounded above the singular lower
-yield. Convergence is reported per instrument.
+Parallel-curve, effective, spread, key-rate, DV01/PV01, CS01, and effective
+convexity outputs are named separately from YTM Macaulay/modified duration and
+YTM convexity. Yield-to-maturity functions use nominal compounding at each
+bond's coupon frequency and a monotone bisection bounded above the singular
+lower yield. Convergence is reported per instrument. An instrument bootstrap
+solves positive discount nodes and verifies every residual before returning a
+successful report; see `fixed-income-1.1.md` for the full methodology.
 
 ## ALM and economic scenarios
 

@@ -32,9 +32,9 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - name: Install optional Qiskit export dependency
+      - name: Install optional Qiskit and independent-validation dependencies
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python -m pip install -e ".[qiskit]"
+        run: python -m pip install -e ".[qiskit,validation]"
       - name: Verify compiled backends
         run: >-
           python -c "import qfin; info=qfin.system_info();
@@ -65,6 +65,9 @@ jobs:
       - name: Run structured factor-risk 1.0 smoke example
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: python examples/structured_factor_risk.py
+      - name: Run financial-accuracy 1.1 smoke example
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python examples/fixed_income_accuracy.py
       - run: python -m build
 
   package-smoke:
@@ -101,7 +104,7 @@ jobs:
           optimization=qfin.compile(qfin.MeanVarianceProblem([0.04, 0.08],
           [[0.02, 0.0], [0.0, 0.05]]));
           assert qfin.system_info()['native_extension'];
-          assert qfin.__version__ == '1.0.0';
+          assert qfin.__version__ == '1.1.0';
           assert result.dirty_prices.shape == (1,);
           assert risk.run().probability == 0.5;
           assert strategy.strategy == 'factorized_marginal_loader';

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-09-04
+
 - Added a standard-library-backed financial date layer with valuation dates,
   explicit holiday calendars, five business-day conventions, month-end-aware
   schedule generation, and explicit first/final stub boundaries.
@@ -17,6 +19,20 @@
 - Preserved canonical continuous-rate buffers for the existing C++ kernels and
   made unsupported interpolation/native combinations fail or fall back to the
   NumPy accuracy oracle instead of silently changing curve semantics.
+- Upgraded `FixedRateBond` with issue, maturity, settlement, adjusted payment,
+  end-of-month, first/next-to-last stub, convention accrual, clean/dirty price,
+  spread price, yield round-trip, and par-yield semantics while preserving the
+  floating-time API.
+- Added curve bootstrapping for deposits, zero-coupon instruments, fixed-rate
+  bond clean prices, and simple single-curve swaps, with solved nodes, discount
+  factors, zero/forward rates, model quotes, and strict residual diagnostics.
+- Distinguished YTM Macaulay/modified duration and convexity from parallel-zero,
+  effective, spread, key-rate, DV01/PV01, CS01, and effective-convexity measures.
+- Added analytical and immutable golden bond cases, a scalar reference, explicit
+  absolute/relative/financial-unit reports, and optional QuantLib schedule,
+  price, accrual, yield, duration, convexity, and DV01 validation.
+- Added 1.1 examples and methodology documentation, cross-platform regression
+  coverage, a Linux independent-validation job, and updated release metadata.
 
 ## 1.0.0 — 2026-08-31
 

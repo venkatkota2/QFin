@@ -1,8 +1,8 @@
 # Financial conventions foundation
 
-This document defines the convention layer introduced for QFin 1.1. It is the
-first financial-accuracy slice; it does not claim that dated bond settlement,
-curve bootstrapping, or independent QuantLib validation are complete.
+This document defines the convention layer introduced for QFin 1.1. It is used
+by dated bond valuation, instrument curve bootstrapping, explicit fixed-income
+risk measures, and the independent validation suite.
 
 ## Dates and calendars
 
@@ -60,9 +60,12 @@ Negative rates within those mathematical domains are supported.
 - adjacent-interval forward-rate quotes; or
 - homogeneous direct `CurveMarketQuote` zero-rate/discount-factor nodes.
 
-Direct market nodes are not bootstrapped instruments. A deposit, bond, or swap
-bootstrap must solve nodes and report residual repricing errors; that is a
-separate 1.1 deliverable.
+Direct market nodes are not bootstrapped instruments. `bootstrap_curve` accepts
+deposits, zero-coupon instruments, fixed-rate bond clean prices, and simple
+single-curve par swaps. Its report includes input/model quotes, solved discount
+factors, zero rates, adjacent forwards, and residuals. Calibration raises
+`CurveBootstrapError` rather than claiming success when an instrument cannot
+be repriced inside the requested tolerance.
 
 QFin stores canonical continuously compounded zero-rate nodes because existing
 scenario and C++ kernels define additive rate shocks in that convention. The
@@ -91,11 +94,14 @@ discount-factor intervals, negative-forward intervals, and warnings. Negative
 rates are supported, so a warning is diagnostic information rather than an
 automatic calibration failure.
 
-## Limitations and next work
+## Limitations
 
 - Holiday data must be supplied by the caller.
 - `ACT/ACT` currently means ISDA; ICMA and AFB variants are not implemented.
-- Market-node input is not an instrument bootstrap.
-- Existing `FixedRateBond` remains a floating-time instrument until the dated
-  bond work is completed.
+- The initial bootstrap is a single-curve framework; it does not yet model OIS
+  discounting, projection-curve separation, credit, or inflation curves.
+- Ex-coupon periods are not yet modelled.
 - Native kernels do not yet implement discount-factor or monotone interpolation.
+
+See [fixed-income-1.1.md](fixed-income-1.1.md) for bond, bootstrap, risk, and
+validation methodology.
