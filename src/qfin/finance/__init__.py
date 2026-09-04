@@ -12,7 +12,23 @@ from qfin.finance.alm import (
     LiabilityPortfolio,
     RebalancingStrategy,
 )
-from qfin.finance.curves import YieldCurve
+from qfin.finance.curves import (
+    CurveDiagnostics,
+    CurveExtrapolation,
+    CurveInterpolation,
+    CurveMarketQuote,
+    YieldCurve,
+)
+from qfin.finance.dates import (
+    BusinessDayConvention,
+    Calendar,
+    Schedule,
+    ValuationDate,
+    add_months,
+    as_date,
+    is_month_end,
+)
+from qfin.finance.daycount import DayCountConvention, day_count, year_fraction
 from qfin.finance.distributions import EmpiricalDistribution, LogNormal, Normal
 from qfin.finance.exposures import (
     FactorCVaR,
@@ -60,6 +76,15 @@ from qfin.finance.optimization import (
     PortfolioOptimizationResult,
 )
 from qfin.finance.processes import GeometricBrownianMotion
+from qfin.finance.rates import (
+    Compounding,
+    RateQuote,
+    compounding_frequency,
+    continuous_rate,
+    convert_rate,
+    discount_factor,
+    rate_from_discount_factor,
+)
 from qfin.finance.risk import (
     CVaR,
     LossDistribution,
@@ -85,8 +110,16 @@ __all__ = [
     "AssetPortfolio",
     "BlackScholes",
     "BondBatchAnalytics",
+    "BusinessDayConvention",
     "CVaR",
+    "Calendar",
     "CashFlow",
+    "Compounding",
+    "CurveDiagnostics",
+    "CurveExtrapolation",
+    "CurveInterpolation",
+    "CurveMarketQuote",
+    "DayCountConvention",
     "EconomicScenarioSet",
     "EmpiricalDistribution",
     "EuropeanCall",
@@ -119,25 +152,38 @@ __all__ = [
     "PolicyModelPointSet",
     "PortfolioOptimizationResult",
     "ProjectionAssumptions",
+    "RateQuote",
     "RateScenarioSet",
     "RebalancingStrategy",
     "RiskConfidenceInterval",
     "RiskSummary",
+    "Schedule",
     "SparseExposureObjective",
     "TailProbability",
     "TailProbabilitySummary",
     "VaR",
+    "ValuationDate",
     "YieldCurve",
     "YieldSolveResult",
+    "add_months",
     "aggregate_risk",
+    "as_date",
     "bootstrap_risk_interval",
+    "compounding_frequency",
+    "continuous_rate",
+    "convert_rate",
+    "day_count",
+    "discount_factor",
     "evaluate_factor_risk",
     "evaluate_factor_tail_probability",
     "evaluate_tail_probability",
+    "is_month_end",
     "life_sensitivities",
     "price_bonds",
     "price_bonds_from_yield",
     "project_liabilities",
     "project_liability_scenarios",
+    "rate_from_discount_factor",
+    "year_fraction",
     "yield_from_prices",
 ]

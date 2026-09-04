@@ -93,6 +93,45 @@ print(qfin.system_info())
 
 ## Fixed income
 
+Financial conventions are explicit and use Python's standard `datetime.date`
+underneath:
+
+```python
+import qfin
+
+calendar = qfin.Calendar(
+    "portfolio calendar",
+    holidays=frozenset({qfin.as_date("2027-01-01")}),
+)
+schedule = qfin.Schedule(
+    "2026-01-31",
+    "2031-01-31",
+    frequency=2,
+    calendar=calendar,
+    business_day_convention="modified_following",
+    end_of_month=True,
+)
+accrual = qfin.year_fraction(
+    schedule.dates[0], schedule.dates[1], "30/360"
+)
+
+curve = qfin.YieldCurve(
+    times=[0, 1, 5, 10, 30],
+    zero_rates=[0.02, 0.025, 0.03, 0.035, 0.04],
+    compounding="semiannual",
+    interpolation="linear_zero",
+    extrapolation="flat_zero",
+    valuation_date="2026-01-31",
+    day_count="ACT/365 Fixed",
+)
+print(curve.discount_date("2031-01-31"))
+print(curve.explain())
+```
+
+See [docs/financial-conventions-1.1.md](docs/financial-conventions-1.1.md)
+for exact convention definitions, interpolation behavior, diagnostics, and
+current limitations.
+
 ```python
 import qfin
 
@@ -115,8 +154,10 @@ print(result.dv01)
 The fixed-income layer supports fixed and zero-coupon cash flows, final stubs,
 clean/dirty prices, accrued interest, curve pricing, price from yield, yield
 from price, Macaulay/modified duration, convexity, DV01, and batch execution.
-Rates are continuously compounded in `YieldCurve`; yield-to-maturity functions
-use the bond's nominal coupon frequency.
+`YieldCurve` stores canonical continuously compounded rates for native-kernel
+compatibility while retaining the input quote convention as metadata and
+providing explicit quoted-rate conversion. Yield-to-maturity functions use the
+bond's nominal coupon frequency.
 
 ## Asset-liability modelling
 

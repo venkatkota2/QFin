@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Added a standard-library-backed financial date layer with valuation dates,
+  explicit holiday calendars, five business-day conventions, month-end-aware
+  schedule generation, and explicit first/final stub boundaries.
+- Added ACT/365 Fixed, ACT/360, ACT/ACT ISDA, 30/360 US/NASD, and 30E/360
+  day-count implementations with analytical leap-year and month-end tests.
+- Added continuous, annual, semiannual, quarterly, monthly, and simple rate
+  quotes plus explicit, discount-factor-preserving conversion utilities.
+- Generalized `YieldCurve` to accept zero rates, discount factors, adjacent
+  forward rates, and direct market-node quotes; added linear-zero,
+  linear-discount, log-linear-discount, and monotone-zero interpolation,
+  explicit extrapolation, dated discounting, diagnostics, and `explain()`
+  metadata.
+- Preserved canonical continuous-rate buffers for the existing C++ kernels and
+  made unsupported interpolation/native combinations fail or fall back to the
+  NumPy accuracy oracle instead of silently changing curve semantics.
+
 ## 1.0.0 — 2026-08-31
 
 - Added `FactorVaR` and `FactorCVaR` public problems over structured

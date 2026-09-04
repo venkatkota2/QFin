@@ -10,6 +10,7 @@ from numpy.typing import NDArray
 
 from qfin import _native
 from qfin.finance.alm import ALMModel, ALMPathResult, RebalancingStrategy
+from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import Engine, flatten_bond_cashflows
 from qfin.finance.scenarios import EconomicScenarioSet
 
@@ -48,8 +49,7 @@ def _scenario_present_value(
     cashflow_times: FloatArray,
     cashflow_amounts: FloatArray,
     valuation_time: float,
-    curve_times: FloatArray,
-    curve_rates: FloatArray,
+    curve: YieldCurve,
     rate_shocks: FloatArray,
     spread_shocks: FloatArray,
     *,
@@ -60,14 +60,8 @@ def _scenario_present_value(
         return np.zeros(rate_shocks.shape[0], dtype=np.float64)
     tenors = np.ascontiguousarray(cashflow_times[remaining] - valuation_time)
     amounts = cashflow_amounts[remaining]
-    base_rates = np.interp(
-        tenors,
-        curve_times,
-        curve_rates,
-        left=curve_rates[0],
-        right=curve_rates[-1],
-    )
-    shocks = _interpolate_paths(tenors, curve_times, rate_shocks)
+    base_rates = np.asarray(curve.zero_rate(tenors), dtype=np.float64)
+    shocks = _interpolate_paths(tenors, curve.times, rate_shocks)
     scaled_amounts: FloatArray
     if amount_scales is None:
         scaled_amounts = np.broadcast_to(amounts, shocks.shape)
@@ -108,7 +102,6 @@ def _numpy_path_chunk(
     output_width = period_count + 1
     dt = scenarios.period_length
     curve_times = model.curve.times
-    curve_rates = model.curve.zero_rates
     rate_paths = scenarios.rate_shocks[start:stop]
     spread_paths = scenarios.credit_spread_shocks[start:stop]
     equity_returns = scenarios.equity_returns[start:stop]
@@ -124,8 +117,7 @@ def _numpy_path_chunk(
             asset_times,
             asset_amounts,
             0.0,
-            curve_times,
-            curve_rates,
+            model.curve,
             zero_shocks[:1],
             zero_spreads[:1],
         )[0]
@@ -135,8 +127,7 @@ def _numpy_path_chunk(
             liability_times,
             liability_amounts,
             0.0,
-            curve_times,
-            curve_rates,
+            model.curve,
             zero_shocks[:1],
             zero_spreads[:1],
         )[0]
@@ -181,8 +172,7 @@ def _numpy_path_chunk(
             asset_times,
             asset_amounts,
             period_start,
-            curve_times,
-            curve_rates,
+            model.curve,
             start_rate_shocks,
             start_spreads,
         )
@@ -190,8 +180,7 @@ def _numpy_path_chunk(
             asset_times,
             asset_amounts,
             period_end,
-            curve_times,
-            curve_rates,
+            model.curve,
             end_rate_shocks,
             end_spreads,
         )
@@ -279,8 +268,7 @@ def _numpy_path_chunk(
             liability_times,
             liability_amounts,
             period_end,
-            curve_times,
-            curve_rates,
+            model.curve,
             end_rate_shocks,
             zero_spreads,
             amount_scales=amount_scales,
@@ -334,6 +322,10 @@ def project_alm_paths(
     liability_times, liability_amounts = model.liabilities.buffers()
     selected: Literal["numpy", "native"]
     if engine == "native":
+        if not model.curve.native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         selected = "native"
     else:

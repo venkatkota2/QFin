@@ -337,12 +337,20 @@ def _liability_metrics(
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     selected: Literal["numpy", "native"]
     if engine == "native":
+        if not curve.native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         selected = "native"
     elif engine == "numpy":
         selected = "numpy"
     else:
-        selected = "native" if _native.available() and times.size >= 4_096 else "numpy"
+        selected = (
+            "native"
+            if curve.native_compatible and _native.available() and times.size >= 4_096
+            else "numpy"
+        )
     if selected == "native":
         raw = cast(
             dict[str, object],
