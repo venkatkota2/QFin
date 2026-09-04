@@ -564,12 +564,20 @@ def project_liabilities(
     workload = model_points.model_point_count * maximum_term
     selected: Literal["numpy", "native"]
     if engine == "native":
+        if not assumptions.curve.native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         selected = "native"
     elif engine == "numpy":
         selected = "numpy"
     else:
-        selected = "native" if _native.available() and workload > 0 else "numpy"
+        selected = (
+            "native"
+            if assumptions.curve.native_compatible and _native.available() and workload > 0
+            else "numpy"
+        )
     if selected == "native":
         buffers = _policy_buffers(model_points)
         raw = cast(

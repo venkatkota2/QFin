@@ -277,12 +277,20 @@ def project_liability_scenarios(
     workload = scenarios.scenario_count * model_points.model_point_count * maximum_term
     selected: Literal["numpy", "native"]
     if engine == "native":
+        if not assumptions.curve.native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         selected = "native"
     elif engine == "numpy":
         selected = "numpy"
     else:
-        selected = "native" if _native.available() and workload > 0 else "numpy"
+        selected = (
+            "native"
+            if assumptions.curve.native_compatible and _native.available() and workload > 0
+            else "numpy"
+        )
     output = {
         name: np.zeros(scenarios.scenario_count, dtype=np.float64)
         for name in (
@@ -406,6 +414,10 @@ def life_sensitivities(
     shifted_curve = YieldCurve(
         assumptions.curve.times,
         assumptions.curve.zero_rates + rate_absolute_bump,
+        assumptions.curve.interpolation,
+        assumptions.curve.extrapolation,
+        valuation_date=assumptions.curve.valuation_date,
+        day_count=assumptions.curve.day_count,
     )
     rates = project_liabilities(
         model_points,

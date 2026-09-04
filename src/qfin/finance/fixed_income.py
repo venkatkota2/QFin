@@ -161,15 +161,24 @@ def flatten_bond_cashflows(
     )
 
 
-def _resolve_engine(engine: Engine, workload: int) -> Literal["numpy", "native"]:
+def _resolve_engine(
+    engine: Engine,
+    workload: int,
+    *,
+    native_compatible: bool = True,
+) -> Literal["numpy", "native"]:
     if engine not in ("auto", "numpy", "native"):
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     if engine == "native":
+        if not native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         return "native"
     if engine == "numpy":
         return "numpy"
-    if _native.available() and workload >= _AUTO_NATIVE_CASHFLOW_THRESHOLD:
+    if native_compatible and _native.available() and workload >= _AUTO_NATIVE_CASHFLOW_THRESHOLD:
         return "native"
     return "numpy"
 
@@ -187,15 +196,20 @@ def _numpy_curve_metrics(
     curve: YieldCurve,
     shift: float,
 ) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
-    rates = np.asarray(curve.zero_rate(times), dtype=np.float64) + shift
-    present_values = amounts * np.exp(-rates * times)
+    base_discounts = np.asarray(curve.discount(times), dtype=np.float64)
+    shifted_discounts = base_discounts * np.exp(-shift * times)
+    present_values = amounts * shifted_discounts
     prices = _segment_sum(present_values, offsets)
     first = _segment_sum(times * present_values, offsets)
     second = _segment_sum(times * times * present_values, offsets)
     durations = np.divide(first, prices, out=np.zeros_like(prices), where=prices != 0)
     convexities = np.divide(second, prices, out=np.zeros_like(prices), where=prices != 0)
-    down = _segment_sum(amounts * np.exp(-(rates - 1.0e-4) * times), offsets)
-    up = _segment_sum(amounts * np.exp(-(rates + 1.0e-4) * times), offsets)
+    down = _segment_sum(
+        amounts * shifted_discounts * np.exp(1.0e-4 * times), offsets
+    )
+    up = _segment_sum(
+        amounts * shifted_discounts * np.exp(-1.0e-4 * times), offsets
+    )
     return prices, durations, convexities, 0.5 * (down - up)
 
 
@@ -213,7 +227,11 @@ def price_bonds(
         raise ValueError("parallel_shift must be finite")
     items = _as_bond_tuple(bonds)
     times, amounts, offsets = flatten_bond_cashflows(items, settlement=settlement)
-    selected = _resolve_engine(engine, times.size)
+    selected = _resolve_engine(
+        engine,
+        times.size,
+        native_compatible=curve.native_compatible,
+    )
     if selected == "native":
         raw = cast(
             dict[str, object],

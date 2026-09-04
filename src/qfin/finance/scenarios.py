@@ -454,12 +454,20 @@ def scenario_portfolio_values(
     workload = times.size * scenarios.shocks.shape[0]
     selected: Literal["numpy", "native"]
     if engine == "native":
+        if not curve.native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         selected = "native"
     elif engine == "numpy":
         selected = "numpy"
     else:
-        selected = "native" if _native.available() and workload >= 50_000 else "numpy"
+        selected = (
+            "native"
+            if curve.native_compatible and _native.available() and workload >= 50_000
+            else "numpy"
+        )
 
     values = np.empty(scenarios.shocks.shape[0], dtype=np.float64)
     for start in range(0, scenarios.shocks.shape[0], normalized_chunk_size):
@@ -530,12 +538,20 @@ def scenario_indexed_cashflow_values(
     workload = times.size * scenarios.scenario_count
     selected: Literal["numpy", "native"]
     if engine == "native":
+        if not curve.native_compatible:
+            raise ValueError(
+                "native engine requires linear-zero interpolation with flat-zero extrapolation"
+            )
         _native.require()
         selected = "native"
     elif engine == "numpy":
         selected = "numpy"
     else:
-        selected = "native" if _native.available() and workload >= 50_000 else "numpy"
+        selected = (
+            "native"
+            if curve.native_compatible and _native.available() and workload >= 50_000
+            else "numpy"
+        )
 
     values = np.empty(scenarios.scenario_count, dtype=np.float64)
     for start in range(0, scenarios.scenario_count, normalized_chunk_size):

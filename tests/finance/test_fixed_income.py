@@ -20,6 +20,17 @@ def test_zero_coupon_curve_price_has_analytical_value(flat_curve: qfin.YieldCurv
     assert result.dv01[0] > 0
 
 
+def test_parallel_shift_dv01_is_measured_around_shifted_curve(
+    flat_curve: qfin.YieldCurve,
+) -> None:
+    bond = qfin.FixedRateBond(maturity=5.0, coupon_rate=0.0, face_value=100.0)
+    result = qfin.price_bonds(
+        bond, flat_curve, parallel_shift=0.02, engine="numpy"
+    )
+    expected = 0.5 * 100 * exp(-0.06 * 5) * (exp(0.0001 * 5) - exp(-0.0001 * 5))
+    assert result.dv01[0] == pytest.approx(expected)
+
+
 def test_par_bond_price_and_yield_round_trip() -> None:
     bond = qfin.FixedRateBond(maturity=10.0, coupon_rate=0.05, frequency=2)
     priced = qfin.price_bonds_from_yield(bond, 0.05, engine="numpy")

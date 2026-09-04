@@ -119,6 +119,24 @@ intervals and CVaR intervals are conditional on the selected VaR; neither is a
 simultaneous statistical guarantee. No QRAM, hardware runtime, or quantum
 advantage claim is made.
 
+## 1.1 — financial accuracy foundation (in progress)
+
+The first conventions slice is implemented:
+
+- valuation dates backed by `datetime.date`;
+- user-supplied holiday calendars and explicit business-day adjustment;
+- regular schedules with month-end rules and explicit stub boundaries;
+- ACT/365 Fixed, ACT/360, ACT/ACT ISDA, 30/360 US/NASD, and 30E/360;
+- continuous, periodic, and simple rate quote conversions;
+- zero-rate, discount-factor, forward-rate, and direct market-node curve inputs;
+- validated interpolation and explicit extrapolation choices; and
+- curve diagnostics, construction metadata, and accuracy-led native fallback.
+
+The remaining 1.1 work is deliberately separate: dated bond settlement and
+accrual semantics, instrument curve bootstrapping with residual repricing
+reports, precisely named curve/YTM sensitivities, key-rate risk, financial-unit
+validation reports, and optional independent QuantLib comparisons.
+
 ## Later research
 
 - QUBO/variational portfolio research only after exact formulation and strong
