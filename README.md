@@ -8,12 +8,11 @@ supported problems into classical calculations, quantum representations,
 algorithms, circuits, and PennyLane devices while reporting which stages are
 actually implemented.
 
-Version `1.0.0` adds memory-bounded factorized VaR/CVaR references, hybrid MLAE
-search over occupied reversible loss codes, and a reversible positive
-tail-excess register whose bits reconstruct CVaR without a joint payoff table.
-The 0.9 structured arithmetic, 0.8 scalable representation, 0.7 device realism,
-and 0.6 ALM/life foundations remain intact. QFin-owned C++20 finance kernels
-and the PennyLane-Lightning simulator remain separate components.
+Version `1.1.0` adds the financial-accuracy foundation: dated bonds, explicit
+settlement/accrual and fixed-income risk terminology, instrument curve
+bootstrapping with strict residual reports, golden financial-unit validation,
+and optional independent QuantLib comparisons. The 1.0 factorized VaR/CVaR and
+all prior quantum, ALM, life, native, and device capabilities remain intact.
 
 ## Architecture
 
@@ -50,6 +49,13 @@ Optional Qiskit circuit export is installed separately:
 
 ```bash
 python -m pip install -e ".[quantum,qiskit]"
+```
+
+Optional independent fixed-income validation uses QuantLib and is not a runtime
+pricing dependency:
+
+```bash
+python -m pip install -e ".[validation]"
 ```
 
 Python 3.11 or newer is supported. Wheels produced by QFin include the native
@@ -128,36 +134,40 @@ print(curve.discount_date("2031-01-31"))
 print(curve.explain())
 ```
 
-See [docs/financial-conventions-1.1.md](docs/financial-conventions-1.1.md)
-for exact convention definitions, interpolation behavior, diagnostics, and
-current limitations.
+Construct and price a dated bond with the same explicit conventions:
 
 ```python
 import qfin
 
 curve = qfin.YieldCurve(
-    times=[0, 1, 5, 10, 30],
-    zero_rates=[0.02, 0.025, 0.03, 0.035, 0.04],
+    [0, 1, 5, 10],
+    [0.02, 0.025, 0.03, 0.035],
+    valuation_date="2026-01-31",
 )
-bonds = [
-    qfin.FixedRateBond(maturity=5, coupon_rate=0.03, frequency=2),
-    qfin.FixedRateBond(maturity=10, coupon_rate=0.04, frequency=2),
-]
-
-result = qfin.price_bonds(bonds, curve)
-print(result.dirty_prices)
-print(result.macaulay_duration)
-print(result.convexity)
-print(result.dv01)
+bond = qfin.FixedRateBond(
+    issue_date="2026-01-31",
+    maturity_date="2031-01-31",
+    coupon_rate=0.04,
+    frequency=2,
+    day_count="30/360",
+    end_of_month=True,
+)
+result = qfin.price_bonds(bond, curve, z_spread=0.005)
+keys = qfin.key_rate_risk(bond, curve)
+print(result.clean_prices, result.accrued_interest)
+print(result.parallel_zero_duration, result.cs01)
+print(keys.key_rate_dv01)
 ```
 
-The fixed-income layer supports fixed and zero-coupon cash flows, final stubs,
-clean/dirty prices, accrued interest, curve pricing, price from yield, yield
-from price, Macaulay/modified duration, convexity, DV01, and batch execution.
-`YieldCurve` stores canonical continuously compounded rates for native-kernel
-compatibility while retaining the input quote convention as metadata and
-providing explicit quoted-rate conversion. Yield-to-maturity functions use the
-bond's nominal coupon frequency.
+`bootstrap_curve` solves deposits, zero coupons, fixed-rate bonds, and simple
+single-curve swaps, returning every model quote and residual alongside solved
+discount factors, zero rates, and forwards. `par_yield` solves a bond coupon at
+a target clean price. Existing floating-time bonds and native batch execution
+remain supported.
+
+See [financial conventions](docs/financial-conventions-1.1.md) and the complete
+[fixed-income 1.1 methodology](docs/fixed-income-1.1.md) for definitions,
+validation evidence, and current boundaries.
 
 ## Asset-liability modelling
 

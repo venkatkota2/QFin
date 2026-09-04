@@ -119,9 +119,7 @@ intervals and CVaR intervals are conditional on the selected VaR; neither is a
 simultaneous statistical guarantee. No QRAM, hardware runtime, or quantum
 advantage claim is made.
 
-## 1.1 — financial accuracy foundation (in progress)
-
-The first conventions slice is implemented:
+## 1.1 — financial accuracy foundation (complete)
 
 - valuation dates backed by `datetime.date`;
 - user-supplied holiday calendars and explicit business-day adjustment;
@@ -131,11 +129,18 @@ The first conventions slice is implemented:
 - zero-rate, discount-factor, forward-rate, and direct market-node curve inputs;
 - validated interpolation and explicit extrapolation choices; and
 - curve diagnostics, construction metadata, and accuracy-led native fallback.
+- dated fixed-rate bonds with settlement, convention accrual, explicit stubs,
+  clean/dirty pricing, yield solving, spread pricing, and par yield;
+- deposit, zero-coupon, bond, and simple-swap curve bootstrapping with strict
+  residual repricing reports;
+- explicitly named curve, YTM, effective, spread, DV01/PV01, CS01, convexity,
+  and key-rate sensitivities; and
+- analytical and golden portfolios, financial-unit validation diagnostics, and
+  optional independent QuantLib comparisons.
 
-The remaining 1.1 work is deliberately separate: dated bond settlement and
-accrual semantics, instrument curve bootstrapping with residual repricing
-reports, precisely named curve/YTM sensitivities, key-rate risk, financial-unit
-validation reports, and optional independent QuantLib comparisons.
+QFin 1.1 deliberately remains a single-curve fixed-income foundation. OIS,
+multi-curve, credit, inflation, ex-coupon, and user-tenor key-rate frameworks
+belong to later milestones.
 
 ## Later research
 
