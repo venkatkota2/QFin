@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import PchipInterpolator
 
+from qfin._validation import require_integer
 from qfin.finance.dates import DateLike, ValuationDate, as_date
 from qfin.finance.daycount import DayCountConvention, year_fraction
 from qfin.finance.rates import (
@@ -114,6 +115,19 @@ class CurveDiagnostics:
     increasing_discount_intervals: tuple[int, ...]
     negative_forward_intervals: tuple[int, ...]
     warnings: tuple[str, ...]
+    node_increasing_discount_intervals: tuple[int, ...] = ()
+    node_negative_forward_intervals: tuple[int, ...] = ()
+    between_node_nonfinite_discount_intervals: tuple[int, ...] = ()
+    between_node_nonpositive_discount_intervals: tuple[int, ...] = ()
+    between_node_increasing_discount_intervals: tuple[int, ...] = ()
+    between_node_negative_forward_intervals: tuple[int, ...] = ()
+    between_node_extreme_forward_intervals: tuple[int, ...] = ()
+    extrapolation_warning_sides: tuple[str, ...] = ()
+    node_warnings: tuple[str, ...] = ()
+    interpolation_warnings: tuple[str, ...] = ()
+    extrapolation_warnings: tuple[str, ...] = ()
+    samples_per_interval: int = 33
+    extreme_forward_rate: float = 1.0
 
     @property
     def has_positive_discount_factors(self) -> bool:
@@ -140,6 +154,9 @@ class YieldCurve:
     day_count: DayCountConvention
     input_type: str
     market_quotes: tuple[CurveMarketQuote, ...]
+    _origin_input_type: str = field(repr=False)
+    _applied_node_shock: tuple[float, ...] | None = field(repr=False)
+    _quote_provenance: tuple[tuple[str, str, str, float, float], ...] = field(repr=False)
     _node_discount_factors: FloatArray = field(repr=False)
     _monotone: object | None = field(repr=False, compare=False)
 
@@ -200,6 +217,9 @@ class YieldCurve:
         object.__setattr__(self, "day_count", selected_day_count)
         object.__setattr__(self, "input_type", "zero_rate")
         object.__setattr__(self, "market_quotes", ())
+        object.__setattr__(self, "_origin_input_type", "zero_rate")
+        object.__setattr__(self, "_applied_node_shock", None)
+        object.__setattr__(self, "_quote_provenance", ())
         object.__setattr__(self, "_node_discount_factors", node_discounts)
         object.__setattr__(self, "_monotone", monotone)
 
@@ -245,6 +265,7 @@ class YieldCurve:
         copied_discounts = np.array(discounts, dtype=np.float64, order="C", copy=True)
         copied_discounts.setflags(write=False)
         object.__setattr__(curve, "input_type", "discount_factor")
+        object.__setattr__(curve, "_origin_input_type", "discount_factor")
         object.__setattr__(curve, "_node_discount_factors", copied_discounts)
         return curve
 
@@ -288,6 +309,7 @@ class YieldCurve:
             day_count=day_count,
         )
         object.__setattr__(curve, "input_type", "forward_rate")
+        object.__setattr__(curve, "_origin_input_type", "forward_rate")
         object.__setattr__(curve, "quote_compounding", selected_compounding)
         return curve
 
@@ -333,6 +355,21 @@ class YieldCurve:
             )
         object.__setattr__(curve, "input_type", "market_quote")
         object.__setattr__(curve, "market_quotes", items)
+        object.__setattr__(curve, "_origin_input_type", "market_quote")
+        object.__setattr__(
+            curve,
+            "_quote_provenance",
+            tuple(
+                (
+                    "direct_market_node",
+                    item.identifier or "",
+                    item.quote_type,
+                    float(item.time),
+                    float(item.value),
+                )
+                for item in items
+            ),
+        )
         return curve
 
     @property
@@ -517,9 +554,14 @@ class YieldCurve:
             raise ValueError("curve shifts must be finite")
         if shifts.ndim > 1 or (shifts.ndim == 1 and shifts.shape != self.zero_rates.shape):
             raise ValueError("shift must be scalar or have one value per curve node")
+        node_shifts = (
+            np.full(self.zero_rates.shape, float(shifts), dtype=np.float64)
+            if shifts.ndim == 0
+            else np.array(shifts, dtype=np.float64, order="C", copy=True)
+        )
         shifted_curve = YieldCurve(
             self.times,
-            np.asarray(self.zero_rates + shifts, dtype=np.float64),
+            np.asarray(self.zero_rates + node_shifts, dtype=np.float64),
             self.interpolation,
             self.extrapolation,
             compounding=Compounding.CONTINUOUS,
@@ -527,37 +569,251 @@ class YieldCurve:
             day_count=self.day_count,
         )
         object.__setattr__(shifted_curve, "input_type", "shifted_zero_rate")
+        object.__setattr__(shifted_curve, "quote_compounding", self.quote_compounding)
+        object.__setattr__(shifted_curve, "market_quotes", self.market_quotes)
+        object.__setattr__(shifted_curve, "_origin_input_type", self._origin_input_type)
+        object.__setattr__(shifted_curve, "_quote_provenance", self._quote_provenance)
+        prior = (
+            np.zeros_like(node_shifts)
+            if self._applied_node_shock is None
+            else np.asarray(self._applied_node_shock, dtype=np.float64)
+        )
+        object.__setattr__(
+            shifted_curve,
+            "_applied_node_shock",
+            tuple(float(item) for item in prior + node_shifts),
+        )
         return shifted_curve
 
-    def diagnostics(self) -> CurveDiagnostics:
-        """Inspect positivity, monotonicity, and adjacent forward rates."""
+    def _instantaneous_forward_array(self, query: FloatArray) -> FloatArray:
+        """Evaluate ``-d log(D(t)) / dt`` inside the node domain."""
 
-        discounts = self._node_discount_factors
-        if self.times.size > 1:
-            forwards = -np.diff(np.log(discounts)) / np.diff(self.times)
-            increasing = tuple(int(item) for item in np.flatnonzero(np.diff(discounts) > 0.0))
-            negative = tuple(int(item) for item in np.flatnonzero(forwards < 0.0))
-            minimum_forward = float(np.min(forwards))
-            maximum_forward = float(np.max(forwards))
-        else:
-            increasing = ()
-            negative = ()
-            minimum_forward = None
-            maximum_forward = None
-        warnings: list[str] = []
-        if increasing:
-            warnings.append("discount factors increase on one or more node intervals")
-        if negative:
-            warnings.append("one or more adjacent continuously compounded forwards are negative")
+        if self.times.size == 1:
+            return np.full_like(query, self.zero_rates[0], dtype=np.float64)
+        upper = np.searchsorted(self.times, query, side="right")
+        upper = np.clip(upper, 1, self.times.size - 1)
+        lower = upper - 1
+        width = self.times[upper] - self.times[lower]
+        if self.interpolation is CurveInterpolation.LINEAR_ZERO:
+            slope = (self.zero_rates[upper] - self.zero_rates[lower]) / width
+            rates = self.zero_rates[lower] + slope * (query - self.times[lower])
+            return np.asarray(rates + query * slope, dtype=np.float64)
+        if self.interpolation is CurveInterpolation.MONOTONE_ZERO:
+            interpolator = PchipInterpolator(
+                self.times,
+                self.zero_rates,
+                extrapolate=False,
+            )
+            rates = np.asarray(interpolator(query), dtype=np.float64)
+            derivatives = np.asarray(interpolator.derivative()(query), dtype=np.float64)
+            return np.asarray(rates + query * derivatives, dtype=np.float64)
+        if self.interpolation is CurveInterpolation.LINEAR_DISCOUNT:
+            slope = (
+                self._node_discount_factors[upper]
+                - self._node_discount_factors[lower]
+            ) / width
+            discounts = self._node_discount_factors[lower] + slope * (
+                query - self.times[lower]
+            )
+            return np.asarray(-slope / discounts, dtype=np.float64)
+        log_discounts = np.log(self._node_discount_factors)
+        return np.asarray(
+            -(log_discounts[upper] - log_discounts[lower]) / width,
+            dtype=np.float64,
+        )
+
+    def diagnostics(
+        self,
+        *,
+        samples_per_interval: int = 33,
+        extreme_forward_rate: float = 1.0,
+    ) -> CurveDiagnostics:
+        """Inspect nodes, actual interpolation paths, and extrapolated tails.
+
+        Negative rates and forwards remain valid inputs. They are reported as
+        economic diagnostics, while non-finite or non-positive discounts are
+        identified separately as mathematical pathologies.
+        """
+
+        sample_count = require_integer(
+            samples_per_interval,
+            "samples_per_interval",
+            minimum=3,
+        )
+        if not isfinite(extreme_forward_rate) or extreme_forward_rate <= 0.0:
+            raise ValueError("extreme_forward_rate must be finite and positive")
+
+        node_discounts = self._node_discount_factors
+        node_forwards = (
+            -np.diff(np.log(node_discounts)) / np.diff(self.times)
+            if self.times.size > 1
+            else np.empty(0, dtype=np.float64)
+        )
+        node_increasing = tuple(
+            int(item) for item in np.flatnonzero(np.diff(node_discounts) > 0.0)
+        )
+        node_negative = tuple(int(item) for item in np.flatnonzero(node_forwards < 0.0))
+
+        nonfinite_intervals: list[int] = []
+        nonpositive_intervals: list[int] = []
+        increasing_intervals: list[int] = []
+        negative_intervals: list[int] = []
+        extreme_intervals: list[int] = []
+        observed_discounts: list[FloatArray] = [node_discounts]
+        observed_forwards: list[FloatArray] = [node_forwards]
+        for interval in range(self.times.size - 1):
+            samples = np.linspace(
+                self.times[interval],
+                self.times[interval + 1],
+                sample_count,
+                dtype=np.float64,
+            )
+            discounts = self._discount_array(samples)
+            forwards = self._instantaneous_forward_array(samples[1:-1])
+            observed_discounts.append(discounts)
+            observed_forwards.append(forwards)
+            if not np.all(np.isfinite(discounts)):
+                nonfinite_intervals.append(interval)
+            if np.any(discounts <= 0.0):
+                nonpositive_intervals.append(interval)
+            increase_tolerance = 64.0 * np.finfo(np.float64).eps * max(
+                1.0,
+                float(np.max(np.abs(discounts))),
+            )
+            if np.any(np.diff(discounts) > increase_tolerance):
+                increasing_intervals.append(interval)
+            if np.any(forwards < 0.0):
+                negative_intervals.append(interval)
+            if np.any(np.abs(forwards) > extreme_forward_rate):
+                extreme_intervals.append(interval)
+
+        extrapolation_sides: list[str] = []
+        extrapolation_forwards: list[FloatArray] = []
+        if self.extrapolation is not CurveExtrapolation.ERROR:
+            spans: list[tuple[str, FloatArray]] = []
+            if self.times[0] > 0.0:
+                spans.append(
+                    (
+                        "left",
+                        np.linspace(
+                            0.0,
+                            self.times[0],
+                            sample_count,
+                            dtype=np.float64,
+                        ),
+                    )
+                )
+            right_width = (
+                max(1.0, float(self.times[-1]))
+                if self.times.size == 1
+                else max(1.0, float(self.times[-1] - self.times[-2]))
+            )
+            spans.append(
+                (
+                    "right",
+                    np.linspace(
+                        self.times[-1],
+                        self.times[-1] + right_width,
+                        sample_count,
+                        dtype=np.float64,
+                    ),
+                )
+            )
+            for side, samples in spans:
+                discounts = self._discount_array(samples)
+                observed_discounts.append(discounts)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    forwards = -np.diff(np.log(discounts)) / np.diff(samples)
+                extrapolation_forwards.append(forwards)
+                increase_tolerance = 64.0 * np.finfo(np.float64).eps * max(
+                    1.0,
+                    float(np.nanmax(np.abs(discounts))),
+                )
+                if (
+                    not np.all(np.isfinite(discounts))
+                    or np.any(discounts <= 0.0)
+                    or np.any(np.diff(discounts) > increase_tolerance)
+                    or np.any(forwards < 0.0)
+                    or np.any(np.abs(forwards) > extreme_forward_rate)
+                ):
+                    extrapolation_sides.append(side)
+
+        finite_discount_parts = [
+            values[np.isfinite(values)] for values in observed_discounts if values.size
+        ]
+        finite_forward_parts = [
+            values[np.isfinite(values)]
+            for values in [*observed_forwards, *extrapolation_forwards]
+            if values.size
+        ]
+        all_discounts = np.concatenate(finite_discount_parts)
+        all_forwards = (
+            np.concatenate(finite_forward_parts)
+            if finite_forward_parts
+            else np.empty(0, dtype=np.float64)
+        )
+
+        node_warnings: list[str] = []
+        if node_increasing:
+            node_warnings.append("discount factors increase between supplied nodes")
+        if node_negative:
+            node_warnings.append("adjacent-node continuously compounded forwards are negative")
+        if np.any(np.abs(node_forwards) > extreme_forward_rate):
+            node_warnings.append(
+                "one or more adjacent-node forwards exceed the extreme-rate threshold"
+            )
+
+        interpolation_warnings: list[str] = []
+        if nonfinite_intervals:
+            interpolation_warnings.append("interpolation produces non-finite discount factors")
+        if nonpositive_intervals:
+            interpolation_warnings.append("interpolation produces non-positive discount factors")
+        if increasing_intervals:
+            interpolation_warnings.append("discount factors increase along the interpolation path")
+        if negative_intervals:
+            interpolation_warnings.append(
+                "instantaneous forwards are negative along the interpolation path"
+            )
+        if extreme_intervals:
+            interpolation_warnings.append(
+                "instantaneous forwards exceed the extreme-rate threshold between nodes"
+            )
+
+        extrapolation_warnings = (
+            (
+                "extrapolated discount/forward behavior is negative, extreme, "
+                "or mathematically invalid",
+            )
+            if extrapolation_sides
+            else ()
+        )
+        warnings = tuple(node_warnings + interpolation_warnings + list(extrapolation_warnings))
         return CurveDiagnostics(
             node_count=int(self.times.size),
-            minimum_discount_factor=float(np.min(discounts)),
-            maximum_discount_factor=float(np.max(discounts)),
-            minimum_forward_rate=minimum_forward,
-            maximum_forward_rate=maximum_forward,
-            increasing_discount_intervals=increasing,
-            negative_forward_intervals=negative,
-            warnings=tuple(warnings),
+            minimum_discount_factor=float(np.min(all_discounts)),
+            maximum_discount_factor=float(np.max(all_discounts)),
+            minimum_forward_rate=(
+                None if all_forwards.size == 0 else float(np.min(all_forwards))
+            ),
+            maximum_forward_rate=(
+                None if all_forwards.size == 0 else float(np.max(all_forwards))
+            ),
+            increasing_discount_intervals=tuple(increasing_intervals),
+            negative_forward_intervals=tuple(negative_intervals),
+            warnings=warnings,
+            node_increasing_discount_intervals=node_increasing,
+            node_negative_forward_intervals=node_negative,
+            between_node_nonfinite_discount_intervals=tuple(nonfinite_intervals),
+            between_node_nonpositive_discount_intervals=tuple(nonpositive_intervals),
+            between_node_increasing_discount_intervals=tuple(increasing_intervals),
+            between_node_negative_forward_intervals=tuple(negative_intervals),
+            between_node_extreme_forward_intervals=tuple(extreme_intervals),
+            extrapolation_warning_sides=tuple(extrapolation_sides),
+            node_warnings=tuple(node_warnings),
+            interpolation_warnings=tuple(interpolation_warnings),
+            extrapolation_warnings=extrapolation_warnings,
+            samples_per_interval=sample_count,
+            extreme_forward_rate=extreme_forward_rate,
         )
 
     def explain(self) -> dict[str, object]:
@@ -565,6 +821,7 @@ class YieldCurve:
 
         return {
             "input_type": self.input_type,
+            "origin_input_type": self._origin_input_type,
             "quote_compounding": self.quote_compounding.value,
             "canonical_rate_compounding": Compounding.CONTINUOUS.value,
             "interpolation": self.interpolation.value,
@@ -575,6 +832,21 @@ class YieldCurve:
             "day_count": self.day_count.value,
             "node_count": int(self.times.size),
             "native_compatible": self.native_compatible,
+            "applied_node_shock": (
+                None
+                if self._applied_node_shock is None
+                else list(self._applied_node_shock)
+            ),
+            "originating_quote_metadata": [
+                {
+                    "source": source,
+                    "identifier": identifier or None,
+                    "quote_type": quote_type,
+                    "time": time,
+                    "value": value,
+                }
+                for source, identifier, quote_type, time, value in self._quote_provenance
+            ],
         }
 
 

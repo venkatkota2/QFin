@@ -3,19 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isfinite
-from operator import index as integer_index
+from math import fsum, isfinite
 from typing import ClassVar, Literal, cast
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.interpolate import PchipInterpolator
 
 from qfin import _native
-from qfin.finance.curves import YieldCurve
+from qfin._validation import require_integer
+from qfin.finance.curves import CurveExtrapolation, CurveInterpolation, YieldCurve
 from qfin.finance.fixed_income import Engine
 
 FloatArray = NDArray[np.float64]
 Int64Array = NDArray[np.int64]
+
+# Bound each NumPy scenario matrix to 16 MiB (several can coexist during
+# interpolation). The public chunk_size is an upper bound, not a reservation.
+_MAX_SCENARIO_MATRIX_ELEMENTS = 2_097_152
+
+
+def _bounded_numpy_chunk_size(requested: int, times: FloatArray, curve: YieldCurve) -> int:
+    width = max(1, times.size, curve.times.size)
+    return min(requested, max(1, _MAX_SCENARIO_MATRIX_ELEMENTS // width))
 
 
 def _scenario_path(
@@ -157,14 +167,15 @@ class EconomicScenarioSet:
                 scenario_probabilities.shape != (scenario_count,)
                 or not np.all(np.isfinite(scenario_probabilities))
                 or np.any(scenario_probabilities < 0.0)
-                or float(np.sum(scenario_probabilities)) <= 0.0
+                or float(np.max(scenario_probabilities, initial=0.0)) <= 0.0
             ):
                 raise ValueError(
                     "probabilities must be finite, non-negative, and have one "
                     "positive-total value per scenario"
                 )
+            scaled_probabilities = scenario_probabilities / np.max(scenario_probabilities)
             scenario_probabilities = np.ascontiguousarray(
-                scenario_probabilities / np.sum(scenario_probabilities),
+                scaled_probabilities / np.sum(scaled_probabilities),
                 dtype=np.float64,
             )
         scenario_labels = tuple(labels) or tuple(
@@ -213,11 +224,8 @@ class EconomicScenarioSet:
     def rate_scenarios(self, period: int = 0) -> RateScenarioSet:
         """Return one path period as the existing one-period rate interface."""
 
-        try:
-            period_index = integer_index(period)
-        except TypeError as exc:
-            raise ValueError("period must be an integer") from exc
-        if isinstance(period, bool) or not 0 <= period_index < self.period_count:
+        period_index = require_integer(period, "period")
+        if not 0 <= period_index < self.period_count:
             raise ValueError("period is outside the scenario horizon")
         return RateScenarioSet(self.rate_shocks[:, period_index, :], self.labels)
 
@@ -243,18 +251,8 @@ class EconomicScenarioSet:
         scenario foundation, not a calibrated economic-scenario model.
         """
 
-        try:
-            scenarios = integer_index(scenario_count)
-            period_count = integer_index(periods)
-        except TypeError as exc:
-            raise ValueError("scenario_count and periods must be integers") from exc
-        if (
-            isinstance(scenario_count, bool)
-            or isinstance(periods, bool)
-            or scenarios <= 0
-            or period_count <= 0
-        ):
-            raise ValueError("scenario_count and periods must be positive")
+        scenarios = require_integer(scenario_count, "scenario_count", minimum=1)
+        period_count = require_integer(periods, "periods", minimum=1)
         from qfin.finance.factors import GaussianFactorModel
 
         model = GaussianFactorModel(
@@ -358,6 +356,142 @@ class RateScenarioSet:
         return cls((shift * weights)[None, :], (name,))
 
 
+@dataclass(frozen=True, slots=True)
+class _PreparedScenarioValuation:
+    """Scenario-independent interpolation state for a fixed cash-flow grid."""
+
+    times: FloatArray
+    curve: YieldCurve
+    lower: Int64Array
+    upper: Int64Array
+    fractions: FloatArray
+    before: NDArray[np.bool_]
+    after: NDArray[np.bool_]
+
+    @classmethod
+    def build(cls, times: FloatArray, curve: YieldCurve) -> _PreparedScenarioValuation:
+        query = np.ascontiguousarray(times, dtype=np.float64).reshape(-1)
+        if not np.all(np.isfinite(query)) or np.any(query < 0.0):
+            raise ValueError("cash-flow times must be finite and non-negative")
+        before = query < curve.times[0]
+        after = query > curve.times[-1]
+        if curve.extrapolation is CurveExtrapolation.ERROR and (
+            np.any(before) or np.any(after)
+        ):
+            raise ValueError("cash-flow time is outside the curve domain")
+        if curve.times.size == 1:
+            lower = np.zeros(query.size, dtype=np.int64)
+            upper = np.zeros(query.size, dtype=np.int64)
+            fractions = np.zeros(query.size, dtype=np.float64)
+        else:
+            upper = np.searchsorted(curve.times, query, side="right")
+            upper = np.clip(upper, 1, curve.times.size - 1).astype(np.int64, copy=False)
+            lower = upper - 1
+            denominator = curve.times[upper] - curve.times[lower]
+            fractions = np.divide(
+                query - curve.times[lower],
+                denominator,
+                out=np.zeros_like(query),
+                where=denominator != 0.0,
+            )
+        return cls(query, curve, lower, upper, fractions, before, after)
+
+    def discount_factors(self, shocks: FloatArray) -> FloatArray:
+        """Reproduce ``curve.shifted(shock).discount(times)`` for a shock batch."""
+
+        if shocks.ndim != 2 or shocks.shape[1] != self.curve.times.size:
+            raise ValueError("scenario shocks must contain one value per curve node")
+        node_rates = self.curve.zero_rates[None, :] + shocks
+        node_log_discounts = -node_rates * self.curve.times[None, :]
+        with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+            node_discounts = np.exp(node_log_discounts)
+        if not np.all(np.isfinite(node_discounts)) or np.any(node_discounts <= 0.0):
+            raise ValueError(
+                "scenario shocks imply non-finite or non-positive node discount factors"
+            )
+
+        if self.curve.interpolation is CurveInterpolation.LINEAR_ZERO:
+            interpolated_rates = node_rates[:, self.lower] + self.fractions * (
+                node_rates[:, self.upper] - node_rates[:, self.lower]
+            )
+            with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+                result = np.exp(-interpolated_rates * self.times[None, :])
+        elif self.curve.interpolation is CurveInterpolation.MONOTONE_ZERO:
+            if self.curve.times.size == 1:
+                interpolated_rates = np.broadcast_to(
+                    node_rates[:, :1], (shocks.shape[0], self.times.size)
+                )
+            else:
+                clipped = np.clip(self.times, self.curve.times[0], self.curve.times[-1])
+                interpolator = PchipInterpolator(
+                    self.curve.times,
+                    node_rates,
+                    axis=1,
+                    extrapolate=False,
+                )
+                interpolated_rates = np.asarray(interpolator(clipped), dtype=np.float64)
+            with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+                result = np.exp(-interpolated_rates * self.times[None, :])
+        elif self.curve.interpolation is CurveInterpolation.LINEAR_DISCOUNT:
+            result = node_discounts[:, self.lower] + self.fractions * (
+                node_discounts[:, self.upper] - node_discounts[:, self.lower]
+            )
+        else:
+            interpolated_logs = node_log_discounts[:, self.lower] + self.fractions * (
+                node_log_discounts[:, self.upper] - node_log_discounts[:, self.lower]
+            )
+            with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+                result = np.exp(interpolated_logs)
+
+        if self.curve.extrapolation is CurveExtrapolation.FLAT_ZERO:
+            with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+                left = np.exp(-node_rates[:, :1] * self.times[None, :])
+                right = np.exp(-node_rates[:, -1:] * self.times[None, :])
+            result = np.where(self.before[None, :], left, result)
+            result = np.where(self.after[None, :], right, result)
+        elif self.curve.extrapolation is CurveExtrapolation.FLAT_FORWARD:
+            if self.curve.times.size == 1:
+                left_log = right_log = -node_rates[:, :1] * self.times[None, :]
+            else:
+                left_slope = (
+                    node_log_discounts[:, 1] - node_log_discounts[:, 0]
+                ) / (self.curve.times[1] - self.curve.times[0])
+                right_slope = (
+                    node_log_discounts[:, -1] - node_log_discounts[:, -2]
+                ) / (self.curve.times[-1] - self.curve.times[-2])
+                left_log = node_log_discounts[:, :1] + left_slope[:, None] * (
+                    self.times[None, :] - self.curve.times[0]
+                )
+                right_log = node_log_discounts[:, -1:] + right_slope[:, None] * (
+                    self.times[None, :] - self.curve.times[-1]
+                )
+            with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+                result = np.where(self.before[None, :], np.exp(left_log), result)
+                result = np.where(self.after[None, :], np.exp(right_log), result)
+
+        result = np.where(self.times[None, :] == 0.0, 1.0, result)
+        if not np.all(np.isfinite(result)) or np.any(result <= 0.0):
+            raise ValueError(
+                "scenario interpolation produced non-finite or non-positive discount factors"
+            )
+        return np.asarray(result, dtype=np.float64)
+
+
+def _segment_sum_rows(values: FloatArray, offsets: Int64Array) -> FloatArray:
+    """Reduce rows over prefix-delimited streams, including empty streams."""
+
+    stream_count = offsets.size - 1
+    result = np.zeros((values.shape[0], stream_count), dtype=np.float64)
+    if values.shape[1] == 0 or stream_count == 0:
+        return result
+    starts = offsets[:-1]
+    valid_starts = starts < values.shape[1]
+    if np.any(valid_starts):
+        result[:, valid_starts] = np.add.reduceat(values, starts[valid_starts], axis=1)
+    result[:, np.diff(offsets) == 0] = 0.0
+    return result
+
+
 def _validate_flat_portfolio(
     times: FloatArray,
     amounts: FloatArray,
@@ -382,47 +516,34 @@ def _validate_flat_portfolio(
         raise ValueError("each scenario must have one shock per curve node")
 
 
-def _numpy_scenario_values(
-    times: FloatArray,
+def _weighted_cashflow_amounts(
     amounts: FloatArray,
     offsets: Int64Array,
     weights: FloatArray,
-    curve: YieldCurve,
+) -> FloatArray:
+    """Apply position weights once without allocating a repeated index vector."""
+
+    weighted = np.array(amounts, dtype=np.float64, order="C", copy=True)
+    for position, weight in enumerate(weights):
+        weighted[offsets[position] : offsets[position + 1]] *= weight
+    return weighted
+
+
+def _numpy_scenario_values(
+    prepared: _PreparedScenarioValuation,
+    weighted_amounts: FloatArray,
     shocks: FloatArray,
 ) -> FloatArray:
-    if times.size == 0:
+    if prepared.times.size == 0:
         return np.zeros(shocks.shape[0], dtype=np.float64)
-    if curve.times.size == 1:
-        interpolated_shocks = np.broadcast_to(shocks[:, :1], (shocks.shape[0], times.size))
-    else:
-        upper = np.searchsorted(curve.times, times, side="right")
-        upper = np.clip(upper, 1, curve.times.size - 1)
-        lower = upper - 1
-        denominator = curve.times[upper] - curve.times[lower]
-        fractions = np.divide(
-            times - curve.times[lower],
-            denominator,
-            out=np.zeros_like(times),
-            where=denominator != 0,
-        )
-        before = times <= curve.times[0]
-        after = times >= curve.times[-1]
-        lower[before] = 0
-        upper[before] = 0
-        fractions[before] = 0.0
-        lower[after] = curve.times.size - 1
-        upper[after] = curve.times.size - 1
-        fractions[after] = 0.0
-        interpolated_shocks = shocks[:, lower] + fractions * (shocks[:, upper] - shocks[:, lower])
-    base_rates = np.asarray(curve.zero_rate(times), dtype=np.float64)
-    discounted = amounts * np.exp(-(base_rates + interpolated_shocks) * times)
-    counts = np.diff(offsets)
-    position_index = np.repeat(np.arange(weights.size), counts)
-    cashflow_weights = weights[position_index]
-    return np.asarray(
-        np.sum(discounted * cashflow_weights, axis=1, dtype=np.float64),
-        dtype=np.float64,
-    )
+    discounted = prepared.discount_factors(shocks) * weighted_amounts[None, :]
+    values = np.asarray(np.sum(discounted, axis=1, dtype=np.float64), dtype=np.float64)
+    if np.any(weighted_amounts < 0.0) and np.any(weighted_amounts > 0.0):
+        magnitudes = np.sum(np.abs(discounted), axis=1, dtype=np.float64)
+        cancellation = (magnitudes > 0.0) & (np.abs(values) <= 1.0e-10 * magnitudes)
+        for row in np.flatnonzero(cancellation):
+            values[row] = fsum(float(item) for item in discounted[row])
+    return values
 
 
 def scenario_portfolio_values(
@@ -443,12 +564,7 @@ def scenario_portfolio_values(
     stream_offsets = np.ascontiguousarray(offsets, dtype=np.int64).reshape(-1)
     weights = np.ascontiguousarray(position_weights, dtype=np.float64).reshape(-1)
     _validate_flat_portfolio(times, amounts, stream_offsets, weights, curve, scenarios)
-    try:
-        normalized_chunk_size = integer_index(chunk_size)
-    except TypeError as exc:
-        raise ValueError("chunk_size must be a positive integer") from exc
-    if isinstance(chunk_size, bool) or normalized_chunk_size <= 0:
-        raise ValueError("chunk_size must be positive")
+    normalized_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
     if engine not in ("auto", "numpy", "native"):
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     workload = times.size * scenarios.shocks.shape[0]
@@ -465,10 +581,14 @@ def scenario_portfolio_values(
     else:
         selected = (
             "native"
-            if curve.native_compatible and _native.available() and workload >= 50_000
+            if curve.native_compatible and _native.available() and workload > 0
             else "numpy"
         )
 
+    prepared = _PreparedScenarioValuation.build(times, curve)
+    weighted_amounts = _weighted_cashflow_amounts(amounts, stream_offsets, weights)
+    if selected == "numpy":
+        normalized_chunk_size = _bounded_numpy_chunk_size(normalized_chunk_size, times, curve)
     values = np.empty(scenarios.shocks.shape[0], dtype=np.float64)
     for start in range(0, scenarios.shocks.shape[0], normalized_chunk_size):
         stop = min(start + normalized_chunk_size, scenarios.shocks.shape[0])
@@ -489,7 +609,7 @@ def scenario_portfolio_values(
             values[start:stop] = np.asarray(raw, dtype=np.float64)
         else:
             values[start:stop] = _numpy_scenario_values(
-                times, amounts, stream_offsets, weights, curve, shock_chunk
+                prepared, weighted_amounts, shock_chunk
             )
     return values, selected
 
@@ -521,18 +641,12 @@ def scenario_indexed_cashflow_values(
     ):
         raise ValueError("indexed cash-flow inputs must be finite and non-negative in time/linkage")
     scenarios.validate_curve(curve)
-    try:
-        period_index = integer_index(period)
-        normalized_chunk_size = integer_index(chunk_size)
-    except TypeError as exc:
-        raise ValueError("period and chunk_size must be integers") from exc
+    period_index = require_integer(period, "period")
+    normalized_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
     if (
-        isinstance(period, bool)
-        or not 0 <= period_index < scenarios.period_count
-        or isinstance(chunk_size, bool)
-        or normalized_chunk_size <= 0
+        not 0 <= period_index < scenarios.period_count
     ):
-        raise ValueError("period must be in range and chunk_size must be positive")
+        raise ValueError("period must be in range")
     if engine not in ("auto", "numpy", "native"):
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     workload = times.size * scenarios.scenario_count
@@ -549,11 +663,14 @@ def scenario_indexed_cashflow_values(
     else:
         selected = (
             "native"
-            if curve.native_compatible and _native.available() and workload >= 50_000
+            if curve.native_compatible and _native.available() and workload > 0
             else "numpy"
         )
 
+    prepared = _PreparedScenarioValuation.build(times, curve)
     values = np.empty(scenarios.scenario_count, dtype=np.float64)
+    if selected == "numpy":
+        normalized_chunk_size = _bounded_numpy_chunk_size(normalized_chunk_size, times, curve)
     for start in range(0, scenarios.scenario_count, normalized_chunk_size):
         stop = min(start + normalized_chunk_size, scenarios.scenario_count)
         rate_shocks = np.ascontiguousarray(scenarios.rate_shocks[start:stop, period_index, :])
@@ -576,36 +693,12 @@ def scenario_indexed_cashflow_values(
         if times.size == 0:
             values[start:stop] = 0.0
             continue
-        if curve.times.size == 1:
-            interpolated_shocks = np.broadcast_to(rate_shocks[:, :1], (stop - start, times.size))
-        else:
-            upper = np.searchsorted(curve.times, times, side="right")
-            upper = np.clip(upper, 1, curve.times.size - 1)
-            lower = upper - 1
-            denominator = curve.times[upper] - curve.times[lower]
-            fractions = np.divide(
-                times - curve.times[lower],
-                denominator,
-                out=np.zeros_like(times),
-                where=denominator != 0,
-            )
-            before = times <= curve.times[0]
-            after = times >= curve.times[-1]
-            lower[before] = 0
-            upper[before] = 0
-            fractions[before] = 0.0
-            lower[after] = curve.times.size - 1
-            upper[after] = curve.times.size - 1
-            fractions[after] = 0.0
-            interpolated_shocks = rate_shocks[:, lower] + fractions * (
-                rate_shocks[:, upper] - rate_shocks[:, lower]
-            )
-        rate = np.asarray(curve.zero_rate(times), dtype=np.float64)
+        discounts = prepared.discount_factors(rate_shocks)
         scale = np.power(1.0 + inflation[:, None], times[None, :] * linkages[None, :])
         values[start:stop] = np.sum(
             amounts[None, :]
             * scale
-            * np.exp(-(rate[None, :] + interpolated_shocks) * times[None, :]),
+            * discounts,
             axis=1,
             dtype=np.float64,
         )

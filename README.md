@@ -69,6 +69,25 @@ does not help.
 The distribution is named `qfin-quantum` because `qfin` is already occupied on
 PyPI; the Python import remains `qfin`.
 
+## Public API and CLI
+
+The stable top-level API is finance-first: financial models and result objects,
+`compile`, `system_info`, and core financial utilities remain available from
+`qfin`. Lower-level compiler, representation, resource, backend, and circuit
+objects use their canonical namespaces, such as `qfin.representation` and
+`qfin.circuits`.
+
+The former top-level aliases `IntegerHingePlan`, `IntegerPolynomialPlan`,
+`IntegerQuadraticTerm`, `ReversibleAffineTransformPlan`, `WalshTerm`,
+`ProbabilityTreePreparation`, `StatePreparationCost`, and
+`StructuredLossOraclePlan` are deprecated for one compatibility cycle. Their
+canonical module paths remain supported.
+
+The `qfin` command is intentionally limited to the European-option quantum
+demonstration; it is not a second interface to the full library. Use `qfin
+--version` to inspect the installed package version and the Python API for all
+financial workflows.
+
 Inspect capabilities:
 
 ```python

@@ -30,6 +30,28 @@ class CompiledOptimizationModel:
     quantum_representation_available: bool = False
     quantum_algorithm_available: bool = False
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "problem_category": "portfolio_optimization",
+            "financial_objective": "budget_constrained_mean_variance",
+            "backend": self.backend_name,
+            "representation": "classical_continuous_weights",
+            "algorithm": self.algorithm_name,
+            "target_error": None,
+            "target_error_unit": None,
+            "representation_error": None,
+            "algorithm_error": None,
+            "sampling_statistical_error": None,
+            "compilation_converged": True,
+            "quantum_execution_available": False,
+            "resource_estimate_type": "classical_problem_dimensions",
+            "limitations": [
+                "Compilation selects a solver; run().success reports solve convergence.",
+                "Quantum portfolio optimization is not implemented.",
+                "Singular unbounded problems raise OptimizationError during solving.",
+            ],
+        }
+
     def run(self, *, method: OptimizationMethod = "auto") -> PortfolioOptimizationResult:
         return self.problem.solve(method=method)
 
@@ -43,7 +65,7 @@ class CompiledOptimizationModel:
 
     def to_pennylane(self) -> None:
         raise CompilationError(
-            "portfolio optimization has no implemented quantum algorithm in QFin 1.0"
+            "portfolio optimization has no implemented quantum algorithm in QFin"
         )
 
     def explain(self) -> str:

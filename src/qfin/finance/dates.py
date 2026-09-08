@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import StrEnum
 from itertools import pairwise
-from operator import index as integer_index
 from typing import TypeAlias
+
+from qfin._validation import require_integer, require_integer_sequence
 
 DateLike: TypeAlias = date | datetime | str
 
@@ -39,12 +40,7 @@ def add_months(value: DateLike, months: int, *, end_of_month: bool = False) -> d
     """Add calendar months with deterministic month-end handling."""
 
     current = as_date(value)
-    try:
-        month_count = integer_index(months)
-    except TypeError as exc:
-        raise ValueError("months must be an integer") from exc
-    if isinstance(months, bool):
-        raise ValueError("months must be an integer")
+    month_count = require_integer(months, "months")
     absolute_month = current.year * 12 + current.month - 1 + month_count
     year, zero_based_month = divmod(absolute_month, 12)
     month = zero_based_month + 1
@@ -103,12 +99,14 @@ class Calendar:
         if not self.name.strip():
             raise ValueError("calendar name must not be empty")
         holidays = frozenset(as_date(item, name="holiday") for item in self.holidays)
-        try:
-            weekend_days = frozenset(integer_index(item) for item in self.weekend_days)
-        except TypeError as exc:
-            raise ValueError("weekend days must be integers from 0 through 6") from exc
-        if any(item < 0 or item > 6 for item in weekend_days):
-            raise ValueError("weekend days must be integers from 0 through 6")
+        weekend_days = frozenset(
+            require_integer_sequence(
+                self.weekend_days,
+                "weekend_days",
+                minimum=0,
+                maximum=6,
+            )
+        )
         object.__setattr__(self, "holidays", holidays)
         object.__setattr__(self, "weekend_days", weekend_days)
 
@@ -157,13 +155,9 @@ class Calendar:
         """Advance by a signed number of business days."""
 
         current = as_date(value)
-        try:
-            remaining = abs(integer_index(days))
-        except TypeError as exc:
-            raise ValueError("days must be an integer") from exc
-        if isinstance(days, bool):
-            raise ValueError("days must be an integer")
-        direction = 1 if days >= 0 else -1
+        day_count = require_integer(days, "days")
+        remaining = abs(day_count)
+        direction = 1 if day_count >= 0 else -1
         while remaining:
             current += timedelta(days=direction)
             if self.is_business_day(current):
@@ -221,15 +215,8 @@ class Schedule:
         end = as_date(end_date, name="end date")
         if end <= start:
             raise ValueError("end date must be after start date")
-        try:
-            normalized_frequency = integer_index(frequency)
-        except TypeError as exc:
-            raise ValueError("frequency must divide 12") from exc
-        if (
-            isinstance(frequency, bool)
-            or normalized_frequency <= 0
-            or 12 % normalized_frequency != 0
-        ):
+        normalized_frequency = require_integer(frequency, "frequency", minimum=1)
+        if 12 % normalized_frequency != 0:
             raise ValueError("frequency must be one of 1, 2, 3, 4, 6, or 12")
         generation = date_generation.strip().lower()
         if generation not in ("forward", "backward"):

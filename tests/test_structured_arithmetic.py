@@ -33,12 +33,12 @@ def _binary_factor_encoding(
 
 
 def test_integer_quadratic_plan_matches_basis_state_arithmetic() -> None:
-    plan = qfin.IntegerPolynomialPlan(
+    plan = qfin.representation.IntegerPolynomialPlan(
         input_qubits=(2, 1),
         output_qubits=5,
         constant=2,
         linear=(3, 1),
-        quadratic=(qfin.IntegerQuadraticTerm(0, 1, 2),),
+        quadratic=(qfin.representation.IntegerQuadraticTerm(0, 1, 2),),
     )
     device = qml.device("default.qubit", wires=8)
 
@@ -183,4 +183,3 @@ def test_streaming_reference_does_not_call_materialize(
     assert summary.evaluated_points == 8
     assert summary.chunks == 3
     assert compiled.run().probability == pytest.approx(summary.probability)
-

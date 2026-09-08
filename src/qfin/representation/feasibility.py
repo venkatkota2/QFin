@@ -8,6 +8,8 @@ from math import ceil, log2
 import numpy as np
 from numpy.typing import ArrayLike
 
+from qfin._validation import require_integer
+
 
 @dataclass(frozen=True, slots=True)
 class BlockEncodingFeasibility:
@@ -80,9 +82,10 @@ def analyze_block_encoding(
     if tolerance <= 0:
         raise ValueError("tolerance must be positive")
     rows, columns = (int(value) for value in values.shape)
-    if max(rows, columns) > max_dimension:
+    dimension_limit = require_integer(max_dimension, "max_dimension", minimum=1)
+    if max(rows, columns) > dimension_limit:
         raise ValueError(
-            f"explicit analysis is limited to dimension {max_dimension}; "
+            f"explicit analysis is limited to dimension {dimension_limit}; "
             "provide structural oracle metadata for larger problems"
         )
 

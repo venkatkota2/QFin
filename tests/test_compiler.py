@@ -26,6 +26,16 @@ def test_compiler_builds_complete_pricing_problem(
     assert model.classical_value > 0
     assert model.representation_error < 0.25
     assert "Black-Scholes" in model.explain()
+    assert model.target_error_unit == "currency / price units"
+    assert model.error_budget.to_dict()["target_error_unit"] == model.target_error_unit
+    assert model.target_error_unit in model.explain()
+    metadata = model.to_dict()
+    assert metadata["problem_category"] == "option_pricing"
+    assert metadata["target_error_unit"] == model.target_error_unit
+    assert metadata["sampling_statistical_error"] is None
+    assert metadata["compilation_converged"] == model.compilation_converged
+    assert metadata["representation_error"] == model.representation_error
+    assert metadata["algorithm_error"] == model.payoff_approximation_error
 
 
 def test_resource_report_is_explicit_about_mlae(
@@ -67,6 +77,7 @@ def test_compiler_reports_when_payoff_term_cap_misses_tolerance() -> None:
     assert model.payoff_approximation is not None
     assert not model.payoff_approximation.met_tolerance
     assert not model.compilation_converged
+    assert not model.to_dict()["compilation_converged"]
     assert "not met" in model.explain()
 
 
@@ -84,3 +95,62 @@ def test_compiler_does_not_false_converge_when_coarse_grids_miss_tail_payoff() -
     assert model.representation_error <= representation_budget
     assert model.representation_converged
     assert "Representation validation error" in model.explain()
+
+
+def test_risk_target_error_units_follow_the_financial_objective() -> None:
+    distribution = qfin.LossDistribution([0.0, 10.0, 20.0, 50.0])
+    tail = qfin.compile(
+        qfin.TailProbability(distribution, threshold=20.0),
+        backend="classical",
+        target_error=0.05,
+        min_qubits=2,
+        max_qubits=2,
+    )
+    value_at_risk = qfin.compile(
+        qfin.VaR(distribution, confidence=0.95),
+        backend="classical",
+        target_error=1.0,
+        min_qubits=2,
+        max_qubits=2,
+    )
+    expected_shortfall = qfin.compile(
+        qfin.CVaR(distribution, confidence=0.95),
+        backend="classical",
+        target_error=1.0,
+        min_qubits=2,
+        max_qubits=2,
+    )
+
+    assert isinstance(tail, qfin.CompiledRiskModel)
+    assert isinstance(value_at_risk, qfin.CompiledRiskModel)
+    assert isinstance(expected_shortfall, qfin.CompiledRiskModel)
+    assert tail.target_error_unit == "probability units"
+    assert value_at_risk.target_error_unit == "loss units"
+    assert expected_shortfall.target_error_unit == "loss units"
+    assert tail.error_budget.to_dict()["target_error_unit"] == "probability units"
+    assert "probability units" in tail.explain()
+    for model in (tail, value_at_risk, expected_shortfall):
+        metadata = model.to_dict()
+        assert metadata["target_error_unit"] == model.target_error_unit
+        assert not metadata["quantum_execution_available"]
+        assert metadata["sampling_statistical_error"] is None
+        assert metadata["backend"] == "classical"
+        assert "Selected backend: classical" in model.explain()
+
+
+@pytest.mark.parametrize(
+    "budget_type",
+    [
+        qfin.ErrorBudget,
+        qfin.RiskErrorBudget,
+        qfin.StructuredOracleErrorBudget,
+        qfin.StructuredRiskErrorBudget,
+    ],
+)
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), 0.0, -0.01])
+def test_public_error_budget_factories_reject_invalid_targets(
+    budget_type: object,
+    invalid: float,
+) -> None:
+    with pytest.raises(ValueError, match="target_error must be finite and greater than zero"):
+        budget_type.allocate(invalid)  # type: ignore[attr-defined]

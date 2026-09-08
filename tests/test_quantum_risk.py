@@ -54,6 +54,8 @@ def test_tail_probability_quantum_workflow(losses: qfin.LossDistribution) -> Non
     assert result.resources.objective_evaluations == 1
     assert result.resources.total_shots == 6_000
     assert result.backend == "pennylane.lightning.qubit:structured"
+    assert result.target_error_unit == "probability units"
+    assert result.to_dict()["target_error_unit"] == "probability units"
 
 
 def test_quantum_var_binary_search_and_resources(losses: qfin.LossDistribution) -> None:

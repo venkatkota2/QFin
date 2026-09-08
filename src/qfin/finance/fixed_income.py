@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from math import floor, isfinite
-from operator import index as integer_index
+from numbers import Real
 from typing import Any, Literal, cast
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin import _native
+from qfin._validation import require_integer
 from qfin.finance.curves import YieldCurve
 from qfin.finance.dates import (
     BusinessDayConvention,
@@ -28,9 +29,11 @@ Int32Array = NDArray[np.int32]
 Engine = Literal["auto", "numpy", "native"]
 Settlement = float | DateLike | None
 
-# Crossing point is benchmarked by examples/native_benchmark.py. This conservative
-# default avoids paying extension-boundary overhead for tiny portfolios.
-_AUTO_NATIVE_CASHFLOW_THRESHOLD = 4_096
+# Current public-API benchmarks show no stable native win for ordinary pricing;
+# yield solving and key-rate repricing have separate, evidence-based policies.
+_AUTO_NATIVE_KEY_RATE_WORKLOAD = 1_000_000
+_REDUCEAT_CASHFLOW_THRESHOLD = 4_096
+_SCENARIO_MATRIX_TARGET_ELEMENTS = 8_000_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,12 +102,12 @@ class FixedRateBond:
             raise ValueError("bond inputs must be finite")
         if face_value <= 0:
             raise ValueError("face_value must be positive")
-        try:
-            normalized_frequency = integer_index(frequency)
-        except TypeError as exc:
-            raise ValueError("frequency must be an integer in [1, 365]") from exc
-        if isinstance(frequency, bool) or normalized_frequency <= 0 or normalized_frequency > 365:
-            raise ValueError("frequency must be an integer in [1, 365]")
+        normalized_frequency = require_integer(
+            frequency,
+            "frequency",
+            minimum=1,
+            maximum=365,
+        )
         has_issue = issue_date is not None
         has_maturity_date = maturity_date is not None
         if has_issue != has_maturity_date:
@@ -222,13 +225,13 @@ class FixedRateBond:
             times[-1] = self.maturity
         return np.asarray(times, dtype=np.float64)
 
-    def cashflows(
+    def _cashflow_components(
         self,
         *,
         settlement: Settlement = None,
         time_day_count: DayCountConvention | str | None = None,
-    ) -> tuple[FloatArray, FloatArray]:
-        """Return remaining times and amounts relative to ``settlement``."""
+    ) -> tuple[FloatArray, FloatArray, FloatArray]:
+        """Return times, principal, and cash flows per unit coupon rate."""
 
         if self.is_dated:
             if settlement is None:
@@ -255,8 +258,6 @@ class FixedRateBond:
                 ],
                 dtype=np.float64,
             )
-            amounts = self.face_value * self.coupon_rate * accruals
-            amounts[-1] += self.face_value
             remaining = np.asarray(
                 [item > settlement_date for item in schedule.payment_dates], dtype=np.bool_
             )
@@ -268,7 +269,11 @@ class FixedRateBond:
                 ],
                 dtype=np.float64,
             )
-            return np.ascontiguousarray(times), np.ascontiguousarray(amounts[remaining])
+            unit_coupon = np.ascontiguousarray(self.face_value * accruals[remaining])
+            principal = np.zeros(unit_coupon.size, dtype=np.float64)
+            if principal.size:
+                principal[-1] = self.face_value
+            return np.ascontiguousarray(times), principal, unit_coupon
 
         numeric_settlement = 0.0 if settlement is None else settlement
         if not isinstance(numeric_settlement, (float, int)):
@@ -279,15 +284,31 @@ class FixedRateBond:
         payment_times = self.payment_schedule()
         previous_times = np.concatenate((np.array([0.0]), payment_times[:-1]))
         accrual_fractions = payment_times - previous_times
-        amounts = self.face_value * self.coupon_rate * accrual_fractions
-        amounts[-1] += self.face_value
         remaining = payment_times > numeric_settlement + 1.0e-12
         relative_times = np.ascontiguousarray(payment_times[remaining] - numeric_settlement)
-        remaining_amounts = np.ascontiguousarray(amounts[remaining])
-        return relative_times, remaining_amounts
+        unit_coupon = np.ascontiguousarray(self.face_value * accrual_fractions[remaining])
+        principal = np.zeros(unit_coupon.size, dtype=np.float64)
+        if principal.size:
+            principal[-1] = self.face_value
+        return relative_times, principal, unit_coupon
 
-    def accrued_interest(self, settlement: Settlement = None) -> float:
-        """Return straight-line coupon accrual from the preceding payment date."""
+    def cashflows(
+        self,
+        *,
+        settlement: Settlement = None,
+        time_day_count: DayCountConvention | str | None = None,
+    ) -> tuple[FloatArray, FloatArray]:
+        """Return remaining times and amounts relative to ``settlement``."""
+
+        times, principal, unit_coupon = self._cashflow_components(
+            settlement=settlement,
+            time_day_count=time_day_count,
+        )
+        amounts = principal + self.coupon_rate * unit_coupon
+        return times, np.ascontiguousarray(amounts)
+
+    def _unit_coupon_accrued_interest(self, settlement: Settlement = None) -> float:
+        """Return accrued interest for a unit annual coupon rate."""
 
         if self.is_dated:
             if settlement is None:
@@ -307,16 +328,11 @@ class FixedRateBond:
             if dated_previous == settlement_date:
                 return 0.0
             following = next(item for item in boundaries if item > settlement_date)
-            full_coupon = (
-                self.face_value
-                * self.coupon_rate
-                * year_fraction(dated_previous, following, self.day_count)
-            )
             full_fraction = year_fraction(dated_previous, following, self.day_count)
             elapsed_fraction = year_fraction(dated_previous, settlement_date, self.day_count)
             if full_fraction <= 0:
                 return 0.0
-            return full_coupon * elapsed_fraction / full_fraction
+            return self.face_value * elapsed_fraction
 
         numeric_settlement = 0.0 if settlement is None else settlement
         if not isinstance(numeric_settlement, (float, int)):
@@ -331,7 +347,12 @@ class FixedRateBond:
         numeric_previous = 0.0 if numeric_completed.size == 0 else float(numeric_completed[-1])
         if abs(numeric_previous - numeric_settlement) <= 1.0e-12:
             return 0.0
-        return self.face_value * self.coupon_rate * (numeric_settlement - numeric_previous)
+        return self.face_value * (numeric_settlement - numeric_previous)
+
+    def accrued_interest(self, settlement: Settlement = None) -> float:
+        """Return straight-line coupon accrual from the preceding payment date."""
+
+        return self.coupon_rate * self._unit_coupon_accrued_interest(settlement)
 
 
 @dataclass(frozen=True, slots=True)
@@ -401,6 +422,47 @@ def _as_bond_tuple(
     return items
 
 
+def _normalize_bond_settlement(
+    items: tuple[FixedRateBond, ...],
+    settlement: Settlement,
+    *,
+    curve: YieldCurve | None = None,
+) -> float | date | None:
+    """Normalize one batch settlement under the shared fixed-income contract."""
+
+    dated_modes = {bond.is_dated for bond in items}
+    if len(dated_modes) > 1:
+        raise ValueError("dated and floating-time bonds cannot share a valuation batch")
+    is_dated_batch = bool(dated_modes and True in dated_modes)
+    if is_dated_batch:
+        if settlement is None:
+            if curve is None:
+                return None
+            if curve.valuation_date is None:
+                raise ValueError("dated bond pricing requires settlement or curve valuation_date")
+            normalized_date = curve.valuation_date
+        else:
+            if isinstance(settlement, Real):
+                raise TypeError("settlement for dated bond pricing must be a date")
+            normalized_date = as_date(cast(DateLike, settlement), name="settlement")
+        if (
+            curve is not None
+            and curve.valuation_date is not None
+            and normalized_date != curve.valuation_date
+        ):
+            raise ValueError("dated bond settlement must equal the curve valuation_date")
+        return normalized_date
+
+    if settlement is None:
+        return 0.0
+    if isinstance(settlement, bool) or not isinstance(settlement, Real):
+        raise TypeError("settlement for floating-time bonds must be numeric")
+    normalized_time = float(settlement)
+    if not isfinite(normalized_time) or normalized_time < 0.0:
+        raise ValueError("settlement must be finite and non-negative")
+    return normalized_time
+
+
 def flatten_bond_cashflows(
     bonds: FixedRateBond | list[FixedRateBond] | tuple[FixedRateBond, ...],
     *,
@@ -410,12 +472,13 @@ def flatten_bond_cashflows(
     """Flatten a bond batch into contiguous buffers and prefix offsets."""
 
     items = _as_bond_tuple(bonds)
+    normalized_settlement = _normalize_bond_settlement(items, settlement)
     time_parts: list[FloatArray] = []
     amount_parts: list[FloatArray] = []
     offsets = np.zeros(len(items) + 1, dtype=np.int64)
     for index, bond in enumerate(items):
         times, amounts = bond.cashflows(
-            settlement=settlement,
+            settlement=normalized_settlement,
             time_day_count=time_day_count,
         )
         time_parts.append(times)
@@ -435,6 +498,7 @@ def _resolve_engine(
     workload: int,
     *,
     native_compatible: bool = True,
+    auto_native_threshold: int | None = None,
 ) -> Literal["numpy", "native"]:
     if engine not in ("auto", "numpy", "native"):
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
@@ -447,15 +511,26 @@ def _resolve_engine(
         return "native"
     if engine == "numpy":
         return "numpy"
-    if native_compatible and _native.available() and workload >= _AUTO_NATIVE_CASHFLOW_THRESHOLD:
+    if (
+        native_compatible
+        and auto_native_threshold is not None
+        and workload >= auto_native_threshold
+        and _native.available()
+    ):
         return "native"
     return "numpy"
 
 
 def _segment_sum(values: FloatArray, offsets: Int64Array) -> FloatArray:
     counts = np.diff(offsets)
-    indices = np.repeat(np.arange(counts.size, dtype=np.int64), counts)
-    return np.bincount(indices, weights=values, minlength=counts.size).astype(np.float64)
+    if values.size < _REDUCEAT_CASHFLOW_THRESHOLD:
+        indices = np.repeat(np.arange(counts.size, dtype=np.int64), counts)
+        return np.bincount(indices, weights=values, minlength=counts.size).astype(np.float64)
+    result = np.zeros(counts.size, dtype=np.float64)
+    nonempty = counts > 0
+    if np.any(nonempty):
+        result[nonempty] = np.add.reduceat(values, offsets[:-1][nonempty])
+    return result
 
 
 def _numpy_curve_metrics(
@@ -464,7 +539,7 @@ def _numpy_curve_metrics(
     offsets: Int64Array,
     curve: YieldCurve,
     shift: float,
-) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
+) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray, FloatArray, FloatArray]:
     base_discounts = np.asarray(curve.discount(times), dtype=np.float64)
     shifted_discounts = base_discounts * np.exp(-shift * times)
     present_values = amounts * shifted_discounts
@@ -473,60 +548,48 @@ def _numpy_curve_metrics(
     second = _segment_sum(times * times * present_values, offsets)
     durations = np.divide(first, prices, out=np.zeros_like(prices), where=prices != 0)
     convexities = np.divide(second, prices, out=np.zeros_like(prices), where=prices != 0)
-    down = _segment_sum(amounts * shifted_discounts * np.exp(1.0e-4 * times), offsets)
-    up = _segment_sum(amounts * shifted_discounts * np.exp(-1.0e-4 * times), offsets)
-    return prices, durations, convexities, 0.5 * (down - up)
-
-
-def _curve_effective_metrics(
-    times: FloatArray,
-    amounts: FloatArray,
-    offsets: Int64Array,
-    curve: YieldCurve,
-    shift: float,
-    bump_size: float = 1.0e-4,
-) -> tuple[FloatArray, FloatArray]:
-    base_discounts = np.asarray(curve.discount(times), dtype=np.float64)
-    shifted_discounts = base_discounts * np.exp(-shift * times)
-    prices = _segment_sum(amounts * shifted_discounts, offsets)
-    down = _segment_sum(amounts * shifted_discounts * np.exp(bump_size * times), offsets)
-    up = _segment_sum(amounts * shifted_discounts * np.exp(-bump_size * times), offsets)
+    bump_size = 1.0e-4
+    bump_times = bump_size * times
+    down = _segment_sum(present_values * np.exp(bump_times), offsets)
+    up = _segment_sum(present_values * np.exp(-bump_times), offsets)
+    effective_duration_numerator = _segment_sum(
+        present_values * np.sinh(bump_times) / bump_size,
+        offsets,
+    )
+    effective_convexity_numerator = _segment_sum(
+        present_values * 4.0 * np.sinh(0.5 * bump_times) ** 2 / bump_size**2,
+        offsets,
+    )
     duration = np.divide(
-        down - up,
-        2.0 * bump_size * prices,
+        effective_duration_numerator,
+        prices,
         out=np.zeros_like(prices),
         where=prices != 0,
     )
     convexity = np.divide(
-        down + up - 2.0 * prices,
-        bump_size * bump_size * prices,
+        effective_convexity_numerator,
+        prices,
         out=np.zeros_like(prices),
         where=prices != 0,
     )
-    return duration, convexity
+    return prices, durations, convexities, 0.5 * (down - up), duration, convexity
 
 
-def _curve_settlement(
+def _prepare_curve_cashflows(
     items: tuple[FixedRateBond, ...],
     curve: YieldCurve,
     settlement: Settlement,
-) -> Settlement:
-    dated = {bond.is_dated for bond in items}
-    if len(dated) > 1:
-        raise ValueError("dated and floating-time bonds cannot share a valuation batch")
-    if not dated or False in dated:
-        return 0.0 if settlement is None else settlement
-    if settlement is None:
-        if curve.valuation_date is None:
-            raise ValueError("dated bond pricing requires settlement or curve valuation_date")
-        normalized = curve.valuation_date
-    else:
-        if isinstance(settlement, (float, int)):
-            raise TypeError("settlement for dated bond pricing must be a date")
-        normalized = as_date(settlement, name="settlement")
-    if curve.valuation_date is not None and normalized != curve.valuation_date:
-        raise ValueError("dated bond settlement must equal the curve valuation_date")
-    return normalized
+) -> tuple[FloatArray, FloatArray, Int64Array, float | date | None]:
+    """Prepare curve-relative bond cash flows with one settlement normalization."""
+
+    normalized = _normalize_bond_settlement(items, settlement, curve=curve)
+    time_day_count = curve.day_count if items and items[0].is_dated else None
+    times, amounts, offsets = flatten_bond_cashflows(
+        items,
+        settlement=normalized,
+        time_day_count=time_day_count,
+    )
+    return times, amounts, offsets, normalized
 
 
 def price_bonds(
@@ -549,12 +612,8 @@ def price_bonds(
     if not isfinite(parallel_shift) or not isfinite(z_spread):
         raise ValueError("parallel_shift and z_spread must be finite")
     items = _as_bond_tuple(bonds)
-    normalized_settlement = _curve_settlement(items, curve, settlement)
-    time_day_count = curve.day_count if items and items[0].is_dated else None
-    times, amounts, offsets = flatten_bond_cashflows(
-        items,
-        settlement=normalized_settlement,
-        time_day_count=time_day_count,
+    times, amounts, offsets, normalized_settlement = _prepare_curve_cashflows(
+        items, curve, settlement
     )
     total_shift = parallel_shift + z_spread
     selected = _resolve_engine(
@@ -578,13 +637,19 @@ def price_bonds(
         durations = np.asarray(raw["macaulay_durations"], dtype=np.float64)
         convexities = np.asarray(raw["convexities"], dtype=np.float64)
         dv01 = np.asarray(raw["dv01"], dtype=np.float64)
+        effective_duration = np.asarray(raw["effective_durations"], dtype=np.float64)
+        effective_convexity = np.asarray(raw["effective_convexities"], dtype=np.float64)
     else:
-        prices, durations, convexities, dv01 = _numpy_curve_metrics(
+        (
+            prices,
+            durations,
+            convexities,
+            dv01,
+            effective_duration,
+            effective_convexity,
+        ) = _numpy_curve_metrics(
             times, amounts, offsets, curve, total_shift
         )
-    effective_duration, effective_convexity = _curve_effective_metrics(
-        times, amounts, offsets, curve, total_shift
-    )
     accrued = np.asarray(
         [bond.accrued_interest(normalized_settlement) for bond in items], dtype=np.float64
     )
@@ -627,7 +692,7 @@ def _numpy_yield_metrics(
     offsets: Int64Array,
     yields: FloatArray,
     frequencies: Int32Array,
-) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
+) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray, FloatArray, FloatArray]:
     counts = np.diff(offsets)
     repeated_yields = np.repeat(yields, counts)
     repeated_frequencies = np.repeat(frequencies.astype(np.float64), counts)
@@ -643,67 +708,55 @@ def _numpy_yield_metrics(
     denominator = prices * frequencies.astype(np.float64) ** 2 * (1.0 + yields / frequencies) ** 2
     convexity = np.divide(numerator, denominator, out=np.zeros_like(prices), where=denominator != 0)
 
-    def prices_at(candidate_yields: FloatArray) -> FloatArray:
-        repeated = np.repeat(candidate_yields, counts)
-        discount_base = 1.0 + repeated / repeated_frequencies
-        values = amounts * np.power(discount_base, -repeated_frequencies * times)
-        return _segment_sum(values, offsets)
-
-    up = prices_at(yields + 1.0e-4)
-    central = yields - 1.0e-4 > -frequencies
-    down_candidates = np.where(central, yields - 1.0e-4, yields)
-    down = prices_at(down_candidates)
-    dv01 = np.where(central, 0.5 * (down - up), prices - up)
-    return prices, macaulay, convexity, dv01
-
-
-def _yield_effective_metrics(
-    times: FloatArray,
-    amounts: FloatArray,
-    offsets: Int64Array,
-    yields: FloatArray,
-    frequencies: Int32Array,
-    bump_size: float = 1.0e-4,
-) -> tuple[FloatArray, FloatArray]:
-    counts = np.diff(offsets)
-    repeated_frequencies = np.repeat(frequencies.astype(np.float64), counts)
-
-    def prices_at(candidate_yields: FloatArray) -> FloatArray:
-        repeated = np.repeat(candidate_yields, counts)
-        values = amounts * np.power(
-            1.0 + repeated / repeated_frequencies,
-            -repeated_frequencies * times,
-        )
-        return _segment_sum(values, offsets)
-
-    prices = prices_at(yields)
-    up = prices_at(yields + bump_size)
+    bump_size = 1.0e-4
+    flow_periods = repeated_frequencies * times
+    flow_delta = bump_size / (repeated_frequencies + repeated_yields)
+    log_up_ratio = -flow_periods * np.log1p(flow_delta)
+    up = _segment_sum(present_values * np.exp(log_up_ratio), offsets)
     central = yields - bump_size > -frequencies
-    down_candidates = np.where(central, yields - bump_size, yields)
-    down = prices_at(down_candidates)
-    duration = np.where(
-        central,
-        np.divide(
-            down - up,
-            2.0 * bump_size * prices,
-            out=np.zeros_like(prices),
-            where=prices != 0,
-        ),
-        np.divide(
-            prices - up,
-            bump_size * prices,
-            out=np.zeros_like(prices),
-            where=prices != 0,
-        ),
+    flow_central = np.repeat(central, counts)
+    log_down_ratio = -flow_periods * np.log1p(
+        np.where(flow_central, -flow_delta, 0.0)
     )
-    convexity = np.full_like(prices, np.nan)
+    down = _segment_sum(present_values * np.exp(log_down_ratio), offsets)
+    dv01 = np.where(central, 0.5 * (down - up), prices - up)
+    midpoint = 0.5 * (log_down_ratio + log_up_ratio)
+    half_difference = 0.5 * (log_down_ratio - log_up_ratio)
+    central_duration_numerator = _segment_sum(
+        present_values * np.exp(midpoint) * np.sinh(half_difference) / bump_size,
+        offsets,
+    )
+    one_sided_duration_numerator = _segment_sum(
+        -present_values * np.expm1(log_up_ratio) / bump_size,
+        offsets,
+    )
+    duration_numerator = np.where(
+        central,
+        central_duration_numerator,
+        one_sided_duration_numerator,
+    )
+    effective_duration = np.divide(
+        duration_numerator,
+        prices,
+        out=np.zeros_like(prices),
+        where=prices != 0,
+    )
+    stable_second_difference = 2.0 * (
+        np.expm1(midpoint) * np.cosh(half_difference)
+        + 2.0 * np.sinh(0.5 * half_difference) ** 2
+    )
+    effective_convexity_numerator = _segment_sum(
+        present_values * stable_second_difference / bump_size**2,
+        offsets,
+    )
+    effective_convexity = np.full_like(prices, np.nan)
     np.divide(
-        down + up - 2.0 * prices,
-        bump_size * bump_size * prices,
-        out=convexity,
+        effective_convexity_numerator,
+        prices,
+        out=effective_convexity,
         where=central & (prices != 0),
     )
-    return duration, convexity
+    return prices, macaulay, convexity, dv01, effective_duration, effective_convexity
 
 
 def price_bonds_from_yield(
@@ -733,14 +786,20 @@ def price_bonds_from_yield(
         macaulay = np.asarray(raw["macaulay_durations"], dtype=np.float64)
         convexity = np.asarray(raw["convexities"], dtype=np.float64)
         dv01 = np.asarray(raw["dv01"], dtype=np.float64)
+        effective_duration = np.asarray(raw["effective_durations"], dtype=np.float64)
+        effective_convexity = np.asarray(raw["effective_convexities"], dtype=np.float64)
     else:
-        prices, macaulay, convexity, dv01 = _numpy_yield_metrics(
+        (
+            prices,
+            macaulay,
+            convexity,
+            dv01,
+            effective_duration,
+            effective_convexity,
+        ) = _numpy_yield_metrics(
             times, amounts, offsets, yield_array, frequencies
         )
     modified = macaulay / (1.0 + yield_array / frequencies)
-    effective_duration, effective_convexity = _yield_effective_metrics(
-        times, amounts, offsets, yield_array, frequencies
-    )
     accrued = np.asarray([bond.accrued_interest(settlement) for bond in items], dtype=np.float64)
     unavailable = np.full(len(items), np.nan, dtype=np.float64)
     return BondBatchAnalytics(
@@ -800,7 +859,7 @@ def _numpy_solve_yields(
         for iteration in range(1, max_iterations + 1):
             middle = 0.5 * (lower + upper)
             error = _price_one_yield(times, amounts, middle, bond.frequency) - target
-            if abs(error) <= tolerance * max(1.0, target) or abs(upper - lower) <= tolerance:
+            if error == 0.0:
                 converged[index] = True
                 iterations[index] = iteration
                 break
@@ -808,6 +867,12 @@ def _numpy_solve_yields(
                 lower = middle
             else:
                 upper = middle
+            yield_tolerance = tolerance * max(1.0, abs(middle))
+            if abs(upper - lower) <= 2.0 * yield_tolerance:
+                middle = 0.5 * (lower + upper)
+                converged[index] = True
+                iterations[index] = iteration
+                break
         else:
             iterations[index] = max_iterations
         yields[index] = middle
@@ -831,14 +896,13 @@ def yield_from_prices(
         raise ValueError("prices must be positive")
     if not isfinite(tolerance) or tolerance <= 0:
         raise ValueError("tolerance must be finite and positive")
-    try:
-        iteration_limit = integer_index(max_iterations)
-    except TypeError as exc:
-        raise ValueError("max_iterations must be a positive integer") from exc
-    if isinstance(max_iterations, bool) or iteration_limit <= 0:
-        raise ValueError("max_iterations must be positive")
+    iteration_limit = require_integer(max_iterations, "max_iterations", minimum=1)
     times, amounts, offsets = flatten_bond_cashflows(items, settlement=settlement)
-    selected = _resolve_engine(engine, max(times.size, len(items) * 64))
+    selected = _resolve_engine(
+        engine,
+        max(times.size, len(items) * 64),
+        auto_native_threshold=1,
+    )
     if selected == "native":
         frequencies = np.asarray([bond.frequency for bond in items], dtype=np.int32)
         raw = cast(
@@ -880,81 +944,70 @@ def key_rate_risk(
 
     if not isfinite(bump_size) or bump_size <= 0:
         raise ValueError("bump_size must be finite and positive")
+    from qfin.finance.scenarios import _PreparedScenarioValuation, _segment_sum_rows
+
     items = _as_bond_tuple(bonds)
-    base = price_bonds(items, curve, settlement=settlement, engine=engine)
-    key_dv01 = np.zeros((len(items), curve.times.size), dtype=np.float64)
-    key_duration = np.zeros_like(key_dv01)
-    for node in range(curve.times.size):
-        shock = np.zeros(curve.times.size, dtype=np.float64)
-        shock[node] = bump_size
-        up = price_bonds(
-            items,
-            curve.shifted(shock),
-            settlement=settlement,
-            engine=engine,
-        ).dirty_prices
-        down = price_bonds(
-            items,
-            curve.shifted(-shock),
-            settlement=settlement,
-            engine=engine,
-        ).dirty_prices
-        derivative = (down - up) / (2.0 * bump_size)
-        key_dv01[:, node] = derivative * 1.0e-4
-        key_duration[:, node] = np.divide(
-            derivative,
-            base.dirty_prices,
-            out=np.zeros_like(derivative),
-            where=base.dirty_prices != 0,
+    times, amounts, offsets, _ = _prepare_curve_cashflows(items, curve, settlement)
+    node_count = int(curve.times.size)
+    shocks = np.zeros((2 * node_count + 3, node_count), dtype=np.float64)
+    node_indices = np.arange(node_count)
+    shocks[1 + node_indices, node_indices] = bump_size
+    shocks[1 + node_count + node_indices, node_indices] = -bump_size
+    shocks[-2, :] = bump_size
+    shocks[-1, :] = -bump_size
+    selected = _resolve_engine(
+        engine,
+        times.size * shocks.shape[0],
+        native_compatible=curve.native_compatible,
+        auto_native_threshold=_AUTO_NATIVE_KEY_RATE_WORKLOAD,
+    )
+    if selected == "native":
+        scenario_prices = np.asarray(
+            _native.require().scenario_instrument_present_values(
+                times,
+                amounts,
+                offsets,
+                curve.times,
+                curve.zero_rates,
+                shocks,
+            ),
+            dtype=np.float64,
         )
-    parallel_up = price_bonds(
-        items,
-        curve.shifted(bump_size),
-        settlement=settlement,
-        engine=engine,
-    ).dirty_prices
-    parallel_down = price_bonds(
-        items,
-        curve.shifted(-bump_size),
-        settlement=settlement,
-        engine=engine,
-    ).dirty_prices
+    else:
+        prepared = _PreparedScenarioValuation.build(times, curve)
+        scenario_prices = np.empty((shocks.shape[0], len(items)), dtype=np.float64)
+        rows_per_chunk = max(
+            1,
+            _SCENARIO_MATRIX_TARGET_ELEMENTS // max(1, int(times.size)),
+        )
+        for start in range(0, shocks.shape[0], rows_per_chunk):
+            stop = min(start + rows_per_chunk, shocks.shape[0])
+            discounted = prepared.discount_factors(shocks[start:stop]) * amounts[None, :]
+            scenario_prices[start:stop] = _segment_sum_rows(discounted, offsets)
+
+    base_prices = scenario_prices[0]
+    up = scenario_prices[1 : node_count + 1].T
+    down = scenario_prices[node_count + 1 : 2 * node_count + 1].T
+    derivative = (down - up) / (2.0 * bump_size)
+    key_dv01 = derivative * 1.0e-4
+    key_duration = np.divide(
+        derivative,
+        base_prices[:, None],
+        out=np.zeros_like(derivative),
+        where=base_prices[:, None] != 0.0,
+    )
+    parallel_up = scenario_prices[-2]
+    parallel_down = scenario_prices[-1]
     parallel_dv01 = (parallel_down - parallel_up) / (2.0 * bump_size) * 1.0e-4
     return KeyRateRiskReport(
         node_times=curve.times.copy(),
-        base_prices=base.dirty_prices.copy(),
+        base_prices=base_prices.copy(),
         key_rate_dv01=key_dv01,
         key_rate_duration=key_duration,
         parallel_dv01=parallel_dv01,
         bump_size=bump_size,
         interpolation=curve.interpolation.value,
-        engine=base.engine,
-    )
-
-
-def _with_coupon_rate(bond: FixedRateBond, coupon_rate: float) -> FixedRateBond:
-    if not bond.is_dated:
-        return FixedRateBond(
-            bond.maturity,
-            coupon_rate,
-            face_value=bond.face_value,
-            frequency=bond.frequency,
-        )
-    assert bond.issue_date is not None and bond.maturity_date is not None
-    return FixedRateBond(
-        coupon_rate=coupon_rate,
-        face_value=bond.face_value,
-        frequency=bond.frequency,
-        issue_date=bond.issue_date,
-        maturity_date=bond.maturity_date,
-        day_count=bond.day_count,
-        calendar=bond.calendar,
-        business_day_convention=bond.business_day_convention,
-        termination_convention=bond.termination_convention,
-        date_generation=bond.date_generation,
-        end_of_month=bond.end_of_month,
-        first_coupon_date=bond.first_coupon_date,
-        next_to_last_coupon_date=bond.next_to_last_coupon_date,
+        engine=selected,
     )
 
 
@@ -975,22 +1028,20 @@ def par_yield(
     target = bond.face_value if target_clean_price is None else target_clean_price
     if not isfinite(target) or target <= 0:
         raise ValueError("target_clean_price must be finite and positive")
-    zero = price_bonds(
-        _with_coupon_rate(bond, 0.0),
-        curve,
-        settlement=settlement,
-        engine="numpy",
-    ).clean_prices[0]
-    unit = price_bonds(
-        _with_coupon_rate(bond, 1.0),
-        curve,
-        settlement=settlement,
-        engine="numpy",
-    ).clean_prices[0]
-    coupon_value = float(unit - zero)
+    normalized_settlement = _normalize_bond_settlement((bond,), settlement, curve=curve)
+    time_day_count = curve.day_count if bond.is_dated else None
+    times, principal, unit_coupon = bond._cashflow_components(
+        settlement=normalized_settlement,
+        time_day_count=time_day_count,
+    )
+    discounts = np.asarray(curve.discount(times), dtype=np.float64)
+    principal_value = float(np.dot(principal, discounts))
+    unit_coupon_value = float(np.dot(unit_coupon, discounts))
+    unit_coupon_accrued = bond._unit_coupon_accrued_interest(normalized_settlement)
+    coupon_value = unit_coupon_value - unit_coupon_accrued
     if abs(coupon_value) <= np.finfo(np.float64).eps:
         raise ValueError("par yield is undefined because no coupon cash flows remain")
-    return float((target - zero) / coupon_value)
+    return float((target - principal_value) / coupon_value)
 
 
 __all__ = [

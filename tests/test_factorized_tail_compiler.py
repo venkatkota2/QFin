@@ -54,6 +54,11 @@ def test_factorized_tail_compiler_runs_classical_reference() -> None:
     assert compiled.backend_name == "classical"
     assert compiled.run().probability == pytest.approx(0.75)
     assert compiled.validation.disagreement_probability == pytest.approx(0.0)
+    metadata = compiled.to_dict()
+    assert metadata["target_error_unit"] == "probability units"
+    assert metadata["representation_error"] == compiled.validation.disagreement_probability
+    assert metadata["sampling_statistical_error"] is None
+    assert not metadata["quantum_execution_available"]
     assert "joint payoff table: not built" in compiled.explain()
     with pytest.raises(ValueError, match="not 'pennylane'"):
         compiled.to_pennylane()

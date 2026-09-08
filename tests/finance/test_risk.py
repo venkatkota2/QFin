@@ -17,9 +17,10 @@ def test_weighted_var_and_expected_shortfall_boundary_mass() -> None:
     assert summary.maximum == 20.0
 
 
-def test_risk_auto_stays_on_stable_numpy_path() -> None:
+def test_risk_auto_uses_current_measured_dispatch_policy() -> None:
     summary = qfin.aggregate_risk(qfin.LossDistribution([0.0, 1.0, 2.0]))
-    assert summary.engine == "numpy"
+    expected = "native" if qfin.system_info()["native_extension"] else "numpy"
+    assert summary.engine == expected
 
 
 def test_loss_distribution_normalizes_and_maps_to_empirical() -> None:

@@ -9,7 +9,9 @@ from typing import Any, Literal
 
 import numpy as np
 
+from qfin._validation import require_integer
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
+from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends.devices import DeviceTarget, resolve_quantum_device
 from qfin.backends.interop import QasmExport, export_openqasm, export_qiskit
 from qfin.backends.noise import NoiseMitigationReport, NoiseModel, analyze_noise
@@ -55,9 +57,28 @@ class RiskErrorBudget:
     oracle: float
     estimation: float
     interval_level: float = 0.95
+    target_error_unit: str = "loss units"
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.total) or self.total <= 0.0:
+            raise ValueError("target_error must be finite and greater than zero")
+        components = (self.distribution, self.oracle, self.estimation)
+        if any(not isfinite(value) or value < 0.0 for value in components):
+            raise ValueError("risk error-budget allocations must be finite and non-negative")
+        if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
+            raise ValueError("risk error-budget allocations must sum to total")
+        if not 0.0 < self.interval_level < 1.0:
+            raise ValueError("interval_level must lie strictly between zero and one")
+        if not self.target_error_unit.strip():
+            raise ValueError("target_error_unit must not be empty")
 
     @classmethod
-    def allocate(cls, target_error: float) -> RiskErrorBudget:
+    def allocate(
+        cls,
+        target_error: float,
+        *,
+        target_error_unit: str = "loss units",
+    ) -> RiskErrorBudget:
         if not isfinite(target_error) or target_error <= 0:
             raise ValueError("target_error must be finite and greater than zero")
         return cls(
@@ -65,6 +86,7 @@ class RiskErrorBudget:
             distribution=0.5 * target_error,
             oracle=0.0,
             estimation=0.5 * target_error,
+            target_error_unit=target_error_unit,
         )
 
     def to_dict(self) -> dict[str, float | str]:
@@ -74,6 +96,7 @@ class RiskErrorBudget:
             "oracle": self.oracle,
             "estimation": self.estimation,
             "interval_level": self.interval_level,
+            "target_error_unit": self.target_error_unit,
             "oracle_note": "exact grid-point indicator/excess rotations",
         }
 
@@ -137,6 +160,7 @@ class QuantumRiskResult:
     representation_error: float
     estimation_error: float
     target_error: float
+    target_error_unit: str
     meets_target_error: bool
     threshold: float | None
     tail_probability: float | None
@@ -152,6 +176,17 @@ class QuantumRiskResult:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "problem_category": "empirical_risk",
+            "financial_objective": self.problem_kind,
+            "representation": "empirical_probability_tree",
+            "algorithm_error": None,
+            "sampling_statistical_error": max(
+                abs(self.value - self.confidence_interval_95[0]),
+                abs(self.confidence_interval_95[1] - self.value),
+            ),
+            "sampling_error_definition": "maximum distance to the reported 95% interval endpoints",
+            "quantum_execution_available": True,
+            "resource_estimate_type": "logical_circuit_counts",
             "problem_kind": self.problem_kind,
             "value": self.value,
             "confidence_interval_95": list(self.confidence_interval_95),
@@ -161,6 +196,7 @@ class QuantumRiskResult:
             "representation_error": self.representation_error,
             "estimation_error": self.estimation_error,
             "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
             "meets_target_error": self.meets_target_error,
             "threshold": self.threshold,
             "tail_probability": self.tail_probability,
@@ -209,6 +245,42 @@ class CompiledRiskModel:
     backend_name: str = "pennylane"
     algorithm_name: str = "maximum_likelihood_amplitude_estimation"
     quantum_algorithm_available: bool = True
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "problem_category": "empirical_risk",
+            "financial_objective": self.problem_kind,
+            "backend": self.backend_name,
+            "representation": self.representation.encoding_method,
+            "algorithm": (
+                self.algorithm_name if self.backend_name == "pennylane"
+                else "classical_weighted_statistics"
+            ),
+            "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
+            "representation_error": self.representation_error,
+            "discretization_error": self.representation.discretization_error,
+            "algorithm_error": None,
+            "sampling_statistical_error": None,
+            "compilation_converged": self.compilation_converged,
+            "quantum_execution_available": (
+                self.backend_name == "pennylane" and self.quantum_algorithm_available
+            ),
+            "resource_estimate_type": "logical_circuit_counts",
+            "error_budget": self.error_budget.to_dict(),
+            "limitations": [
+                "Empirical loss inputs are not a calibrated stochastic model.",
+                "Quantum execution is experimental and requires optional dependencies.",
+                "Adaptive VaR/CVaR intervals do not guarantee simultaneous coverage.",
+                "Resource estimates are not hardware-runtime or quantum-advantage claims.",
+            ],
+        }
+
+    @property
+    def target_error_unit(self) -> str:
+        """Unit attached to the compiled financial or probability objective."""
+
+        return self.error_budget.target_error_unit
 
     @property
     def compilation_converged(self) -> bool:
@@ -488,22 +560,27 @@ class CompiledRiskModel:
     ) -> QuantumRiskResult:
         """Execute the experimental MLAE tail-risk workflow."""
 
-        if bootstrap_resamples == 1 or bootstrap_resamples < 0:
+        bootstrap_count = require_integer(
+            bootstrap_resamples,
+            "bootstrap_resamples",
+            minimum=0,
+        )
+        if bootstrap_count == 1:
             raise ValueError("bootstrap_resamples must be zero or at least two")
-        powers = tuple(int(power) for power in schedule)
+        powers, shot_count = _validated_schedule(schedule, shots)
         resolved_device = resolve_quantum_device(device_name)
         runtime = self.to_pennylane(
             device_name=resolved_device,
             max_structured_rotations=max_structured_rotations,
         )
         classical_interval: RiskConfidenceInterval | None = None
-        if bootstrap_resamples:
+        if bootstrap_count:
             if isinstance(self.problem, TailProbability):
                 raise ValueError("bootstrap intervals are implemented for VaR/CVaR only")
             classical_interval = bootstrap_risk_interval(
                 self.problem.distribution,
                 confidence=self.problem.confidence,
-                resamples=bootstrap_resamples,
+                resamples=bootstrap_count,
                 seed=bootstrap_seed,
             )
 
@@ -517,7 +594,7 @@ class CompiledRiskModel:
                 runtime,
                 objective,
                 schedule=powers,
-                shots=shots,
+                shots=shot_count,
                 seed=seed,
                 likelihood_grid_size=likelihood_grid_size,
             )
@@ -526,7 +603,7 @@ class CompiledRiskModel:
             interval = (estimate.lower_95, estimate.upper_95)
             resources = self.resources(
                 schedule=powers,
-                shots=shots,
+                shots=shot_count,
                 device_name=resolved_device,
                 threshold_evaluations=1,
             )
@@ -549,7 +626,7 @@ class CompiledRiskModel:
             runtime,
             confidence=self.problem.confidence,
             schedule=powers,
-            shots=shots,
+            shots=shot_count,
             seed=seed,
             likelihood_grid_size=likelihood_grid_size,
         )
@@ -560,7 +637,7 @@ class CompiledRiskModel:
         if isinstance(self.problem, VaR):
             resources = self.resources(
                 schedule=powers,
-                shots=shots,
+                shots=shot_count,
                 device_name=resolved_device,
                 threshold_evaluations=len(search.evaluations),
             )
@@ -584,7 +661,7 @@ class CompiledRiskModel:
             runtime,
             excess_objective,
             schedule=powers,
-            shots=shots,
+            shots=shot_count,
             seed=None if seed is None else seed + len(search.evaluations) + 10_000,
             likelihood_grid_size=likelihood_grid_size,
         )
@@ -597,7 +674,7 @@ class CompiledRiskModel:
         estimates = (*search.evaluations, excess_item)
         resources = self.resources(
             schedule=powers,
-            shots=shots,
+            shots=shot_count,
             device_name=resolved_device,
             threshold_evaluations=len(search.evaluations),
         )
@@ -644,6 +721,7 @@ class CompiledRiskModel:
             representation_error=self.representation_error,
             estimation_error=estimation_error,
             target_error=self.target_error,
+            target_error_unit=self.target_error_unit,
             meets_target_error=absolute_error <= self.target_error,
             threshold=threshold,
             tail_probability=tail_probability,
@@ -675,11 +753,16 @@ class CompiledRiskModel:
             f"Representation: {self.representation.qubits} data qubits, "
             f"{self.representation.grid_points} grid points; error="
             f"{self.representation_error:.6g} ({convergence}).\n"
+            f"Target error: {self.target_error:.6g} {self.target_error_unit}.\n"
             f"Algorithm: {algorithm}.\n"
             "State preparation: generic probability-tree multiplexed RY loading "
             "with O(2**data_qubits) parameters.\n"
-            "Execution: PennyLane with Lightning preferred; this is an experimental "
-            "simulator workflow and does not claim quantum advantage."
+            f"Selected backend: {self.backend_name}; compilation converged: "
+            f"{self.compilation_converged}. Sampling error is unestimated before shots.\n"
+            "run() evaluates the classical reference. Quantum execution requires the "
+            "PennyLane backend and optional dependencies; it is an experimental simulator "
+            "workflow and does not claim quantum advantage. Resources are logical counts, "
+            "not a hardware-runtime estimate."
         )
 
 

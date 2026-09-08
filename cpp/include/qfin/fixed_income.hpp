@@ -11,6 +11,8 @@ struct BatchBondMetrics {
     std::vector<double> macaulay_durations;
     std::vector<double> convexities;
     std::vector<double> dv01;
+    std::vector<double> effective_durations;
+    std::vector<double> effective_convexities;
 };
 
 struct YieldSolveResult {

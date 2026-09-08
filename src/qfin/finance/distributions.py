@@ -8,6 +8,8 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.special import ndtr, ndtri
 
+from qfin._numerics import stable_weighted_sum
+
 FloatArray = NDArray[np.float64]
 
 
@@ -98,10 +100,11 @@ class EmpiricalDistribution:
                 raise ValueError("probabilities must have the same shape as values")
             if np.any(probabilities < 0) or not np.all(np.isfinite(probabilities)):
                 raise ValueError("probabilities must be finite and non-negative")
-            total = float(np.sum(probabilities))
-            if total <= 0:
+            scale = float(np.max(probabilities, initial=0.0))
+            if scale <= 0:
                 raise ValueError("probabilities must have positive total mass")
-            probabilities = probabilities / total
+            scaled = probabilities / scale
+            probabilities = scaled / float(np.sum(scaled))
 
         order = np.argsort(values, kind="stable")
         sorted_values = values[order]
@@ -117,7 +120,7 @@ class EmpiricalDistribution:
     @property
     def mean(self) -> float:
         assert self.probabilities is not None
-        return float(np.dot(self.values, self.probabilities))
+        return stable_weighted_sum(self.values, self.probabilities)
 
     def cdf(self, x: ArrayLike) -> FloatArray:
         assert self.probabilities is not None
@@ -132,7 +135,9 @@ class EmpiricalDistribution:
     def ppf(self, q: ArrayLike) -> FloatArray:
         assert self.probabilities is not None
         probabilities = np.asarray(q, dtype=np.float64)
-        if np.any((probabilities < 0) | (probabilities > 1)):
+        if not np.all(np.isfinite(probabilities)) or np.any(
+            (probabilities < 0) | (probabilities > 1)
+        ):
             raise ValueError("quantiles must lie in [0, 1]")
         cumulative = np.cumsum(self.probabilities)
         indices = np.searchsorted(cumulative, probabilities, side="left")

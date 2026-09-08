@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import readonly_float64, require_integer, require_integer_sequence
 from qfin.exceptions import BackendUnavailableError, ResourceLimitError
 from qfin.representation.factorized import FactorizedDistributionEncoding
 
@@ -58,10 +59,16 @@ class IntegerQuadraticTerm:
     coefficient: int
 
     def __post_init__(self) -> None:
-        if self.left < 0 or self.right < self.left:
+        left = require_integer(self.left, "left", minimum=0)
+        right = require_integer(self.right, "right", minimum=left)
+        coefficient = require_integer(self.coefficient, "coefficient")
+        if right < left:
             raise ValueError("quadratic indices must satisfy 0 <= left <= right")
-        if self.coefficient == 0:
+        if coefficient == 0:
             raise ValueError("quadratic coefficient must be non-zero")
+        object.__setattr__(self, "left", left)
+        object.__setattr__(self, "right", right)
+        object.__setattr__(self, "coefficient", coefficient)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,17 +83,31 @@ class IntegerPolynomialPlan:
     range_policy: Literal["bounded_unsigned", "modular_addend"] = "bounded_unsigned"
 
     def __post_init__(self) -> None:
-        if not self.input_qubits or any(qubits < 1 for qubits in self.input_qubits):
+        input_qubits = require_integer_sequence(
+            self.input_qubits,
+            "input_qubits",
+            minimum=1,
+        )
+        output_qubits = require_integer(self.output_qubits, "output_qubits", minimum=1)
+        constant = require_integer(self.constant, "constant")
+        linear = require_integer_sequence(self.linear, "linear")
+        quadratic = tuple(self.quadratic)
+        if not input_qubits:
             raise ValueError("input_qubits must contain positive register widths")
-        if self.output_qubits < 1:
-            raise ValueError("output_qubits must be positive")
-        if len(self.linear) != len(self.input_qubits):
+        if len(linear) != len(input_qubits):
             raise ValueError("linear must contain one coefficient per input register")
-        for term in self.quadratic:
-            if term.right >= len(self.input_qubits):
+        if any(not isinstance(term, IntegerQuadraticTerm) for term in quadratic):
+            raise TypeError("quadratic must contain IntegerQuadraticTerm objects")
+        for term in quadratic:
+            if term.right >= len(input_qubits):
                 raise ValueError("quadratic term references an unavailable register")
         if self.range_policy not in ("bounded_unsigned", "modular_addend"):
             raise ValueError("invalid integer polynomial range policy")
+        object.__setattr__(self, "input_qubits", input_qubits)
+        object.__setattr__(self, "output_qubits", output_qubits)
+        object.__setattr__(self, "constant", constant)
+        object.__setattr__(self, "linear", linear)
+        object.__setattr__(self, "quadratic", quadratic)
         lower, upper = self.range_bounds()
         if self.range_policy == "bounded_unsigned" and (
             lower < 0 or upper >= 2**self.output_qubits
@@ -216,6 +237,26 @@ class AffineOutputPlan:
     maximum_abs_error_bound: float
     polynomial: IntegerPolynomialPlan
 
+    def __post_init__(self) -> None:
+        if not self.name:
+            raise ValueError("name must be non-empty")
+        if not isfinite(self.scale) or self.scale <= 0.0:
+            raise ValueError("scale must be finite and positive")
+        shift_ticks = require_integer(self.shift_ticks, "shift_ticks", minimum=0)
+        minimum_code = require_integer(self.minimum_code, "minimum_code", minimum=0)
+        maximum_code = require_integer(
+            self.maximum_code,
+            "maximum_code",
+            minimum=minimum_code,
+        )
+        if not isfinite(self.maximum_abs_error_bound) or self.maximum_abs_error_bound < 0.0:
+            raise ValueError("maximum_abs_error_bound must be finite and non-negative")
+        if not isinstance(self.polynomial, IntegerPolynomialPlan):
+            raise TypeError("polynomial must be an IntegerPolynomialPlan")
+        object.__setattr__(self, "shift_ticks", shift_ticks)
+        object.__setattr__(self, "minimum_code", minimum_code)
+        object.__setattr__(self, "maximum_code", maximum_code)
+
     def decode(self, codes: IntArray) -> FloatArray:
         values = np.asarray(codes, dtype=np.float64)
         return np.asarray((values - self.shift_ticks) / self.scale, dtype=np.float64)
@@ -244,6 +285,45 @@ class ReversibleAffineTransformPlan:
     input_grid_step: FloatArray
     real_base: FloatArray
     real_coefficients: FloatArray
+
+    def __post_init__(self) -> None:
+        input_qubits = require_integer_sequence(
+            self.input_qubits,
+            "input_qubits",
+            minimum=1,
+        )
+        names = tuple(self.latent_factor_names)
+        outputs = tuple(self.outputs)
+        lower = readonly_float64(np.asarray(self.input_grid_lower).reshape(-1))
+        step = readonly_float64(np.asarray(self.input_grid_step).reshape(-1))
+        base = readonly_float64(np.asarray(self.real_base).reshape(-1))
+        coefficients = readonly_float64(self.real_coefficients)
+        if not input_qubits or len(names) != len(input_qubits):
+            raise ValueError("latent_factor_names must contain one name per input register")
+        if not all(isinstance(name, str) and name for name in names) or len(
+            set(names)
+        ) != len(names):
+            raise ValueError("latent_factor_names must be unique, non-empty strings")
+        if not outputs or any(not isinstance(item, AffineOutputPlan) for item in outputs):
+            raise TypeError("outputs must contain AffineOutputPlan objects")
+        if lower.shape != (len(input_qubits),) or step.shape != lower.shape:
+            raise ValueError("input grid metadata must contain one value per input register")
+        if base.shape != (len(outputs),) or coefficients.shape != (
+            len(outputs),
+            len(input_qubits),
+        ):
+            raise ValueError("real affine metadata dimensions do not match the plan")
+        if not all(np.all(np.isfinite(values)) for values in (lower, step, base, coefficients)):
+            raise ValueError("real affine metadata must be finite")
+        if np.any(step <= 0.0):
+            raise ValueError("input_grid_step must be positive")
+        object.__setattr__(self, "input_qubits", input_qubits)
+        object.__setattr__(self, "latent_factor_names", names)
+        object.__setattr__(self, "outputs", outputs)
+        object.__setattr__(self, "input_grid_lower", lower)
+        object.__setattr__(self, "input_grid_step", step)
+        object.__setattr__(self, "real_base", base)
+        object.__setattr__(self, "real_coefficients", coefficients)
 
     @property
     def output_names(self) -> tuple[str, ...]:
@@ -387,8 +467,7 @@ def compile_affine_transform(
 
     if not isfinite(scale) or scale <= 0:
         raise ValueError("scale must be finite and positive")
-    if max_output_qubits < 1:
-        raise ValueError("max_output_qubits must be positive")
+    output_limit = require_integer(max_output_qubits, "max_output_qubits", minimum=1)
     lower, step, base, coefficients, names = _real_affine_map(encoding, tolerance=grid_tolerance)
     selected = names if output_names is None else tuple(output_names)
     if not selected or len(set(selected)) != len(selected):
@@ -414,10 +493,10 @@ def compile_affine_transform(
         minimum_code = raw_min + shift
         maximum_code = raw_max + shift
         output_qubits = _required_qubits(maximum_code)
-        if output_qubits > max_output_qubits:
+        if output_qubits > output_limit:
             raise ResourceLimitError(
                 f"affine output {name!r} requires {output_qubits} qubits at scale={scale:g}, "
-                f"above max_output_qubits={max_output_qubits}"
+                f"above max_output_qubits={output_limit}"
             )
         rounding_bound = 0.5 * (1.0 + float(np.sum(maxima))) / scale
         polynomial = IntegerPolynomialPlan(
@@ -459,19 +538,19 @@ def validate_affine_transform(
 ) -> AffineTransformValidation:
     """Stream every encoded basis state and validate fixed-point affine outputs."""
 
-    if chunk_size < 1 or max_points < 1:
-        raise ValueError("chunk_size and max_points must be positive")
+    resolved_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
+    point_limit = require_integer(max_points, "max_points", minimum=1)
     points = encoding.joint_grid_points
-    if points > max_points:
+    if points > point_limit:
         raise ValueError(
-            f"affine validation requires {points} streamed points, above max_points={max_points}"
+            f"affine validation requires {points} streamed points, above max_points={point_limit}"
         )
     maximum = 0.0
     squared = 0.0
     chunks = 0
     maxima = tuple(factor.grid_points for factor in encoding.factors)
-    for start in range(0, points, chunk_size):
-        stop = min(start + chunk_size, points)
+    for start in range(0, points, resolved_chunk_size):
+        stop = min(start + resolved_chunk_size, points)
         flat = np.arange(start, stop, dtype=np.int64)
         residual = flat.copy()
         indices = np.empty((flat.size, encoding.factor_count), dtype=np.int64)
@@ -688,8 +767,12 @@ def compile_structured_loss_oracle(
         factor_scale = loss_scale * min(1.0, minimum_hinge_slope)
     if not isfinite(factor_scale) or factor_scale <= 0:
         raise ValueError("factor_scale must be finite and positive")
-    if max_loss_qubits < 1:
-        raise ValueError("max_loss_qubits must be positive")
+    loss_qubit_limit = require_integer(max_loss_qubits, "max_loss_qubits", minimum=1)
+    affine_qubit_limit = require_integer(
+        max_affine_output_qubits,
+        "max_affine_output_qubits",
+        minimum=1,
+    )
 
     constant_real, linear_real, quadratic_real = _objective_polynomial_in_indices(
         encoding, objective
@@ -725,7 +808,7 @@ def compile_structured_loss_oracle(
             encoding,
             scale=factor_scale,
             output_names=piecewise_names,
-            max_output_qubits=max_affine_output_qubits,
+            max_output_qubits=affine_qubit_limit,
         )
     )
     preliminary = IntegerPolynomialPlan(
@@ -787,10 +870,10 @@ def compile_structured_loss_oracle(
     shift = max(0, -raw_min)
     maximum_code = raw_max + shift
     loss_qubits = _required_qubits(maximum_code)
-    if loss_qubits > max_loss_qubits:
+    if loss_qubits > loss_qubit_limit:
         raise ResourceLimitError(
             f"structured loss requires {loss_qubits} output qubits at scale={loss_scale:g}, "
-            f"above max_loss_qubits={max_loss_qubits}"
+            f"above max_loss_qubits={loss_qubit_limit}"
         )
     polynomial = IntegerPolynomialPlan(
         input_qubits=encoding.qubits_per_factor,
@@ -944,25 +1027,25 @@ def validate_structured_risk_oracle(
     from qfin.finance.exposures import evaluate_factor_risk
     from qfin.finance.risk import LossDistribution, aggregate_risk
 
-    if chunk_size < 1 or max_points < 1:
-        raise ValueError("chunk_size and max_points must be positive")
+    resolved_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
+    point_limit = require_integer(max_points, "max_points", minimum=1)
     points = problem.model.joint_grid_points
-    if points > max_points:
+    if points > point_limit:
         raise ValueError(
-            f"oracle validation requires {points} streamed points, above max_points={max_points}"
+            f"oracle validation requires {points} streamed points, above max_points={point_limit}"
         )
     reference = exact_summary or evaluate_factor_risk(
         problem,
-        chunk_size=chunk_size,
-        max_points=max_points,
+        chunk_size=resolved_chunk_size,
+        max_points=point_limit,
     )
     histogram = np.zeros(2**plan.loss_qubits, dtype=np.float64)
     maximum_error = 0.0
     weighted_squared_error = 0.0
     total_mass = 0.0
     chunks = 0
-    for start in range(0, points, chunk_size):
-        stop = min(start + chunk_size, points)
+    for start in range(0, points, resolved_chunk_size):
+        stop = min(start + resolved_chunk_size, points)
         indices, exact_losses, probabilities = problem.model.chunk(start, stop)
         codes = plan.evaluate_codes(indices)
         histogram += np.bincount(
@@ -1014,12 +1097,12 @@ def validate_structured_tail_oracle(
 ) -> StructuredTailOracleValidation:
     """Compare exact encoded losses with the reversible fixed-point comparator."""
 
-    if chunk_size < 1 or max_points < 1:
-        raise ValueError("chunk_size and max_points must be positive")
+    resolved_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
+    point_limit = require_integer(max_points, "max_points", minimum=1)
     points = problem.model.joint_grid_points
-    if points > max_points:
+    if points > point_limit:
         raise ValueError(
-            f"oracle validation requires {points} streamed points, above max_points={max_points}"
+            f"oracle validation requires {points} streamed points, above max_points={point_limit}"
         )
     threshold_code = plan.threshold_code(problem.threshold, inclusive=problem.inclusive)
     exact_probability = 0.0
@@ -1028,8 +1111,8 @@ def validate_structured_tail_oracle(
     maximum_error = 0.0
     weighted_squared_error = 0.0
     chunks = 0
-    for start in range(0, points, chunk_size):
-        stop = min(start + chunk_size, points)
+    for start in range(0, points, resolved_chunk_size):
+        stop = min(start + resolved_chunk_size, points)
         indices, exact_losses, probabilities = problem.model.chunk(start, stop)
         codes = plan.evaluate_codes(indices)
         approximate_losses = plan.decode_loss(codes)

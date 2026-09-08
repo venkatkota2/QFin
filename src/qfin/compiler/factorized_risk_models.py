@@ -10,6 +10,7 @@ from typing import Literal
 import numpy as np
 
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
+from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends.devices import DeviceTarget, resolve_quantum_device
 from qfin.backends.factorized import (
     FactorizedExcessPennyLaneBackend,
@@ -52,6 +53,20 @@ class StructuredRiskErrorBudget:
     loss_quantization: float
     estimation: float
     interval_level: float = 0.95
+    target_error_unit: str = "loss units"
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.total) or self.total <= 0.0:
+            raise ValueError("target_error must be finite and greater than zero")
+        components = (self.loss_quantization, self.estimation)
+        if any(not isfinite(value) or value < 0.0 for value in components):
+            raise ValueError("risk error-budget allocations must be finite and non-negative")
+        if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
+            raise ValueError("risk error-budget allocations must sum to total")
+        if not 0.0 < self.interval_level < 1.0:
+            raise ValueError("interval_level must lie strictly between zero and one")
+        if not self.target_error_unit.strip():
+            raise ValueError("target_error_unit must not be empty")
 
     @classmethod
     def allocate(cls, target_error: float) -> StructuredRiskErrorBudget:
@@ -61,6 +76,7 @@ class StructuredRiskErrorBudget:
             total=target_error,
             loss_quantization=0.4 * target_error,
             estimation=0.6 * target_error,
+            target_error_unit="loss units",
         )
 
     def to_dict(self) -> dict[str, float | str]:
@@ -69,6 +85,7 @@ class StructuredRiskErrorBudget:
             "loss_quantization": self.loss_quantization,
             "estimation": self.estimation,
             "interval_level": self.interval_level,
+            "target_error_unit": self.target_error_unit,
             "reference_note": (
                 "The exact encoded factor grid is streamed as the classical reference. "
                 "Loss quantization is measured in financial units; stochastic search and "
@@ -158,6 +175,7 @@ class FactorQuantumRiskResult:
     oracle_error: float
     estimation_error: float
     target_error: float
+    target_error_unit: str
     meets_target_error: bool
     value_at_risk: float
     value_at_risk_interval_95: tuple[float, float]
@@ -170,6 +188,18 @@ class FactorQuantumRiskResult:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "problem_category": "factorized_risk",
+            "financial_objective": self.problem_kind,
+            "representation": "factorized_reversible_loss_oracle",
+            "algorithm_error": None,
+            "representation_error": self.oracle_error,
+            "sampling_statistical_error": max(
+                abs(self.value - self.confidence_interval_95[0]),
+                abs(self.confidence_interval_95[1] - self.value),
+            ),
+            "sampling_error_definition": "maximum distance to the reported 95% interval endpoints",
+            "quantum_execution_available": True,
+            "resource_estimate_type": "logical_circuit_counts",
             "problem_kind": self.problem_kind,
             "value": self.value,
             "confidence_interval_95": list(self.confidence_interval_95),
@@ -179,6 +209,7 @@ class FactorQuantumRiskResult:
             "oracle_error": self.oracle_error,
             "estimation_error": self.estimation_error,
             "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
             "meets_target_error": self.meets_target_error,
             "value_at_risk": self.value_at_risk,
             "value_at_risk_interval_95": list(self.value_at_risk_interval_95),
@@ -211,6 +242,39 @@ class CompiledFactorRiskModel:
     backend_name: str = "pennylane"
     algorithm_name: str = "factorized_var_search_and_bitwise_tail_excess_mlae"
     quantum_algorithm_available: bool = True
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "problem_category": "factorized_risk",
+            "financial_objective": self.problem_kind,
+            "backend": self.backend_name,
+            "representation": "factorized_reversible_loss_oracle",
+            "algorithm": (
+                self.algorithm_name if self.backend_name == "pennylane"
+                else "classical_streamed_factor_reference"
+            ),
+            "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
+            "representation_error": self.oracle_error,
+            "algorithm_error": None,
+            "sampling_statistical_error": None,
+            "compilation_converged": self.compilation_converged,
+            "quantum_execution_available": (
+                self.backend_name == "pennylane" and self.quantum_algorithm_available
+            ),
+            "resource_estimate_type": "logical_circuit_counts",
+            "error_budget": self.error_budget.to_dict(),
+            "limitations": [
+                "Oracle error is relative to the encoded grid, not a continuous model.",
+                "Adaptive VaR/CVaR intervals do not guarantee simultaneous coverage.",
+                "Optional quantum dependencies are required for experimental simulation.",
+                "Logical counts are not hardware runtime or evidence of quantum advantage.",
+            ],
+        }
+
+    @property
+    def target_error_unit(self) -> str:
+        return self.error_budget.target_error_unit
 
     @property
     def problem_kind(self) -> FactorRiskKind:
@@ -285,11 +349,7 @@ class CompiledFactorRiskModel:
         threshold_evaluations: int | None = None,
         device_name: str = "auto",
     ) -> StructuredRiskResourceReport:
-        powers = tuple(int(power) for power in schedule)
-        if not powers or len(set(powers)) != len(powers) or any(power < 0 for power in powers):
-            raise ValueError("schedule must contain unique, non-negative powers")
-        if shots <= 0:
-            raise ValueError("shots must be positive")
+        powers, shot_count = _validated_schedule(schedule, shots)
         candidates = len(self.validation.occupied_codes)
         default_thresholds = max(1, ceil(log2(max(candidates, 1))) + 1)
         thresholds = default_thresholds if threshold_evaluations is None else threshold_evaluations
@@ -310,13 +370,13 @@ class CompiledFactorRiskModel:
             base_oracle=self._base_resources(device_name=device_name),
             problem_kind=self.problem_kind,
             schedule=powers,
-            shots_per_circuit=shots,
+            shots_per_circuit=shot_count,
             threshold_objectives=thresholds,
             excess_bit_objectives=excess_bits,
             objective_evaluations=objectives,
             total_circuit_executions=circuit_executions,
-            total_shots=circuit_executions * shots,
-            oracle_queries=objectives * shots * query_weight,
+            total_shots=circuit_executions * shot_count,
+            oracle_queries=objectives * shot_count * query_weight,
             tail_runtime_qubits=tail_qubits,
             excess_runtime_qubits=excess_qubits if excess_bits else 0,
             maximum_runtime_qubits=max(tail_qubits, excess_qubits if excess_bits else 0),
@@ -509,14 +569,10 @@ class CompiledFactorRiskModel:
     ) -> FactorQuantumRiskResult:
         """Execute structured VaR search and, for CVaR, bitwise tail excess."""
 
-        powers = tuple(int(power) for power in schedule)
-        if not powers or len(set(powers)) != len(powers) or any(power < 0 for power in powers):
-            raise ValueError("schedule must contain unique, non-negative powers")
-        if shots <= 0:
-            raise ValueError("shots must be positive")
+        powers, shot_count = _validated_schedule(schedule, shots)
         search = self._run_var_search(
             schedule=powers,
-            shots=shots,
+            shots=shot_count,
             seed=seed,
             likelihood_grid_size=likelihood_grid_size,
             device_name=device_name,
@@ -545,7 +601,7 @@ class CompiledFactorRiskModel:
                 estimate = self._estimate(
                     runtime,
                     schedule=powers,
-                    shots=shots,
+                    shots=shot_count,
                     seed=(
                         None
                         if seed is None
@@ -579,7 +635,7 @@ class CompiledFactorRiskModel:
 
         resources = self.resources(
             schedule=powers,
-            shots=shots,
+            shots=shot_count,
             threshold_evaluations=len(search.evaluations),
             device_name=device_name,
         )
@@ -593,6 +649,7 @@ class CompiledFactorRiskModel:
             oracle_error=self.oracle_error,
             estimation_error=abs(value - self.encoded_value),
             target_error=self.target_error,
+            target_error_unit=self.target_error_unit,
             meets_target_error=abs(value - self.classical_value) <= self.target_error,
             value_at_risk=search.value,
             value_at_risk_interval_95=search.confidence_interval_95,
@@ -653,10 +710,15 @@ class CompiledFactorRiskModel:
             f"{self.classical_summary.cvar:.12g}; fixed-point VaR/CVaR: "
             f"{self.validation.oracle_value_at_risk:.12g} / "
             f"{self.validation.oracle_expected_shortfall:.12g}.\n"
+            f"Target error: {self.target_error:.3e} {self.target_error_unit}.\n"
             "Algorithm: hybrid MLAE CDF search; CVaR additionally computes a reversible "
             "positive tail-excess register and estimates its bits.\n"
             "PennyLane-Lightning performs simulation; QFin owns only the finance-specific "
-            "representation, arithmetic, validation, and compiler workflow."
+            "representation, arithmetic, validation, and compiler workflow.\n"
+            f"Selected backend: {self.backend_name}; compilation converged: "
+            f"{self.compilation_converged}. Sampling error is unestimated before execution. "
+            "Representation error is relative to the encoded grid. Resources are logical "
+            "counts, not hardware runtime or evidence of quantum advantage."
         )
 
 

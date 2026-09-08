@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
+from qfin._validation import require_integer, require_integer_sequence
 from qfin.backends.devices import DeviceTarget, resolve_device_target
 from qfin.exceptions import BackendUnavailableError, ResourceLimitError
 
@@ -142,11 +143,10 @@ def transpile_circuit(
 ) -> tuple[Any, TranspiledCircuitResources, DeviceTarget]:
     """Return a basis-decomposed, routed tape plus transparent counts."""
 
-    if power < 0:
-        raise ValueError("power must be non-negative")
+    resolved_power = require_integer(power, "power", minimum=0)
     qml = _qml()
     resolved_target = resolve_device_target(target, wires=runtime.total_wires)
-    original = runtime.circuit_tape(power)
+    original = runtime.circuit_tape(resolved_power)
     high_gates, high_depth, _, _ = _tape_resources(original)
     gate_set = set(resolved_target.basis_gates)
     try:
@@ -218,7 +218,7 @@ def transpile_circuit(
     routed_gates, routed_depth, gate_types, gate_sizes = _tape_resources(routed)
     gate_counter = Counter(gate_types)
     report = TranspiledCircuitResources(
-        power=power,
+        power=resolved_power,
         high_level_gates=high_gates,
         high_level_depth=high_depth,
         decomposed_gates=decomposed_gates,
@@ -246,15 +246,13 @@ def estimate_device_resources(
 ) -> DeviceResourceReport:
     """Profile every unique circuit in a non-adaptive MLAE workflow."""
 
-    powers = tuple(int(power) for power in schedule)
-    if not powers or any(power < 0 for power in powers):
+    powers = require_integer_sequence(schedule, "schedule", minimum=0)
+    if not powers:
         raise ValueError("schedule must contain non-negative Grover powers")
     if len(set(powers)) != len(powers):
         raise ValueError("schedule powers must be unique")
-    if shots <= 0:
-        raise ValueError("shots must be positive")
-    if objective_evaluations < 1:
-        raise ValueError("objective_evaluations must be positive")
+    shot_count = require_integer(shots, "shots", minimum=1)
+    evaluations = require_integer(objective_evaluations, "objective_evaluations", minimum=1)
 
     reports: list[TranspiledCircuitResources] = []
     resolved_target: DeviceTarget | None = None
@@ -269,17 +267,17 @@ def estimate_device_resources(
     assert resolved_target is not None
     circuits = tuple(reports)
     gates_per_objective = sum(circuit.routed_gates for circuit in circuits)
-    circuit_executions = len(circuits) * objective_evaluations
+    circuit_executions = len(circuits) * evaluations
     return DeviceResourceReport(
         target=resolved_target,
         schedule=powers,
         circuits=circuits,
-        shots_per_circuit=shots,
-        objective_evaluations=objective_evaluations,
+        shots_per_circuit=shot_count,
+        objective_evaluations=evaluations,
         total_circuit_executions=circuit_executions,
-        total_shots=shots * circuit_executions,
+        total_shots=shot_count * circuit_executions,
         total_routed_gates_per_objective=gates_per_objective,
-        total_executed_gates=gates_per_objective * shots * objective_evaluations,
+        total_executed_gates=gates_per_objective * shot_count * evaluations,
         maximum_routed_depth=max(circuit.routed_depth for circuit in circuits),
         maximum_two_qubit_gates=max(circuit.two_qubit_gates for circuit in circuits),
     )

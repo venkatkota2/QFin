@@ -11,8 +11,13 @@ def test_fixed_lognormal_encoding_is_a_valid_quantum_state() -> None:
     assert encoding.grid_points == 32
     assert np.sum(encoding.probabilities) == pytest.approx(1.0)
     assert np.linalg.norm(encoding.state_vector()) == pytest.approx(1.0)
+    np.testing.assert_allclose(
+        np.abs(encoding.state_vector()) ** 2, encoding.probabilities, rtol=2e-15, atol=1e-16
+    )
     assert encoding.lower_bound > 0
     assert 0 <= encoding.tail_probability < 1e-4
+    assert encoding.discretization_error is None
+    assert encoding.to_dict()["discretization_error"] is None
 
 
 def test_automatic_encoding_uses_financial_objective_units() -> None:
@@ -64,3 +69,23 @@ def test_quantile_encoding_has_parameter_free_uniform_probabilities() -> None:
     assert encoding.encoding_method == "inverse_cdf_quantile"
     assert encoding.state_preparation_method == "uniform_quantile_hadamard"
     assert np.all(np.diff(encoding.grid) > 0)
+    assert encoding.discretization_error is None
+
+
+def test_single_automatic_grid_reports_unestimated_discretization_error() -> None:
+    distribution = qfin.Normal(mean_value=0.0, standard_deviation=1.0)
+
+    probability = qfin.encode(distribution, min_qubits=3, max_qubits=3)
+    quantile = qfin.encode_quantiles(distribution, min_qubits=3, max_qubits=3)
+
+    assert probability.discretization_error is None
+    assert quantile.discretization_error is None
+
+
+@pytest.mark.parametrize("encoder", [qfin.encode, qfin.encode_quantiles])
+@pytest.mark.parametrize("invalid", [True, 3.0, np.float32(3.0)])
+def test_encoding_rejects_non_integer_qubit_inputs(encoder: object, invalid: object) -> None:
+    distribution = qfin.Normal(mean_value=0.0, standard_deviation=1.0)
+
+    with pytest.raises(ValueError, match="qubits must be an integer"):
+        encoder(distribution, qubits=invalid)  # type: ignore[operator]

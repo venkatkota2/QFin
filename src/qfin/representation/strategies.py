@@ -7,6 +7,7 @@ from typing import Protocol
 
 import numpy as np
 
+from qfin._validation import require_integer
 from qfin.exceptions import ResourceLimitError
 from qfin.representation.encoding import DistributionEncoding
 from qfin.representation.factorized import FactorizedDistributionEncoding
@@ -187,10 +188,14 @@ def compare_state_preparation_strategies(
 ) -> StatePreparationStrategyReport:
     """Compare implemented loaders without allocating a joint factor table."""
 
-    if ancilla_qubits < 0:
-        raise ValueError("ancilla_qubits must be non-negative")
-    if max_parameters < 0 or max_memory_bytes < 1 or max_flattened_points < 1:
-        raise ValueError("strategy limits must be non-negative and non-zero")
+    ancillary_count = require_integer(ancilla_qubits, "ancilla_qubits", minimum=0)
+    parameter_limit = require_integer(max_parameters, "max_parameters", minimum=0)
+    memory_limit = require_integer(max_memory_bytes, "max_memory_bytes", minimum=1)
+    flattened_limit = require_integer(
+        max_flattened_points,
+        "max_flattened_points",
+        minimum=1,
+    )
 
     candidates: list[StatePreparationCost] = []
     preferred: str
@@ -206,7 +211,7 @@ def compare_state_preparation_strategies(
                     implemented=True,
                     portable=True,
                     data_qubits=representation.qubits,
-                    ancilla_qubits=ancilla_qubits,
+                    ancilla_qubits=ancillary_count,
                     parameters=0,
                     stored_values=points,
                     memory_bytes=representation.grid.nbytes,
@@ -215,8 +220,8 @@ def compare_state_preparation_strategies(
                     joint=False,
                     available=True,
                     target=target,
-                    max_parameters=max_parameters,
-                    max_memory_bytes=max_memory_bytes,
+                    max_parameters=parameter_limit,
+                    max_memory_bytes=memory_limit,
                     scaling="O(qubits) quantum gates; O(2**qubits) classical grid values",
                     note="Uniform amplitudes are prepared with one Hadamard per data wire.",
                 )
@@ -230,7 +235,7 @@ def compare_state_preparation_strategies(
                 implemented=True,
                 portable=True,
                 data_qubits=representation.qubits,
-                ancilla_qubits=ancilla_qubits,
+                ancilla_qubits=ancillary_count,
                 parameters=points - 1,
                 stored_values=2 * points - 1,
                 memory_bytes=(2 * points - 1) * 8,
@@ -239,8 +244,8 @@ def compare_state_preparation_strategies(
                 joint=False,
                 available=True,
                 target=target,
-                max_parameters=max_parameters,
-                max_memory_bytes=max_memory_bytes,
+                max_parameters=parameter_limit,
+                max_memory_bytes=memory_limit,
                 scaling="O(2**qubits) angles and high-level multiplexed rotations",
                 note="Generic exact probability-tree loader for the finite representation.",
             )
@@ -252,7 +257,7 @@ def compare_state_preparation_strategies(
                 implemented=True,
                 portable=False,
                 data_qubits=representation.qubits,
-                ancilla_qubits=ancilla_qubits,
+                ancilla_qubits=ancillary_count,
                 parameters=points,
                 stored_values=dense_entries,
                 memory_bytes=dense_entries * 16,
@@ -261,8 +266,8 @@ def compare_state_preparation_strategies(
                 joint=False,
                 available=True,
                 target=target,
-                max_parameters=max_parameters,
-                max_memory_bytes=max_memory_bytes,
+                max_parameters=parameter_limit,
+                max_memory_bytes=memory_limit,
                 scaling="O(4**qubits) dense complex matrix storage",
                 note=(
                     "Numerical simulator reference; deliberately excluded from portable selection."
@@ -301,7 +306,7 @@ def compare_state_preparation_strategies(
                 implemented=True,
                 portable=True,
                 data_qubits=data_qubits,
-                ancilla_qubits=ancilla_qubits,
+                ancilla_qubits=ancillary_count,
                 parameters=marginal_parameters,
                 stored_values=stored_values,
                 memory_bytes=stored_values * 8,
@@ -310,8 +315,8 @@ def compare_state_preparation_strategies(
                 joint=False,
                 available=True,
                 target=target,
-                max_parameters=max_parameters,
-                max_memory_bytes=max_memory_bytes,
+                max_parameters=parameter_limit,
+                max_memory_bytes=memory_limit,
                 scaling="O(sum(2**factor_qubits)); no joint probability table",
                 note=(
                     "Implemented independent-register loader. Affine factor transforms remain "
@@ -327,17 +332,17 @@ def compare_state_preparation_strategies(
                 implemented=True,
                 portable=True,
                 data_qubits=data_qubits,
-                ancilla_qubits=ancilla_qubits,
+                ancilla_qubits=ancillary_count,
                 parameters=joint_points - 1,
                 stored_values=2 * joint_points - 1,
                 memory_bytes=(2 * joint_points - 1) * 8,
                 gates=joint_points - 1,
                 depth=joint_points - 1,
                 joint=True,
-                available=joint_points <= max_flattened_points,
+                available=joint_points <= flattened_limit,
                 target=target,
-                max_parameters=max_parameters,
-                max_memory_bytes=max_memory_bytes,
+                max_parameters=parameter_limit,
+                max_memory_bytes=memory_limit,
                 scaling="O(product(2**factor_qubits)) joint angles",
                 note="Generic fallback requiring explicit Cartesian-product materialization.",
             )
@@ -349,7 +354,7 @@ def compare_state_preparation_strategies(
                 implemented=False,
                 portable=False,
                 data_qubits=data_qubits,
-                ancilla_qubits=ancilla_qubits,
+                ancilla_qubits=ancillary_count,
                 parameters=joint_points,
                 stored_values=dense_entries,
                 memory_bytes=dense_entries * 16,
@@ -358,8 +363,8 @@ def compare_state_preparation_strategies(
                 joint=True,
                 available=False,
                 target=target,
-                max_parameters=max_parameters,
-                max_memory_bytes=max_memory_bytes,
+                max_parameters=parameter_limit,
+                max_memory_bytes=memory_limit,
                 scaling="O(joint_grid_points**2) dense complex storage",
                 note="Reported only to expose the rejected dense-memory cost.",
             )
@@ -386,8 +391,8 @@ def compare_state_preparation_strategies(
         selected_strategy=None if selected is None else selected.strategy,
         target_name=None if target is None else target.name,
         target_topology=None if target is None else target.topology,
-        max_parameters=max_parameters,
-        max_memory_bytes=max_memory_bytes,
+        max_parameters=parameter_limit,
+        max_memory_bytes=memory_limit,
         selection_reason=reason,
     )
 

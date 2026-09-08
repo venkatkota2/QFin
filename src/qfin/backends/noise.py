@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import require_integer
 from qfin.exceptions import BackendUnavailableError
 from qfin.resources.device import CircuitRuntime
 
@@ -167,27 +168,31 @@ def analyze_noise(
 ) -> NoiseMitigationReport:
     """Run deterministic or shot-based folding and polynomial ZNE."""
 
-    if power < 0:
-        raise ValueError("power must be non-negative")
-    if shots is not None and shots <= 0:
-        raise ValueError("shots must be positive or None")
+    resolved_power = require_integer(power, "power", minimum=0)
+    resolved_shots = (
+        None if shots is None else require_integer(shots, "shots", minimum=1)
+    )
     if len(scale_factors) < 2:
         raise ValueError("at least two scale factors are required")
     if any(not isfinite(factor) or factor < 1 for factor in scale_factors):
         raise ValueError("scale factors must be finite and at least one")
     if any(right <= left for left, right in pairwise(scale_factors)):
         raise ValueError("scale factors must be strictly increasing")
-    if not 1 <= extrapolation_order < len(scale_factors):
-        raise ValueError("extrapolation_order must be between one and factors minus one")
+    resolved_order = require_integer(
+        extrapolation_order,
+        "extrapolation_order",
+        minimum=1,
+        maximum=len(scale_factors) - 1,
+    )
 
-    ideal_probability = float(runtime.probability(power=power, shots=None, seed=seed))
+    ideal_probability = float(runtime.probability(power=resolved_power, shots=None, seed=seed))
     values = tuple(
         _noisy_probability(
             runtime,
-            power=power,
+            power=resolved_power,
             noise_model=noise_model,
             scale_factor=factor,
-            shots=shots,
+            shots=resolved_shots,
             seed=None if seed is None else seed + index,
         )
         for index, factor in enumerate(scale_factors)
@@ -196,7 +201,7 @@ def analyze_noise(
         np.polynomial.polynomial.polyfit(
             np.asarray(scale_factors, dtype=np.float64),
             np.asarray(values, dtype=np.float64),
-            extrapolation_order,
+            resolved_order,
         ),
         dtype=np.float64,
     )
@@ -205,9 +210,9 @@ def analyze_noise(
     noisy_error = abs(values[0] - ideal_probability)
     mitigated_error = abs(mitigated - ideal_probability)
     return NoiseMitigationReport(
-        power=power,
+        power=resolved_power,
         noise_model=noise_model,
-        shots=shots,
+        shots=resolved_shots,
         seed=seed,
         scale_factors=scale_factors,
         scaled_probabilities=values,
@@ -215,7 +220,7 @@ def analyze_noise(
         noisy_probability=values[0],
         extrapolated_probability=extrapolated,
         mitigated_probability=mitigated,
-        extrapolation_order=extrapolation_order,
+        extrapolation_order=resolved_order,
         noisy_absolute_error=noisy_error,
         mitigated_absolute_error=mitigated_error,
         mitigation_improved=mitigated_error < noisy_error,

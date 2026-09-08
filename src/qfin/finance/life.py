@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from operator import index as integer_index
 from typing import Literal, cast, overload
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin import _native
+from qfin._validation import require_integer
 from qfin.finance.alm import LiabilityPortfolio
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import CashFlow, Engine
@@ -86,12 +86,7 @@ class MortalityTable:
 
         if not isfinite(age) or age < 0:
             raise ValueError("age must be finite and non-negative")
-        try:
-            year_count = integer_index(years)
-        except TypeError as exc:
-            raise ValueError("years must be a non-negative integer") from exc
-        if isinstance(years, bool) or year_count < 0:
-            raise ValueError("years must be non-negative")
+        year_count = require_integer(years, "years", minimum=0)
         if year_count == 0:
             return 1.0
         qx = np.asarray(self.qx(age + np.arange(year_count, dtype=np.float64)))
@@ -147,17 +142,11 @@ class LifePolicy:
         if not isfinite(self.crediting_spread):
             raise ValueError("crediting_spread must be finite")
         try:
-            term = integer_index(self.term)
-            duration = integer_index(self.policy_duration)
-        except TypeError as exc:
+            term = require_integer(self.term, "term")
+            duration = require_integer(self.policy_duration, "policy_duration")
+        except ValueError as exc:
             raise ValueError("term and policy_duration must be integers") from exc
-        if (
-            isinstance(self.term, bool)
-            or isinstance(self.policy_duration, bool)
-            or term <= 0
-            or duration < 0
-            or duration > term
-        ):
+        if term <= 0 or duration < 0 or duration > term:
             raise ValueError("require 0 <= policy_duration <= term with positive term")
         object.__setattr__(self, "term", term)
         object.__setattr__(self, "policy_duration", duration)
@@ -341,7 +330,7 @@ class LifeProjectionResult:
     product_present_values: dict[str, float]
     present_value: float
     duration: float
-    engine: Literal["numpy", "native"]
+    engine: Literal["numpy", "native", "mixed"]
 
     def to_liability_portfolio(self) -> LiabilityPortfolio:
         """Convert projected net insurer outflows into deterministic ALM cash flows."""
@@ -523,9 +512,7 @@ def _numpy_projection(
     times = np.arange(output_size, dtype=np.float64)
     discounted = net * np.asarray(assumptions.curve.discount(times), dtype=np.float64)
     present_value = float(np.sum(discounted))
-    duration = (
-        0.0 if abs(present_value) <= 1.0e-15 else float(np.dot(times, discounted) / present_value)
-    )
+    duration = 0.0 if present_value == 0.0 else float(np.dot(times, discounted) / present_value)
     return {
         "expected_premiums": premiums,
         "expected_benefits": benefits,
@@ -619,6 +606,9 @@ def project_liabilities(
     }
     active = np.asarray(raw["active"], dtype=np.float64)
     disabled = np.asarray(raw["disabled"], dtype=np.float64)
+    reported_engine: Literal["numpy", "native", "mixed"] = (
+        "mixed" if selected == "native" else "numpy"
+    )
     return LifeProjectionResult(
         times=times,
         expected_premiums=np.asarray(raw["expected_premiums"], dtype=np.float64),
@@ -635,7 +625,7 @@ def project_liabilities(
         product_present_values=product_values,
         present_value=float(cast(float, raw["present_value"])),
         duration=float(cast(float, raw["duration"])),
-        engine=selected,
+        engine=reported_engine,
     )
 
 

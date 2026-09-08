@@ -85,6 +85,31 @@ def test_bootstrap_rejects_duplicate_nodes_and_unbracketed_quotes() -> None:
         qfin.bootstrap_curve([qfin.SimpleSwap(2.0, -10.0)])
 
 
+@pytest.mark.parametrize("rate,maturity", [(-0.20, 50.0), (0.25, 100.0)])
+def test_log_discount_bootstrap_handles_extreme_long_maturity_roots(
+    rate: float,
+    maturity: float,
+) -> None:
+    reference = qfin.YieldCurve(
+        [0.0, maturity],
+        [rate, rate],
+        interpolation="log_linear_discount",
+    )
+    bond = qfin.FixedRateBond(maturity, 0.0, frequency=1)
+    clean_price = float(qfin.price_bonds(bond, reference, engine="numpy").clean_prices[0])
+
+    report = qfin.bootstrap_curve(
+        [qfin.BondMarketQuote(bond, clean_price, identifier="extreme-zero-bond")],
+        interpolation="log_linear_discount",
+        tolerance=1.0e-9,
+    )
+
+    expected_discount = exp(-rate * maturity)
+    assert report.success
+    assert report.discount_factors[-1] == pytest.approx(expected_discount, rel=2.0e-12)
+    assert report.maximum_absolute_residual <= report.tolerance
+
+
 def test_bootstrap_input_diagnostics() -> None:
     with pytest.raises(ValueError, match="at least one"):
         qfin.bootstrap_curve([])
@@ -93,3 +118,38 @@ def test_bootstrap_input_diagnostics() -> None:
     with pytest.raises(ValueError, match="positive"):
         qfin.ZeroCouponInstrument(1.0, 0.0)
 
+
+def test_bootstrap_curve_provenance_survives_shifting() -> None:
+    report = qfin.bootstrap_curve(
+        [
+            qfin.Deposit(1.0, 0.02, identifier="one-year-deposit"),
+            qfin.Deposit(2.0, 0.025, identifier="two-year-deposit"),
+        ]
+    )
+    explanation = report.curve.shifted(0.001).explain()
+
+    assert explanation["origin_input_type"] == "bootstrapped_instruments"
+    assert explanation["applied_node_shock"] == pytest.approx([0.001, 0.001, 0.001])
+    assert explanation["originating_quote_metadata"] == [
+        {
+            "source": "bootstrap_instrument",
+            "identifier": "one-year-deposit",
+            "quote_type": "deposit",
+            "time": 1.0,
+            "value": 0.02,
+        },
+        {
+            "source": "bootstrap_instrument",
+            "identifier": "two-year-deposit",
+            "quote_type": "deposit",
+            "time": 2.0,
+            "value": 0.025,
+        },
+    ]
+    for values in (
+        report.node_times,
+        report.discount_factors,
+        report.zero_rates,
+        report.forward_rates,
+    ):
+        assert not values.flags.writeable

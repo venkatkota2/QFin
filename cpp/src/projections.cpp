@@ -133,7 +133,7 @@ PolicyProjectionResult project_term_life_policies(
         result.present_value += present_value;
         duration_numerator += static_cast<double>(year) * present_value;
     }
-    if (std::abs(result.present_value) > 1.0e-15) {
+    if (result.present_value != 0.0) {
         result.duration = duration_numerator / result.present_value;
     }
     return result;
@@ -363,7 +363,7 @@ LifeModelPointProjectionResult project_life_model_points(
         result.present_value += value;
         duration_numerator += static_cast<double>(year) * value;
     }
-    if (std::abs(result.present_value) > 1.0e-15) {
+    if (result.present_value != 0.0) {
         result.duration = duration_numerator / result.present_value;
     }
     return result;

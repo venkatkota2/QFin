@@ -66,6 +66,8 @@ def test_end_to_end_quantum_run_is_close_to_discrete_value(
     small_model: qfin.CompiledPricingModel,
 ) -> None:
     result = small_model.run(shots=4_000, schedule=(0, 1, 2, 4), seed=11)
+    assert result.target_error_unit == "currency / price units"
+    assert result.to_dict()["target_error_unit"] == "currency / price units"
     assert result.estimation_error < 1.0
     assert result.confidence_interval_95[0] <= result.value
     assert result.value <= result.confidence_interval_95[1]

@@ -93,7 +93,7 @@ def test_life_sensitivity_report_has_financially_consistent_signs() -> None:
     assert report.mortality_impact > 0
     assert report.rate_impact < 0
     assert report.expense_impact > 0
-    assert report.to_dict()["engine"] == "native"
+    assert report.to_dict()["engine"] == "mixed"
 
 
 def test_life_scenario_horizon_and_period_validation() -> None:

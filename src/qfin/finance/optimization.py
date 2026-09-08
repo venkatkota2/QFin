@@ -11,6 +11,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import minimize
 
+from qfin._validation import readonly_float64
 from qfin.exceptions import OptimizationError
 
 FloatArray = NDArray[np.float64]
@@ -38,15 +39,13 @@ class PortfolioOptimizationResult:
     message: str
 
     def __post_init__(self) -> None:
-        weights = np.asarray(self.weights, dtype=np.float64).reshape(-1)
-        baseline = np.asarray(self.baseline_weights, dtype=np.float64).reshape(-1)
+        weights = readonly_float64(self.weights).reshape(-1)
+        baseline = readonly_float64(self.baseline_weights).reshape(-1)
         names = tuple(self.asset_names)
         if weights.shape != baseline.shape or weights.size != len(names):
             raise ValueError("weights, baseline_weights, and asset_names must align")
         if not np.all(np.isfinite(weights)) or not np.all(np.isfinite(baseline)):
             raise ValueError("optimization weights must be finite")
-        weights.setflags(write=False)
-        baseline.setflags(write=False)
         object.__setattr__(self, "weights", weights)
         object.__setattr__(self, "baseline_weights", baseline)
         object.__setattr__(self, "asset_names", names)
@@ -86,8 +85,10 @@ class MeanVarianceProblem:
     target_return: float | None = None
 
     def __post_init__(self) -> None:
-        expected_returns = np.asarray(self.expected_returns, dtype=np.float64).reshape(-1)
-        covariance = np.asarray(self.covariance, dtype=np.float64)
+        expected_returns = np.array(
+            self.expected_returns, dtype=np.float64, order="C", copy=True
+        ).reshape(-1)
+        covariance = np.array(self.covariance, dtype=np.float64, order="C", copy=True)
         asset_count = expected_returns.size
         if asset_count < 2 or not np.all(np.isfinite(expected_returns)):
             raise ValueError("expected_returns must contain at least two finite values")
@@ -130,10 +131,10 @@ class MeanVarianceProblem:
         if self.long_only and (np.any(lower < 0) or np.any(upper < 0)):
             raise ValueError("long_only bounds must be non-negative")
 
-        expected_returns = np.ascontiguousarray(expected_returns)
-        covariance = np.ascontiguousarray(covariance)
-        lower = np.ascontiguousarray(lower)
-        upper = np.ascontiguousarray(upper)
+        expected_returns = np.array(expected_returns, dtype=np.float64, order="C", copy=True)
+        covariance = np.array(covariance, dtype=np.float64, order="C", copy=True)
+        lower = np.array(lower, dtype=np.float64, order="C", copy=True)
+        upper = np.array(upper, dtype=np.float64, order="C", copy=True)
         for values in (expected_returns, covariance, lower, upper):
             values.setflags(write=False)
         object.__setattr__(self, "expected_returns", expected_returns)
@@ -260,22 +261,84 @@ class MeanVarianceProblem:
             raise ValueError("closed_form requires unbounded weights")
         if self.target_return is not None:
             raise ValueError("closed_form does not support target_return")
-        inverse = np.linalg.pinv(self.covariance, hermitian=True)
         ones = np.ones(self.asset_count, dtype=np.float64)
-        denominator = float(ones @ inverse @ ones)
-        if denominator <= 0:
-            raise OptimizationError("covariance does not support the budget constraint")
-        multiplier = (
-            float(ones @ inverse @ self.expected_returns) - self.risk_aversion * self.budget
-        ) / denominator
-        weights = inverse @ (self.expected_returns - multiplier * ones) / self.risk_aversion
+        eigenvalues, eigenvectors = np.linalg.eigh(self.covariance)
+        spectral_scale = max(float(np.max(np.abs(eigenvalues))), np.finfo(np.float64).tiny)
+        rank_tolerance = self.asset_count * np.finfo(np.float64).eps * spectral_scale
+        positive = eigenvalues > rank_tolerance
+        rank = int(np.count_nonzero(positive))
+
+        if rank < self.asset_count:
+            null_basis = eigenvectors[:, ~positive]
+            budget_projection = null_basis.T @ ones
+            budget_tolerance = (
+                100.0
+                * np.finfo(np.float64).eps
+                * max(1.0, float(np.linalg.norm(budget_projection)))
+            )
+            if float(np.linalg.norm(budget_projection)) <= budget_tolerance:
+                budget_neutral_null_basis = null_basis
+            elif null_basis.shape[1] == 1:
+                budget_neutral_null_basis = np.empty((self.asset_count, 0), dtype=np.float64)
+            else:
+                _, _, right_vectors = np.linalg.svd(
+                    budget_projection.reshape(1, -1), full_matrices=True
+                )
+                budget_neutral_null_basis = null_basis @ right_vectors[1:, :].T
+            return_projection = budget_neutral_null_basis.T @ self.expected_returns
+            return_tolerance = (
+                100.0
+                * np.finfo(np.float64).eps
+                * max(1.0, float(np.linalg.norm(self.expected_returns)))
+            )
+            if return_projection.size and float(np.linalg.norm(return_projection)) > (
+                return_tolerance
+            ):
+                raise OptimizationError(
+                    "unbounded mean-variance problem due to zero-variance "
+                    "budget-neutral return direction"
+                )
+
+            kkt = np.block(
+                [
+                    [self.risk_aversion * self.covariance, ones[:, None]],
+                    [ones[None, :], np.zeros((1, 1), dtype=np.float64)],
+                ]
+            )
+            right_hand_side = np.concatenate(
+                (self.expected_returns, np.asarray([self.budget], dtype=np.float64))
+            )
+            solution, _, _, _ = np.linalg.lstsq(kkt, right_hand_side, rcond=None)
+            residual = kkt @ solution - right_hand_side
+            residual_tolerance = 1.0e3 * np.finfo(np.float64).eps * max(
+                1.0, float(np.linalg.norm(right_hand_side))
+            )
+            if float(np.linalg.norm(residual, ord=np.inf)) > residual_tolerance:
+                raise OptimizationError(
+                    "singular covariance does not admit a stable budget-constrained optimum"
+                )
+            weights = solution[:-1]
+            solver = "closed_form_singular_kkt_mean_variance"
+            message = f"analytical singular KKT solution (covariance rank {rank})"
+        else:
+            inverse = np.linalg.inv(self.covariance)
+            denominator = float(ones @ inverse @ ones)
+            if denominator <= 0:
+                raise OptimizationError("covariance does not support the budget constraint")
+            multiplier = (
+                float(ones @ inverse @ self.expected_returns)
+                - self.risk_aversion * self.budget
+            ) / denominator
+            weights = inverse @ (self.expected_returns - multiplier * ones) / self.risk_aversion
+            solver = "closed_form_equality_constrained_mean_variance"
+            message = "analytical equality-constrained solution"
         baseline = self._initial_weights()
         return self._result(
             np.asarray(weights, dtype=np.float64),
             baseline,
-            solver="closed_form_equality_constrained_mean_variance",
+            solver=solver,
             iterations=1,
-            message="analytical equality-constrained solution",
+            message=message,
         )
 
     def _solve_slsqp(self) -> PortfolioOptimizationResult:

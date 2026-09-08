@@ -20,6 +20,8 @@ def test_native_alm_scenarios_match_numpy_with_chunking() -> None:
     native = model.run_scenarios(scenarios, engine="native", chunk_size=37)
     np.testing.assert_allclose(native.asset_pv, reference.asset_pv, rtol=1e-13)
     np.testing.assert_allclose(native.liability_pv, reference.liability_pv, rtol=1e-13)
+    assert native.engine == "mixed"
+    assert model.evaluate(engine="native").engine == "mixed"
 
 
 def test_native_policy_projection_matches_python_oracle() -> None:
@@ -44,6 +46,7 @@ def test_native_policy_projection_matches_python_oracle() -> None:
     )
     reference = qfin.project_liabilities(policies, assumptions, engine="numpy")
     native = qfin.project_liabilities(policies, assumptions, engine="native")
+    assert native.engine == "mixed"
     np.testing.assert_allclose(
         native.expected_premiums, reference.expected_premiums, rtol=1e-13
     )
@@ -79,6 +82,15 @@ def test_native_binding_rejects_malformed_buffers_without_unsafe_access() -> Non
             np.array([100.0]),
             np.array([0, 2, 1], dtype=np.int64),
             np.array([1.0, 1.0]),
+            np.array([0.0, 1.0]),
+            np.array([0.02, 0.02]),
+            np.zeros((1, 2)),
+        )
+    with pytest.raises(ValueError, match="offsets must contain"):
+        native.scenario_instrument_present_values(
+            np.array([], dtype=np.float64),
+            np.array([], dtype=np.float64),
+            np.array([], dtype=np.int64),
             np.array([0.0, 1.0]),
             np.array([0.02, 0.02]),
             np.zeros((1, 2)),
