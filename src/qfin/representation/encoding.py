@@ -226,7 +226,7 @@ def encode(
         raise ValueError("require 1 <= min_qubits <= max_qubits")
 
     if selected_qubits is not None:
-        return _fixed_encoding(
+        encoding = _fixed_encoding(
             distribution,
             qubits=selected_qubits,
             tail_probability=tail_probability,
@@ -234,6 +234,8 @@ def encode(
             objective=objective,
             convergence_error=None,
         )
+        _objective_values(objective, encoding.grid)
+        return encoding
 
     previous_value: float | None = None
     selected: DistributionEncoding | None = None
@@ -358,13 +360,15 @@ def encode_quantiles(
         raise ValueError("require 1 <= min_qubits <= max_qubits")
 
     if selected_qubits is not None:
-        return _fixed_quantile_encoding(
+        encoding = _fixed_quantile_encoding(
             distribution,
             qubits=selected_qubits,
             tail_probability=tail_probability,
             objective=objective,
             convergence_error=None,
         )
+        _objective_values(objective, encoding.grid)
+        return encoding
 
     previous_value: float | None = None
     selected: DistributionEncoding | None = None

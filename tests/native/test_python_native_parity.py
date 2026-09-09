@@ -13,6 +13,7 @@ def test_native_build_metadata_is_reported() -> None:
     assert info["native_backend"] == "qfin-native"
     assert info["native_cpp_standard"] == "C++20"
     assert info["native_compiler"]
+    assert qfin._native.load_error() is None
 
 
 def test_fixed_income_native_matches_numpy_for_large_mixed_batch() -> None:

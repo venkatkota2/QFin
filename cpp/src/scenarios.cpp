@@ -10,6 +10,32 @@ namespace qfin {
 
 namespace {
 
+double checked_scenario_discount(const double rate, const double time) {
+    const double discount = std::exp(-rate * time);
+    if (!std::isfinite(discount) || discount <= 0.0) {
+        throw std::invalid_argument("scenario interpolation produced invalid discount factors");
+    }
+    return discount;
+}
+
+void validate_shifted_nodes(
+    const std::span<const double> curve_times,
+    const std::span<const double> zero_rates,
+    const std::span<const double> scenario_shocks
+) {
+    for (std::size_t index = 0; index < scenario_shocks.size(); ++index) {
+        const double shock = scenario_shocks[index];
+        if (!std::isfinite(shock)) {
+            throw std::invalid_argument("scenario shocks must be finite");
+        }
+        const std::size_t node = index % curve_times.size();
+        const double discount = std::exp(-(zero_rates[node] + shock) * curve_times[node]);
+        if (!std::isfinite(discount) || discount <= 0.0) {
+            throw std::invalid_argument("scenario shocks imply invalid node discount factors");
+        }
+    }
+}
+
 void validate_scenario_cashflows(
     const std::span<const double> cashflow_times,
     const std::span<const double> cashflow_amounts,
@@ -41,11 +67,7 @@ void validate_scenario_cashflows(
             );
         }
     }
-    for (const double shock : scenario_shocks) {
-        if (!std::isfinite(shock)) {
-            throw std::invalid_argument("scenario shocks must be finite");
-        }
-    }
+    validate_shifted_nodes(curve_times, zero_rates, scenario_shocks);
 }
 
 }  // namespace
@@ -104,7 +126,7 @@ void scenario_portfolio_present_values_into(
                 const double time = cashflow_times[index];
                 const double rate = interpolate_flat_linear(time, curve_times, zero_rates) +
                                     interpolate_flat_linear(time, curve_times, shocks);
-                instrument_value += cashflow_amounts[index] * std::exp(-rate * time);
+                instrument_value += cashflow_amounts[index] * checked_scenario_discount(rate, time);
             }
             const double position_value = position_weights[instrument] * instrument_value;
             portfolio_value += position_value;
@@ -124,11 +146,14 @@ void scenario_portfolio_present_values_into(
                     const double rate =
                         interpolate_flat_linear(time, curve_times, zero_rates) +
                         interpolate_flat_linear(time, curve_times, shocks);
-                    instrument_value += cashflow_amounts[index] * std::exp(-rate * time);
+                    instrument_value += cashflow_amounts[index] * checked_scenario_discount(rate, time);
                 }
                 accurate_value.add(position_weights[instrument] * instrument_value);
             }
             portfolio_value = accurate_value.value();
+        }
+        if (!std::isfinite(portfolio_value)) {
+            throw std::invalid_argument("scenario valuation produced non-finite cash-flow values");
         }
         output[scenario] = portfolio_value;
     }
@@ -198,7 +223,7 @@ void scenario_instrument_present_values_into(
         for (std::size_t index = 0; index < cashflow_times.size(); ++index) {
             const double time = cashflow_times[index];
             const double rate = interpolate_flat_linear(time, curve_times, zero_rates);
-            base_present_values[index] = cashflow_amounts[index] * std::exp(-rate * time);
+            base_present_values[index] = cashflow_amounts[index] * checked_scenario_discount(rate, time);
         }
     }
     for (std::size_t scenario = 0; scenario < scenario_count; ++scenario) {
@@ -213,13 +238,23 @@ void scenario_instrument_present_values_into(
                 const double time = cashflow_times[index];
                 if (changes_from_base) {
                     const double shock = interpolate_flat_linear(time, curve_times, shocks);
+                    const double change = std::expm1(-shock * time);
+                    if (change == -1.0) {
+                        // Large discount changes can round to -1 before the stressed
+                        // discount itself underflows. Validate that rare case directly.
+                        const double rate = interpolate_flat_linear(time, curve_times, zero_rates);
+                        checked_scenario_discount(rate + shock, time);
+                    }
                     instrument_value += scenario == 0 ? base_present_values[index] :
-                        base_present_values[index] * std::expm1(-shock * time);
+                        base_present_values[index] * change;
                 } else {
                     const double rate = interpolate_flat_linear(time, curve_times, zero_rates) +
                                         interpolate_flat_linear(time, curve_times, shocks);
-                    instrument_value += cashflow_amounts[index] * std::exp(-rate * time);
+                    instrument_value += cashflow_amounts[index] * checked_scenario_discount(rate, time);
                 }
+            }
+            if (!std::isfinite(instrument_value)) {
+                throw std::invalid_argument("scenario valuation produced non-finite cash-flow values");
             }
             output[scenario * instrument_count + instrument] = instrument_value;
         }
@@ -251,11 +286,7 @@ void scenario_indexed_cashflow_present_values_into(
             throw std::invalid_argument("invalid indexed scenario cash flow");
         }
     }
-    for (const double shock : scenario_rate_shocks) {
-        if (!std::isfinite(shock)) {
-            throw std::invalid_argument("scenario shocks must be finite");
-        }
-    }
+    validate_shifted_nodes(curve_times, zero_rates, scenario_rate_shocks);
     for (std::size_t scenario = 0; scenario < scenario_count; ++scenario) {
         const double inflation = scenario_inflation_rates[scenario];
         if (!std::isfinite(inflation) || inflation <= -1.0) {
@@ -272,7 +303,10 @@ void scenario_indexed_cashflow_present_values_into(
             const double scale = std::pow(
                 1.0 + inflation, time * inflation_linkage[index]
             );
-            value += cashflow_amounts[index] * scale * std::exp(-rate * time);
+            value += cashflow_amounts[index] * scale * checked_scenario_discount(rate, time);
+        }
+        if (!std::isfinite(value)) {
+            throw std::invalid_argument("scenario valuation produced non-finite cash-flow values");
         }
         output[scenario] = value;
     }

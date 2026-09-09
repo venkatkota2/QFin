@@ -196,16 +196,17 @@ class ALMFactorAttribution:
             weights.shape != (self.impacts.shape[0],)
             or not np.all(np.isfinite(weights))
             or np.any(weights < 0.0)
-            or float(np.sum(weights)) <= 0.0
+            or float(np.max(weights, initial=0.0)) <= 0.0
         ):
             raise ValueError("probabilities must be non-negative and align to scenarios")
+        weights = weights / np.max(weights)
         weights = weights / np.sum(weights)
         result = {
-            name: float(weights @ self.impacts[:, index])
+            name: stable_weighted_sum(self.impacts[:, index], weights)
             for index, name in enumerate(self.factor_names)
         }
-        result["interaction"] = float(weights @ self.interaction)
-        result["total"] = float(weights @ self.total_change)
+        result["interaction"] = stable_weighted_sum(self.interaction, weights)
+        result["total"] = stable_weighted_sum(self.total_change, weights)
         return result
 
 

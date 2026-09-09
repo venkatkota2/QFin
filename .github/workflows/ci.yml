@@ -69,7 +69,10 @@ jobs:
         run: >-
           python -c "import qfin; info=qfin.system_info();
           assert info['native_extension']; assert info['pennylane_lightning']; print(info)"
-      - run: python -m pytest --cov=qfin --cov-report=term-missing --cov-fail-under=88
+      - run: python -m pytest --cov=qfin --cov-report=term-missing --cov-report=json:coverage.json --cov-fail-under=90
+      - name: Enforce numerical module coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python examples/check_coverage.py coverage.json
 
   native-parity:
     name: native parity and strict C++ warnings
@@ -159,10 +162,17 @@ jobs:
       - run: python -m venv sdist-test
       - run: sdist-test/bin/python -m pip install dist/*.tar.gz
       - run: sdist-test/bin/python examples/wheel_smoke.py
+      - name: Hash source artifact
+        run: >-
+          python -c "import hashlib,pathlib;
+          p=next(pathlib.Path('dist').glob('*.tar.gz'));
+          pathlib.Path('dist/SHA256SUMS').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: qfin-sdist
-          path: dist/*.tar.gz
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
           if-no-files-found: error
 
   wheel-smoke:
@@ -200,8 +210,15 @@ jobs:
       - run: ${{ matrix.python-path }} -m pip install numpy scipy
       - run: ${{ matrix.python-path }} -m pip install --no-index --no-deps --find-links dist qfin-quantum
       - run: ${{ matrix.python-path }} examples/wheel_smoke.py
+      - name: Hash installed wheel artifact
+        run: >-
+          python -c "import hashlib,pathlib;
+          p=next(pathlib.Path('dist').glob('*.whl'));
+          pathlib.Path('dist/SHA256SUMS').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: qfin-wheel-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: dist/*.whl
+          path: |
+            dist/*.whl
+            dist/SHA256SUMS
           if-no-files-found: error

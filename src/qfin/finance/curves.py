@@ -49,7 +49,7 @@ class CurveInterpolation(StrEnum):
             "pchip": cls.MONOTONE_ZERO,
         }
         try:
-            return aliases.get(normalized, cls(normalized))
+            return aliases[normalized] if normalized in aliases else cls(normalized)
         except ValueError as exc:
             choices = ", ".join(item.value for item in cls)
             raise ValueError(f"curve interpolation must be one of: {choices}") from exc
@@ -69,7 +69,7 @@ class CurveExtrapolation(StrEnum):
         normalized = str(value).strip().lower().replace("-", "_").replace(" ", "_")
         aliases = {"flat": cls.FLAT_ZERO, "raise": cls.ERROR}
         try:
-            return aliases.get(normalized, cls(normalized))
+            return aliases[normalized] if normalized in aliases else cls(normalized)
         except ValueError as exc:
             choices = ", ".join(item.value for item in cls)
             raise ValueError(f"curve extrapolation must be one of: {choices}") from exc

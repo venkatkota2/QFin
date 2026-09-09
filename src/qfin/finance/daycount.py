@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from calendar import isleap
 from datetime import date
 from enum import StrEnum
 
@@ -45,7 +46,7 @@ class DayCountConvention(StrEnum):
 
 
 def _days_in_year(year: int) -> int:
-    return (date(year + 1, 1, 1) - date(year, 1, 1)).days
+    return 366 if isleap(year) else 365
 
 
 def _actual_actual_isda(start: date, end: date) -> float:

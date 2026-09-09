@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from calendar import monthrange
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -33,7 +34,7 @@ def is_month_end(value: DateLike) -> bool:
     """Return whether ``value`` is the final calendar day of its month."""
 
     current = as_date(value)
-    return (current + timedelta(days=1)).month != current.month
+    return current.day == monthrange(current.year, current.month)[1]
 
 
 def add_months(value: DateLike, months: int, *, end_of_month: bool = False) -> date:
@@ -76,7 +77,7 @@ class BusinessDayConvention(StrEnum):
             "modifiedpreceding": cls.MODIFIED_PRECEDING,
         }
         try:
-            return aliases.get(normalized, cls(normalized))
+            return aliases[normalized] if normalized in aliases else cls(normalized)
         except ValueError as exc:
             choices = ", ".join(item.value for item in cls)
             raise ValueError(f"business-day convention must be one of: {choices}") from exc
@@ -107,6 +108,8 @@ class Calendar:
                 maximum=6,
             )
         )
+        if len(weekend_days) == 7:
+            raise ValueError("calendar must have at least one possible business weekday")
         object.__setattr__(self, "holidays", holidays)
         object.__setattr__(self, "weekend_days", weekend_days)
 
@@ -129,7 +132,12 @@ class Calendar:
         def seek(direction: int) -> date:
             candidate = current
             while not self.is_business_day(candidate):
-                candidate += timedelta(days=direction)
+                try:
+                    candidate += timedelta(days=direction)
+                except OverflowError as exc:
+                    raise ValueError(
+                        "business-day adjustment exceeds the supported date range"
+                    ) from exc
             return candidate
 
         if selected in (
@@ -159,7 +167,10 @@ class Calendar:
         remaining = abs(day_count)
         direction = 1 if day_count >= 0 else -1
         while remaining:
-            current += timedelta(days=direction)
+            try:
+                current += timedelta(days=direction)
+            except OverflowError as exc:
+                raise ValueError("business-day advance exceeds the supported date range") from exc
             if self.is_business_day(current):
                 remaining -= 1
         return current

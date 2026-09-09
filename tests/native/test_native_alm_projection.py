@@ -121,3 +121,23 @@ def test_native_scenario_changes_validate_base_and_preserve_empty_segments() -> 
         times, amounts, offsets, nodes, rates, np.empty((0, 2)), changes_from_base=True
     )
     assert empty.shape == (0, 3)
+
+
+def test_native_output_owns_storage_after_subsequent_calls_and_collection() -> None:
+    import gc
+
+    native = qfin._native.require()
+    times = np.array([1.])
+    amounts = np.array([100.])
+    offsets = np.array([0, 1], dtype=np.int64)
+    nodes = np.array([0., 1.])
+    rates = np.array([.02, .02])
+    shocks = np.zeros((128, 2))
+    retained = native.scenario_instrument_present_values(times, amounts, offsets,
+                                                        nodes, rates, shocks)
+    assert retained.flags.owndata and retained.flags.c_contiguous
+    assert retained.base is None
+    for _ in range(5):
+        native.scenario_instrument_present_values(times, 2*amounts, offsets, nodes, rates, shocks)
+    gc.collect()
+    np.testing.assert_allclose(retained, np.full((128, 1), 100*np.exp(-.02)), rtol=2e-15)

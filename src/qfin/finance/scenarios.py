@@ -534,8 +534,6 @@ def _numpy_scenario_values(
     weighted_amounts: FloatArray,
     shocks: FloatArray,
 ) -> FloatArray:
-    if prepared.times.size == 0:
-        return np.zeros(shocks.shape[0], dtype=np.float64)
     discounted = prepared.discount_factors(shocks) * weighted_amounts[None, :]
     values = np.asarray(np.sum(discounted, axis=1, dtype=np.float64), dtype=np.float64)
     if np.any(weighted_amounts < 0.0) and np.any(weighted_amounts > 0.0):
@@ -611,6 +609,8 @@ def scenario_portfolio_values(
             values[start:stop] = _numpy_scenario_values(
                 prepared, weighted_amounts, shock_chunk
             )
+    if not np.all(np.isfinite(values)):
+        raise ValueError("scenario valuation produced non-finite cash-flow values")
     return values, selected
 
 
@@ -690,9 +690,6 @@ def scenario_indexed_cashflow_values(
             )
             values[start:stop] = np.asarray(raw, dtype=np.float64)
             continue
-        if times.size == 0:
-            values[start:stop] = 0.0
-            continue
         discounts = prepared.discount_factors(rate_shocks)
         scale = np.power(1.0 + inflation[:, None], times[None, :] * linkages[None, :])
         values[start:stop] = np.sum(
@@ -702,6 +699,8 @@ def scenario_indexed_cashflow_values(
             axis=1,
             dtype=np.float64,
         )
+    if not np.all(np.isfinite(values)):
+        raise ValueError("scenario valuation produced non-finite cash-flow values")
     return values, selected
 
 
