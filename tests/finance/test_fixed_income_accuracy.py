@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal, localcontext
 
 import numpy as np
 import pytest
@@ -151,6 +152,38 @@ def test_key_rate_risk_reconciles_to_parallel_risk() -> None:
         np.sum(report.key_rate_dv01, axis=1), report.parallel_dv01, rtol=2.0e-6
     )
     assert report.interpolation == "linear_zero"
+
+
+@pytest.mark.parametrize("engine", ["numpy", "native"])
+def test_tiny_key_rate_exposure_matches_high_precision_oracle(engine: str) -> None:
+    if engine == "native" and not qfin.system_info()["native_extension"]:
+        pytest.skip("native extension unavailable")
+    maturity = 1.0
+    upper_node = float(np.nextafter(1.0, 2.0))
+    curve = qfin.YieldCurve([0.5, upper_node, 2.0], [0.01, 0.02, 0.03])
+    bond = qfin.FixedRateBond(maturity, 0.0, face_value=1.0e12)
+    bump = 1.0e-4
+    with localcontext() as context:
+        context.prec = 70
+        time = Decimal.from_float(maturity)
+        upper = Decimal.from_float(upper_node)
+        weight = (upper - time) / (upper - Decimal("0.5"))
+        rate = weight * Decimal.from_float(0.01) + (1 - weight) * Decimal.from_float(0.02)
+        shock = weight * Decimal.from_float(bump)
+        down = Decimal("1e12") * (-(rate - shock) * time).exp()
+        up = Decimal("1e12") * (-(rate + shock) * time).exp()
+        expected = float((down - up) / 2)
+    result = qfin.key_rate_risk(bond, curve, engine=engine)
+    assert 0.0 < expected < 1.0e-6
+    assert result.key_rate_dv01[0, 0] == pytest.approx(expected, rel=3.0e-14, abs=0.0)
+
+
+@pytest.mark.parametrize("face", [1.0e-20, 1.0, 100.0, 1.0e12])
+def test_par_yield_is_independent_of_notional_scale(face: float) -> None:
+    curve = qfin.YieldCurve([0.0, 5.0], [0.025, 0.025])
+    bond = qfin.FixedRateBond(5.0, 0.0, face_value=face, frequency=2)
+    expected = 2.0 * np.expm1(0.025 / 2.0)
+    assert qfin.par_yield(bond, curve) == pytest.approx(expected, rel=2.0e-14, abs=0.0)
 
 
 @pytest.mark.parametrize(

@@ -961,6 +961,15 @@ def key_rate_risk(
         native_compatible=curve.native_compatible,
         auto_native_threshold=_AUTO_NATIVE_KEY_RATE_WORKLOAD,
     )
+    # Stable changes preserve the finite central-bump definition while avoiding
+    # cancellation between million-unit prices for tiny key-node exposures.
+    if curve.native_compatible:
+        with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+            node_discounts = np.exp(
+                -(curve.zero_rates[None, :] + shocks) * curve.times[None, :]
+            )
+        if not np.all(np.isfinite(node_discounts)) or np.any(node_discounts <= 0):
+            raise ValueError("key-rate shocks imply invalid node discount factors")
     if selected == "native":
         scenario_prices = np.asarray(
             _native.require().scenario_instrument_present_values(
@@ -970,11 +979,24 @@ def key_rate_risk(
                 curve.times,
                 curve.zero_rates,
                 shocks,
+                changes_from_base=True,
             ),
             dtype=np.float64,
         )
     else:
         prepared = _PreparedScenarioValuation.build(times, curve)
+        base_discounts = curve.discount(times)
+        base_present_values = amounts * base_discounts
+        fraction = np.clip(prepared.fractions, 0.0, 1.0)
+        if node_count == 1:
+            lower_weight = np.ones_like(times)
+        else:
+            lower_weight = np.clip(
+                (curve.times[prepared.upper] - times)
+                / (curve.times[prepared.upper] - curve.times[prepared.lower]),
+                0.0,
+                1.0,
+            )
         scenario_prices = np.empty((shocks.shape[0], len(items)), dtype=np.float64)
         rows_per_chunk = max(
             1,
@@ -982,8 +1004,25 @@ def key_rate_risk(
         )
         for start in range(0, shocks.shape[0], rows_per_chunk):
             stop = min(start + rows_per_chunk, shocks.shape[0])
-            discounted = prepared.discount_factors(shocks[start:stop]) * amounts[None, :]
+            if curve.native_compatible:
+                chunk_shocks = shocks[start:stop]
+                rate_changes = (
+                    lower_weight * chunk_shocks[:, prepared.lower]
+                    + fraction * chunk_shocks[:, prepared.upper]
+                )
+                discounted = base_present_values[None, :] * np.expm1(
+                    -rate_changes * times[None, :]
+                )
+            else:
+                discounted = (
+                    prepared.discount_factors(shocks[start:stop]) - base_discounts[None, :]
+                ) * amounts[None, :]
+            if start == 0:
+                discounted[0] = base_present_values
             scenario_prices[start:stop] = _segment_sum_rows(discounted, offsets)
+
+    if not np.all(np.isfinite(scenario_prices)):
+        raise ValueError("key-rate shocks produced non-finite cash-flow values")
 
     base_prices = scenario_prices[0]
     up = scenario_prices[1 : node_count + 1].T
@@ -1021,8 +1060,8 @@ def par_yield(
     """Return the coupon rate that prices the bond at the target clean price.
 
     Cash flows and accrued interest are affine in the coupon rate, so the par
-    rate is solved exactly from zero- and unit-coupon valuations.  By default
-    the target is the bond's face value.
+    rate is solved from principal PV, unit-coupon PV and accrued interest using
+    one schedule. By default the target is the bond's face value.
     """
 
     target = bond.face_value if target_clean_price is None else target_clean_price
@@ -1039,7 +1078,7 @@ def par_yield(
     unit_coupon_value = float(np.dot(unit_coupon, discounts))
     unit_coupon_accrued = bond._unit_coupon_accrued_interest(normalized_settlement)
     coupon_value = unit_coupon_value - unit_coupon_accrued
-    if abs(coupon_value) <= np.finfo(np.float64).eps:
+    if coupon_value == 0.0:
         raise ValueError("par yield is undefined because no coupon cash flows remain")
     return float((target - principal_value) / coupon_value)
 

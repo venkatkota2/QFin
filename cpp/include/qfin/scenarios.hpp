@@ -37,7 +37,8 @@ void scenario_instrument_present_values_into(
     std::span<const double> zero_rates,
     std::span<const double> scenario_shocks,
     std::size_t scenario_count,
-    std::span<double> output
+    std::span<double> output,
+    bool changes_from_base = false
 );
 
 void scenario_indexed_cashflow_present_values_into(

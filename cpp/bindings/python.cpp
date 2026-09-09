@@ -226,7 +226,8 @@ PYBIND11_MODULE(_qfin_native, module) {
            const InputArray<std::int64_t>& offsets,
            const InputArray<double>& curve_times,
            const InputArray<double>& zero_rates,
-           const InputArray<double>& scenario_shocks) {
+           const InputArray<double>& scenario_shocks,
+           const bool changes_from_base) {
             if (scenario_shocks.ndim() != 2) {
                 throw py::value_error("scenario_shocks must be two-dimensional");
             }
@@ -258,11 +259,19 @@ PYBIND11_MODULE(_qfin_native, module) {
                     rates_span,
                     shocks_span,
                     scenario_count,
-                    output_span
+                    output_span,
+                    changes_from_base
                 );
             }
             return values;
-        }
+        },
+        py::arg("cashflow_times"),
+        py::arg("cashflow_amounts"),
+        py::arg("offsets"),
+        py::arg("curve_times"),
+        py::arg("zero_rates"),
+        py::arg("scenario_shocks"),
+        py::arg("changes_from_base") = false
     );
 
     module.def(

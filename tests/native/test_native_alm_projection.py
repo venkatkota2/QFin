@@ -95,3 +95,29 @@ def test_native_binding_rejects_malformed_buffers_without_unsafe_access() -> Non
             np.array([0.02, 0.02]),
             np.zeros((1, 2)),
         )
+
+
+def test_native_scenario_changes_validate_base_and_preserve_empty_segments() -> None:
+    native = qfin._native.require()
+    times = np.array([1.0])
+    amounts = np.array([100.0])
+    offsets = np.array([0, 0, 1, 1], dtype=np.int64)
+    nodes = np.array([0.0, 1.0])
+    rates = np.array([0.02, 0.02])
+    shocks = np.array([[0.0, 0.0], [1.0e-12, 1.0e-12]])
+    values = native.scenario_instrument_present_values(
+        times, amounts, offsets, nodes, rates, shocks, changes_from_base=True
+    )
+    np.testing.assert_array_equal(values[:, [0, 2]], np.zeros((2, 2)))
+    assert values[0, 1] == pytest.approx(100 * np.exp(-0.02), rel=2.0e-15)
+    assert values[1, 1] == pytest.approx(
+        100 * np.exp(-0.02) * np.expm1(-1.0e-12), rel=2.0e-15, abs=0.0
+    )
+    with pytest.raises(ValueError, match="base scenario must contain zero shocks"):
+        native.scenario_instrument_present_values(
+            times, amounts, offsets, nodes, rates, shocks[1:], changes_from_base=True
+        )
+    empty = native.scenario_instrument_present_values(
+        times, amounts, offsets, nodes, rates, np.empty((0, 2)), changes_from_base=True
+    )
+    assert empty.shape == (0, 3)

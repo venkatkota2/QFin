@@ -167,7 +167,8 @@ void scenario_instrument_present_values_into(
     const std::span<const double> zero_rates,
     const std::span<const double> scenario_shocks,
     const std::size_t scenario_count,
-    const std::span<double> output
+    const std::span<double> output,
+    const bool changes_from_base
 ) {
     validate_scenario_cashflows(
         cashflow_times,
@@ -182,6 +183,24 @@ void scenario_instrument_present_values_into(
     if (output.size() != scenario_count * instrument_count) {
         throw std::invalid_argument("scenario instrument output dimensions do not align");
     }
+    std::vector<double> base_present_values;
+    if (changes_from_base) {
+        // Row zero reports base PV; later rows report changes. This private mode
+        // lets key-rate central differences avoid subtracting two large PVs.
+        if (scenario_count > 0) {
+            for (const double shock : scenario_shocks.first(curve_times.size())) {
+                if (shock != 0.0) {
+                    throw std::invalid_argument("base scenario must contain zero shocks");
+                }
+            }
+        }
+        base_present_values.resize(cashflow_times.size());
+        for (std::size_t index = 0; index < cashflow_times.size(); ++index) {
+            const double time = cashflow_times[index];
+            const double rate = interpolate_flat_linear(time, curve_times, zero_rates);
+            base_present_values[index] = cashflow_amounts[index] * std::exp(-rate * time);
+        }
+    }
     for (std::size_t scenario = 0; scenario < scenario_count; ++scenario) {
         const auto shocks = scenario_shocks.subspan(
             scenario * curve_times.size(), curve_times.size()
@@ -192,9 +211,15 @@ void scenario_instrument_present_values_into(
             const auto end = static_cast<std::size_t>(offsets[instrument + 1]);
             for (std::size_t index = begin; index < end; ++index) {
                 const double time = cashflow_times[index];
-                const double rate = interpolate_flat_linear(time, curve_times, zero_rates) +
-                                    interpolate_flat_linear(time, curve_times, shocks);
-                instrument_value += cashflow_amounts[index] * std::exp(-rate * time);
+                if (changes_from_base) {
+                    const double shock = interpolate_flat_linear(time, curve_times, shocks);
+                    instrument_value += scenario == 0 ? base_present_values[index] :
+                        base_present_values[index] * std::expm1(-shock * time);
+                } else {
+                    const double rate = interpolate_flat_linear(time, curve_times, zero_rates) +
+                                        interpolate_flat_linear(time, curve_times, shocks);
+                    instrument_value += cashflow_amounts[index] * std::exp(-rate * time);
+                }
             }
             output[scenario * instrument_count + instrument] = instrument_value;
         }
