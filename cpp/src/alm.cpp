@@ -231,7 +231,7 @@ ALMPathProjectionResult project_alm_paths(
                                        std::exp(cash_rate * (period_end - time));
                 }
             }
-            const double bond_return = std::abs(start_index) > 1.0e-15
+            const double bond_return = start_index != 0.0
                                            ? (end_index + received_wealth) / start_index
                                            : cash_growth;
             bond_balance *= bond_return;
@@ -255,7 +255,7 @@ ALMPathProjectionResult project_alm_paths(
             if (pay_liabilities) {
                 const double before_payment = bond_balance + cash_balance + equity_balance;
                 const double after_payment = before_payment - liability_payment;
-                const double scale = std::abs(before_payment) > 1.0e-15
+                const double scale = before_payment != 0.0
                                          ? after_payment / before_payment
                                          : 1.0;
                 bond_balance *= scale;
@@ -273,7 +273,7 @@ ALMPathProjectionResult project_alm_paths(
                 const double after_cost = total - cost;
                 if (after_cost > 0.0) {
                     const double non_equity_before = bond_balance + cash_balance;
-                    const double cash_share = std::abs(non_equity_before) > 1.0e-15
+                    const double cash_share = non_equity_before != 0.0
                                                   ? std::clamp(
                                                         cash_balance / non_equity_before,
                                                         0.0,

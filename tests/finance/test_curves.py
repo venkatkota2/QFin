@@ -93,6 +93,57 @@ def test_market_quote_metadata_diagnostics_and_extrapolation() -> None:
     assert flat_forward.discount(0.0) == 1.0
 
 
+def test_diagnostics_inspect_monotone_zero_between_node_path() -> None:
+    # Node discount factors decrease, but monotone interpolation of zero rates
+    # still creates locally increasing discount factors in two intervals.
+    curve = qfin.YieldCurve(
+        [0.0, 0.25, 1.0, 3.0, 10.0],
+        [
+            0.5460085498532156,
+            0.5460085498532156,
+            0.1473609591218682,
+            0.06383696589637107,
+            0.022846682264777728,
+        ],
+        interpolation="monotone_zero",
+        extrapolation="error",
+    )
+
+    diagnostics = curve.diagnostics(samples_per_interval=65)
+
+    assert diagnostics.node_increasing_discount_intervals == ()
+    assert diagnostics.between_node_increasing_discount_intervals == (1, 3)
+    assert diagnostics.between_node_negative_forward_intervals == (1, 3)
+    assert diagnostics.node_warnings == ()
+    assert any("interpolation path" in warning for warning in diagnostics.interpolation_warnings)
+    assert diagnostics.extrapolation_warnings == ()
+    assert diagnostics.has_positive_discount_factors
+
+
+def test_diagnostics_separate_extrapolation_and_extreme_forward_warnings() -> None:
+    curve = qfin.YieldCurve(
+        [1.0, 2.0],
+        [-0.02, -0.04],
+        interpolation="log_linear_discount",
+        extrapolation="flat_zero",
+    )
+
+    diagnostics = curve.diagnostics(extreme_forward_rate=0.01)
+
+    assert diagnostics.extrapolation_warning_sides == ("left", "right")
+    assert diagnostics.extrapolation_warnings
+    assert diagnostics.between_node_extreme_forward_intervals == (0,)
+    assert diagnostics.minimum_forward_rate is not None
+    assert diagnostics.minimum_forward_rate < 0.0
+
+
+@pytest.mark.parametrize("invalid", [True, 2.5, np.float32(4.0)])
+def test_diagnostics_reject_non_integer_sampling_counts(invalid: object) -> None:
+    curve = qfin.YieldCurve([0.0, 1.0], [0.01, 0.02])
+    with pytest.raises(ValueError, match="samples_per_interval must be an integer"):
+        curve.diagnostics(samples_per_interval=invalid)  # type: ignore[arg-type]
+
+
 def test_advanced_curve_interpolation_forces_accuracy_reference_path() -> None:
     curve = qfin.YieldCurve.from_discount_factors(
         [0.0, 1.0, 2.0],
@@ -121,3 +172,50 @@ def test_curve_rejects_malformed_inputs(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         qfin.YieldCurve(times, rates)
+
+
+def test_shifted_curve_preserves_and_accumulates_provenance() -> None:
+    quotes = (
+        qfin.CurveMarketQuote(1.0, 0.02, identifier="one-year"),
+        qfin.CurveMarketQuote(5.0, 0.03, identifier="five-year"),
+    )
+    base = qfin.YieldCurve.from_market_quotes(
+        quotes,
+        compounding="annual",
+        interpolation="monotone_zero",
+        extrapolation="flat_forward",
+        valuation_date="2026-01-02",
+    )
+    shocked = base.shifted(np.array([0.001, -0.002])).shifted(0.0005)
+
+    explanation = shocked.explain()
+    assert explanation["input_type"] == "shifted_zero_rate"
+    assert explanation["origin_input_type"] == "market_quote"
+    assert explanation["quote_compounding"] == "annual"
+    assert explanation["interpolation"] == "monotone_zero"
+    assert explanation["extrapolation"] == "flat_forward"
+    assert explanation["valuation_date"] == "2026-01-02"
+    assert explanation["applied_node_shock"] == pytest.approx([0.0015, -0.0015])
+    assert explanation["originating_quote_metadata"] == [
+        {
+            "source": "direct_market_node",
+            "identifier": "one-year",
+            "quote_type": "zero_rate",
+            "time": 1.0,
+            "value": 0.02,
+        },
+        {
+            "source": "direct_market_node",
+            "identifier": "five-year",
+            "quote_type": "zero_rate",
+            "time": 5.0,
+            "value": 0.03,
+        },
+    ]
+    assert shocked.market_quotes == quotes
+    np.testing.assert_allclose(
+        shocked.zero_rates,
+        base.zero_rates + np.array([0.0015, -0.0015]),
+        rtol=0.0,
+        atol=2.0e-17,
+    )

@@ -8,7 +8,9 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import require_integer
 from qfin.algorithms import CircuitObservation
+from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.circuits import FactorizedPreparation, apply_zero_reflection
 from qfin.exceptions import BackendUnavailableError, ResourceLimitError
 from qfin.representation.arithmetic import (
@@ -34,14 +36,20 @@ class FactorizedTailPennyLaneBackend:
         max_integer_monomials: int = 4_096,
         max_total_wires: int = 28,
     ) -> None:
+        monomial_limit = require_integer(
+            max_integer_monomials,
+            "max_integer_monomials",
+            minimum=1,
+        )
+        wire_limit = require_integer(max_total_wires, "max_total_wires", minimum=1)
         if oracle.input_qubits != representation.qubits_per_factor:
             raise ValueError("oracle input registers do not match the factorized representation")
         if not 0 <= encoded_probability <= 1:
             raise ValueError("encoded_probability must lie in [0, 1]")
-        if oracle.integer_monomials > max_integer_monomials:
+        if oracle.integer_monomials > monomial_limit:
             raise ResourceLimitError(
                 f"structured arithmetic requires {oracle.integer_monomials} integer monomials, "
-                f"above max_integer_monomials={max_integer_monomials}"
+                f"above max_integer_monomials={monomial_limit}"
             )
         self.representation = representation
         self.oracle = oracle
@@ -49,8 +57,8 @@ class FactorizedTailPennyLaneBackend:
         self.inclusive = inclusive
         self.encoded_probability = encoded_probability
         self.device_name = device_name
-        self.max_integer_monomials = max_integer_monomials
-        self.max_total_wires = max_total_wires
+        self.max_integer_monomials = monomial_limit
+        self.max_total_wires = wire_limit
         self.distribution_loader = FactorizedPreparation.from_encoding(representation)
 
         cursor = 0
@@ -74,10 +82,10 @@ class FactorizedTailPennyLaneBackend:
         self.work_wire = cursor
         cursor += 1
         self.total_wires = cursor
-        if self.total_wires > max_total_wires:
+        if self.total_wires > wire_limit:
             raise ResourceLimitError(
                 f"factorized tail circuit requires {self.total_wires} wires, "
-                f"above max_total_wires={max_total_wires}"
+                f"above max_total_wires={wire_limit}"
             )
         self.register_wires = (
             *self.data_wires,
@@ -88,7 +96,7 @@ class FactorizedTailPennyLaneBackend:
         self._threshold_code = (
             oracle.threshold_code(threshold, inclusive=inclusive)
             if threshold_code is None
-            else int(threshold_code)
+            else require_integer(threshold_code, "threshold_code", minimum=0)
         )
         if not 0 <= self._threshold_code <= 2**oracle.loss_qubits:
             raise ValueError("threshold_code must fit the loss-register comparison range")
@@ -163,11 +171,10 @@ class FactorizedTailPennyLaneBackend:
     def queue_circuit(self, power: int = 0) -> None:
         """Queue one factorized MLAE circuit on the active PennyLane tape."""
 
-        if power < 0:
-            raise ValueError("power must be non-negative")
+        resolved_power = require_integer(power, "power", minimum=0)
         qml = self._qml()
         self._apply_a()
-        for _ in range(power):
+        for _ in range(resolved_power):
             qml.PauliZ(wires=self.objective_wire)
             qml.adjoint(self._apply_a)()
             apply_zero_reflection(self.register_wires, work_wire=self.work_wire)
@@ -178,18 +185,20 @@ class FactorizedTailPennyLaneBackend:
         return qml.tape.make_qscript(lambda: self.queue_circuit(power))()
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
-        if power < 0:
-            raise ValueError("power must be non-negative")
+        resolved_power = require_integer(power, "power", minimum=0)
+        resolved_shots = (
+            None if shots is None else require_integer(shots, "shots", minimum=1)
+        )
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 
         @qml.qnode(device)  # type: ignore[untyped-decorator]
         def circuit() -> Any:
-            self.queue_circuit(power)
+            self.queue_circuit(resolved_power)
             return qml.probs(wires=self.objective_wire)
 
-        if shots is not None:
-            return qml.set_shots(circuit, shots=shots)
+        if resolved_shots is not None:
+            return qml.set_shots(circuit, shots=resolved_shots)
         return circuit
 
     def probability(
@@ -209,23 +218,19 @@ class FactorizedTailPennyLaneBackend:
         shots: int,
         seed: int | None = None,
     ) -> tuple[CircuitObservation, ...]:
-        if shots <= 0:
-            raise ValueError("shots must be positive")
-        powers = tuple(int(power) for power in schedule)
-        if not powers or len(set(powers)) != len(powers) or any(power < 0 for power in powers):
-            raise ValueError("schedule must contain unique, non-negative powers")
+        powers, shot_count = _validated_schedule(schedule, shots)
         observations: list[CircuitObservation] = []
         for index, power in enumerate(powers):
             probability = self.probability(
                 power,
-                shots=shots,
+                shots=shot_count,
                 seed=None if seed is None else seed + index,
             )
             observations.append(
                 CircuitObservation(
                     power=power,
-                    successes=int(np.clip(round(probability * shots), 0, shots)),
-                    shots=shots,
+                    successes=int(np.clip(round(probability * shot_count), 0, shot_count)),
+                    shots=shot_count,
                 )
             )
         return tuple(observations)
@@ -278,23 +283,31 @@ class FactorizedExcessPennyLaneBackend:
         max_integer_monomials: int = 4_096,
         max_total_wires: int = 28,
     ) -> None:
+        resolved_threshold = require_integer(threshold_code, "threshold_code", minimum=0)
+        resolved_bit = require_integer(bit_index, "bit_index", minimum=0)
+        monomial_limit = require_integer(
+            max_integer_monomials,
+            "max_integer_monomials",
+            minimum=1,
+        )
+        wire_limit = require_integer(max_total_wires, "max_total_wires", minimum=1)
         if oracle.input_qubits != representation.qubits_per_factor:
             raise ValueError("oracle input registers do not match the factorized representation")
-        if not 0 <= threshold_code < 2**oracle.loss_qubits:
+        if resolved_threshold >= 2**oracle.loss_qubits:
             raise ValueError("threshold_code must fit the loss register")
-        if not 0 <= bit_index < oracle.loss_qubits:
+        if resolved_bit >= oracle.loss_qubits:
             raise ValueError("bit_index must identify an excess-register wire")
         if not 0 <= encoded_probability <= 1:
             raise ValueError("encoded_probability must lie in [0, 1]")
-        if oracle.integer_monomials > max_integer_monomials:
+        if oracle.integer_monomials > monomial_limit:
             raise ResourceLimitError(
                 f"structured arithmetic requires {oracle.integer_monomials} integer monomials, "
-                f"above max_integer_monomials={max_integer_monomials}"
+                f"above max_integer_monomials={monomial_limit}"
             )
         self.representation = representation
         self.oracle = oracle
-        self.threshold_code = int(threshold_code)
-        self.bit_index = int(bit_index)
+        self.threshold_code = resolved_threshold
+        self.bit_index = resolved_bit
         self.encoded_probability = encoded_probability
         self.device_name = device_name
         self.distribution_loader = FactorizedPreparation.from_encoding(representation)
@@ -329,10 +342,10 @@ class FactorizedExcessPennyLaneBackend:
         self.work_wire = cursor
         cursor += 1
         self.total_wires = cursor
-        if self.total_wires > max_total_wires:
+        if self.total_wires > wire_limit:
             raise ResourceLimitError(
                 f"factorized excess circuit requires {self.total_wires} wires, "
-                f"above max_total_wires={max_total_wires}"
+                f"above max_total_wires={wire_limit}"
             )
         self.objective_wire = self.excess_wires[self.bit_index]
         self.register_wires = (
@@ -382,11 +395,10 @@ class FactorizedExcessPennyLaneBackend:
         self._apply_excess()
 
     def queue_circuit(self, power: int = 0) -> None:
-        if power < 0:
-            raise ValueError("power must be non-negative")
+        resolved_power = require_integer(power, "power", minimum=0)
         qml = self._qml()
         self._apply_a()
-        for _ in range(power):
+        for _ in range(resolved_power):
             qml.PauliZ(wires=self.objective_wire)
             qml.adjoint(self._apply_a)()
             apply_zero_reflection(self.register_wires, work_wire=self.work_wire)
@@ -397,18 +409,20 @@ class FactorizedExcessPennyLaneBackend:
         return qml.tape.make_qscript(lambda: self.queue_circuit(power))()
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
-        if power < 0:
-            raise ValueError("power must be non-negative")
+        resolved_power = require_integer(power, "power", minimum=0)
+        resolved_shots = (
+            None if shots is None else require_integer(shots, "shots", minimum=1)
+        )
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 
         @qml.qnode(device)  # type: ignore[untyped-decorator]
         def circuit() -> Any:
-            self.queue_circuit(power)
+            self.queue_circuit(resolved_power)
             return qml.probs(wires=self.objective_wire)
 
-        if shots is not None:
-            return qml.set_shots(circuit, shots=shots)
+        if resolved_shots is not None:
+            return qml.set_shots(circuit, shots=resolved_shots)
         return circuit
 
     def probability(
@@ -428,11 +442,7 @@ class FactorizedExcessPennyLaneBackend:
         shots: int,
         seed: int | None = None,
     ) -> tuple[CircuitObservation, ...]:
-        if shots <= 0:
-            raise ValueError("shots must be positive")
-        powers = tuple(int(power) for power in schedule)
-        if not powers or len(set(powers)) != len(powers) or any(power < 0 for power in powers):
-            raise ValueError("schedule must contain unique, non-negative powers")
+        powers, shot_count = _validated_schedule(schedule, shots)
         return tuple(
             CircuitObservation(
                 power=power,
@@ -441,16 +451,16 @@ class FactorizedExcessPennyLaneBackend:
                         round(
                             self.probability(
                                 power,
-                                shots=shots,
+                                shots=shot_count,
                                 seed=None if seed is None else seed + index,
                             )
-                            * shots
+                            * shot_count
                         ),
                         0,
-                        shots,
+                        shot_count,
                     )
                 ),
-                shots=shots,
+                shots=shot_count,
             )
             for index, power in enumerate(powers)
         )

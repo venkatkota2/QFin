@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from math import ceil, log2
 from typing import Literal
 
+from qfin._validation import require_integer
 from qfin.resources.estimation import ResourceReport, estimate_resources
 
 RiskProblemKind = Literal["tail_probability", "value_at_risk", "conditional_value_at_risk"]
@@ -73,9 +74,15 @@ def estimate_risk_resources(
 ) -> RiskResourceReport:
     """Estimate state loading, oracle, search, and preprocessing resources."""
 
-    if input_points < 1:
-        raise ValueError("input_points must be positive")
-    if not 1 <= occupied_grid_points <= 2**data_qubits:
+    qubit_count = require_integer(data_qubits, "data_qubits", minimum=1)
+    point_count = require_integer(input_points, "input_points", minimum=1)
+    occupied_count = require_integer(
+        occupied_grid_points,
+        "occupied_grid_points",
+        minimum=1,
+        maximum=2**qubit_count,
+    )
+    if not 1 <= occupied_count <= 2**qubit_count:
         raise ValueError("occupied_grid_points must lie in the encoded grid")
     if problem_kind not in (
         "tail_probability",
@@ -87,24 +94,28 @@ def estimate_risk_resources(
         if problem_kind == "tail_probability":
             resolved_threshold_evaluations = 1
         else:
-            resolved_threshold_evaluations = max(1, ceil(log2(occupied_grid_points)) + 1)
+            resolved_threshold_evaluations = max(1, ceil(log2(occupied_count)) + 1)
     else:
-        if threshold_evaluations < 1:
-            raise ValueError("threshold_evaluations must be positive")
-        resolved_threshold_evaluations = threshold_evaluations
+        resolved_threshold_evaluations = require_integer(
+            threshold_evaluations,
+            "threshold_evaluations",
+            minimum=1,
+        )
     excess_evaluations = 1 if problem_kind == "conditional_value_at_risk" else 0
     objective_evaluations = resolved_threshold_evaluations + excess_evaluations
     per_objective = estimate_resources(
-        data_qubits,
+        qubit_count,
         schedule=schedule,
         shots=shots,
         backend=backend,
         backend_mode="structured",
     )
-    encoded_grid_points = 2**data_qubits
-    estimated_sort_comparisons = 0 if input_points < 2 else ceil(input_points * log2(input_points))
+    encoded_grid_points = 2**qubit_count
+    estimated_sort_comparisons = (
+        0 if point_count < 2 else ceil(point_count * log2(point_count))
+    )
     # Input losses/probabilities plus encoded grid/probabilities, all doubles.
-    estimated_preprocessing_bytes = 16 * (input_points + encoded_grid_points)
+    estimated_preprocessing_bytes = 16 * (point_count + encoded_grid_points)
     return RiskResourceReport(
         problem_kind=problem_kind,
         per_objective=per_objective,
@@ -117,7 +128,7 @@ def estimate_risk_resources(
         estimated_compiled_circuit_gates=(
             objective_evaluations * per_objective.estimated_max_primitive_gates
         ),
-        classical_input_points=input_points,
+        classical_input_points=point_count,
         encoded_grid_points=encoded_grid_points,
         estimated_sort_comparisons=estimated_sort_comparisons,
         estimated_preprocessing_bytes=estimated_preprocessing_bytes,

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <vector>
 
@@ -36,8 +37,17 @@ std::span<const T> as_flat_span(const InputArray<T>& array) {
 }
 
 template <typename T>
+std::span<T> as_mutable_span(py::array_t<T>& array) {
+    const auto buffer = array.request();
+    return {static_cast<T*>(buffer.ptr), static_cast<std::size_t>(buffer.size)};
+}
+
+template <typename T>
 py::array_t<T> move_array(std::vector<T>&& values) {
-    py::array_t<T> output(values.size());
+    if (values.size() > static_cast<std::size_t>(std::numeric_limits<py::ssize_t>::max())) {
+        throw std::invalid_argument("native output exceeds NumPy's index capacity");
+    }
+    py::array_t<T> output(static_cast<py::ssize_t>(values.size()));
     const auto buffer = output.request();
     auto* destination = static_cast<T*>(buffer.ptr);
     std::move(values.begin(), values.end(), destination);
@@ -50,6 +60,8 @@ py::dict metrics_to_dict(qfin::BatchBondMetrics&& metrics) {
     result["macaulay_durations"] = move_array(std::move(metrics.macaulay_durations));
     result["convexities"] = move_array(std::move(metrics.convexities));
     result["dv01"] = move_array(std::move(metrics.dv01));
+    result["effective_durations"] = move_array(std::move(metrics.effective_durations));
+    result["effective_convexities"] = move_array(std::move(metrics.effective_convexities));
     return result;
 }
 
@@ -177,6 +189,9 @@ PYBIND11_MODULE(_qfin_native, module) {
             if (scenario_shocks.ndim() != 2) {
                 throw py::value_error("scenario_shocks must be two-dimensional");
             }
+            if (offsets.size() < 1) {
+                throw py::value_error("offsets must contain at least one value");
+            }
             const auto times_span = as_span(cashflow_times);
             const auto amounts_span = as_span(cashflow_amounts);
             const auto offsets_span = as_span(offsets);
@@ -184,10 +199,11 @@ PYBIND11_MODULE(_qfin_native, module) {
             const auto curve_times_span = as_span(curve_times);
             const auto rates_span = as_span(zero_rates);
             const auto shocks_span = as_flat_span(scenario_shocks);
-            std::vector<double> values;
+            py::array_t<double> values(scenario_shocks.shape(0));
+            const auto output_span = as_mutable_span(values);
             {
                 py::gil_scoped_release release;
-                values = qfin::scenario_portfolio_present_values(
+                qfin::scenario_portfolio_present_values_into(
                     times_span,
                     amounts_span,
                     offsets_span,
@@ -195,11 +211,67 @@ PYBIND11_MODULE(_qfin_native, module) {
                     curve_times_span,
                     rates_span,
                     shocks_span,
-                    static_cast<std::size_t>(scenario_shocks.shape(0))
+                    static_cast<std::size_t>(scenario_shocks.shape(0)),
+                    output_span
                 );
             }
-            return move_array(std::move(values));
+            return values;
         }
+    );
+
+    module.def(
+        "scenario_instrument_present_values",
+        [](const InputArray<double>& cashflow_times,
+           const InputArray<double>& cashflow_amounts,
+           const InputArray<std::int64_t>& offsets,
+           const InputArray<double>& curve_times,
+           const InputArray<double>& zero_rates,
+           const InputArray<double>& scenario_shocks,
+           const bool changes_from_base) {
+            if (scenario_shocks.ndim() != 2) {
+                throw py::value_error("scenario_shocks must be two-dimensional");
+            }
+            if (offsets.size() < 1) {
+                throw py::value_error("offsets must contain at least one value");
+            }
+            const auto times_span = as_span(cashflow_times);
+            const auto amounts_span = as_span(cashflow_amounts);
+            const auto offsets_span = as_span(offsets);
+            const auto curve_times_span = as_span(curve_times);
+            const auto rates_span = as_span(zero_rates);
+            const auto shocks_span = as_flat_span(scenario_shocks);
+            const auto scenario_count = static_cast<std::size_t>(scenario_shocks.shape(0));
+            const auto instrument_count = offsets.size() - 1;
+            py::array_t<double> values(
+                py::array::ShapeContainer{
+                    scenario_shocks.shape(0),
+                    instrument_count,
+                }
+            );
+            const auto output_span = as_mutable_span(values);
+            {
+                py::gil_scoped_release release;
+                qfin::scenario_instrument_present_values_into(
+                    times_span,
+                    amounts_span,
+                    offsets_span,
+                    curve_times_span,
+                    rates_span,
+                    shocks_span,
+                    scenario_count,
+                    output_span,
+                    changes_from_base
+                );
+            }
+            return values;
+        },
+        py::arg("cashflow_times"),
+        py::arg("cashflow_amounts"),
+        py::arg("offsets"),
+        py::arg("curve_times"),
+        py::arg("zero_rates"),
+        py::arg("scenario_shocks"),
+        py::arg("changes_from_base") = false
     );
 
     module.def(
@@ -221,10 +293,11 @@ PYBIND11_MODULE(_qfin_native, module) {
             const auto rates_span = as_span(zero_rates);
             const auto shocks_span = as_flat_span(scenario_rate_shocks);
             const auto inflation_span = as_span(scenario_inflation_rates);
-            std::vector<double> values;
+            py::array_t<double> values(scenario_rate_shocks.shape(0));
+            const auto output_span = as_mutable_span(values);
             {
                 py::gil_scoped_release release;
-                values = qfin::scenario_indexed_cashflow_present_values(
+                qfin::scenario_indexed_cashflow_present_values_into(
                     times_span,
                     amounts_span,
                     linkage_span,
@@ -232,10 +305,11 @@ PYBIND11_MODULE(_qfin_native, module) {
                     rates_span,
                     shocks_span,
                     inflation_span,
-                    static_cast<std::size_t>(scenario_rate_shocks.shape(0))
+                    static_cast<std::size_t>(scenario_rate_shocks.shape(0)),
+                    output_span
                 );
             }
-            return move_array(std::move(values));
+            return values;
         }
     );
 

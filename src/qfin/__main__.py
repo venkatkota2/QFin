@@ -1,9 +1,10 @@
-"""Command-line entry point for the European-option MVP."""
+"""Intentionally small command-line entry point for European-option demos."""
 
 import argparse
 import json
 from collections.abc import Sequence
 
+from qfin import __version__
 from qfin.compiler import compile
 from qfin.compiler.models import CompiledPricingModel
 from qfin.finance import BlackScholes, EuropeanCall, EuropeanPut
@@ -12,8 +13,12 @@ from qfin.finance import BlackScholes, EuropeanCall, EuropeanPut
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="qfin",
-        description="Compile and run a European-option quantum pricing model.",
+        description=(
+            "Compile and run the intentionally limited European-option quantum demo. "
+            "Use the Python API for QFin's financial library."
+        ),
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
     price = subparsers.add_parser("price", help="price a European call or put")
     price.add_argument("--kind", choices=("call", "put"), default="call")
@@ -30,7 +35,7 @@ def _parser() -> argparse.ArgumentParser:
         "--representation",
         choices=("quantile", "probability"),
         default="quantile",
-        help="quantile enables the v0.3 parameter-free distribution loader",
+        help="quantile enables the parameter-free distribution loader",
     )
     price.add_argument("--payoff-angle-tolerance", type=float, default=0.1)
     price.add_argument("--payoff-max-terms", type=int, default=None)

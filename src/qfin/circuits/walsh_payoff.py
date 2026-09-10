@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import require_integer
 from qfin.exceptions import BackendUnavailableError
 
 
@@ -60,8 +61,7 @@ class WalshTerm:
     coefficient: float
 
     def __post_init__(self) -> None:
-        if self.mask < 0:
-            raise ValueError("Walsh mask must be non-negative")
+        object.__setattr__(self, "mask", require_integer(self.mask, "mask", minimum=0))
         if not isfinite(self.coefficient):
             raise ValueError("Walsh coefficient must be finite")
 
@@ -112,9 +112,11 @@ class WalshPayoffApproximation:
             raise ValueError("target_price_error must be finite and positive")
         if not isfinite(max_angle_rmse) or max_angle_rmse <= 0:
             raise ValueError("max_angle_rmse must be finite and positive")
-        limit = payoff.size if max_terms is None else max_terms
-        if not 1 <= limit <= payoff.size:
-            raise ValueError("max_terms must lie between one and the payoff size")
+        limit = (
+            payoff.size
+            if max_terms is None
+            else require_integer(max_terms, "max_terms", minimum=1, maximum=payoff.size)
+        )
 
         target_angles = 2.0 * np.arcsin(np.sqrt(payoff))
         coefficients = _fast_walsh_hadamard(target_angles) / payoff.size

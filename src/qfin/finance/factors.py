@@ -9,6 +9,7 @@ from math import isfinite
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from qfin._validation import readonly_float64, require_integer
 from qfin.finance.risk import LossDistribution
 
 FloatArray = NDArray[np.float64]
@@ -23,7 +24,7 @@ class FactorScenarios:
     dependence_assumption: str
 
     def __post_init__(self) -> None:
-        values = np.ascontiguousarray(self.values, dtype=np.float64)
+        values = readonly_float64(self.values)
         names = tuple(self.factor_names)
         if values.ndim != 2 or values.shape[0] == 0 or values.shape[1] == 0:
             raise ValueError("values must be a non-empty scenario-by-factor matrix")
@@ -37,7 +38,6 @@ class FactorScenarios:
             raise ValueError("factor names must be unique")
         if not self.dependence_assumption:
             raise ValueError("dependence_assumption must be non-empty")
-        values.setflags(write=False)
         object.__setattr__(self, "values", values)
         object.__setattr__(self, "factor_names", names)
 
@@ -87,7 +87,7 @@ class GaussianFactorModel:
 
     def __post_init__(self) -> None:
         names = tuple(self.factor_names)
-        correlation = np.ascontiguousarray(self.correlation, dtype=np.float64)
+        correlation = readonly_float64(self.correlation)
         if not names or not all(name and isinstance(name, str) for name in names):
             raise ValueError("factor_names must contain non-empty strings")
         if len(set(names)) != len(names):
@@ -110,12 +110,14 @@ class GaussianFactorModel:
         means = (
             np.zeros(factor_count, dtype=np.float64)
             if self.means is None
-            else np.asarray(self.means, dtype=np.float64).reshape(-1)
+            else readonly_float64(np.asarray(self.means, dtype=np.float64).reshape(-1))
         )
         standard_deviations = (
             np.ones(factor_count, dtype=np.float64)
             if self.standard_deviations is None
-            else np.asarray(self.standard_deviations, dtype=np.float64).reshape(-1)
+            else readonly_float64(
+                np.asarray(self.standard_deviations, dtype=np.float64).reshape(-1)
+            )
         )
         if means.shape != (factor_count,) or not np.all(np.isfinite(means)):
             raise ValueError("means must contain one finite value per factor")
@@ -128,9 +130,10 @@ class GaussianFactorModel:
                 "standard_deviations must contain one finite positive value per factor"
             )
 
-        correlation.setflags(write=False)
-        means.setflags(write=False)
-        standard_deviations.setflags(write=False)
+        if self.means is None:
+            means.setflags(write=False)
+        if self.standard_deviations is None:
+            standard_deviations.setflags(write=False)
         object.__setattr__(self, "factor_names", names)
         object.__setattr__(self, "correlation", correlation)
         object.__setattr__(self, "means", means)
@@ -149,15 +152,14 @@ class GaussianFactorModel:
     ) -> FactorScenarios:
         """Generate correlated factor shocks without nested Python loops."""
 
-        if scenario_count < 1:
-            raise ValueError("scenario_count must be positive")
+        count = require_integer(scenario_count, "scenario_count", minimum=1)
         eigenvalues, eigenvectors = np.linalg.eigh(self.correlation)
         square_root = eigenvectors @ np.diag(np.sqrt(np.maximum(eigenvalues, 0.0)))
         generator = np.random.default_rng(seed)
-        draw_count = (scenario_count + 1) // 2 if antithetic else scenario_count
+        draw_count = (count + 1) // 2 if antithetic else count
         independent = generator.standard_normal((draw_count, self.factor_count))
         if antithetic:
-            independent = np.concatenate((independent, -independent), axis=0)[:scenario_count]
+            independent = np.concatenate((independent, -independent), axis=0)[:count]
         correlated = independent @ square_root.T
         assert self.means is not None
         assert self.standard_deviations is not None

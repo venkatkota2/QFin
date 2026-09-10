@@ -2,47 +2,19 @@
 
 from __future__ import annotations
 
-from operator import index as integer_index
 from typing import Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 from qfin import _native
+from qfin._validation import require_integer
 from qfin.finance.alm import ALMModel, ALMPathResult, RebalancingStrategy
 from qfin.finance.curves import YieldCurve
-from qfin.finance.fixed_income import Engine, flatten_bond_cashflows
-from qfin.finance.scenarios import EconomicScenarioSet
+from qfin.finance.fixed_income import Engine, _prepare_curve_cashflows
+from qfin.finance.scenarios import EconomicScenarioSet, _PreparedScenarioValuation
 
 FloatArray = NDArray[np.float64]
-
-
-def _interpolate_paths(query: FloatArray, nodes: FloatArray, path_values: FloatArray) -> FloatArray:
-    """Flat-tail linear interpolation for a row of values per scenario."""
-
-    if query.size == 0:
-        return np.empty((path_values.shape[0], 0), dtype=np.float64)
-    if nodes.size == 1:
-        return np.broadcast_to(path_values[:, :1], (path_values.shape[0], query.size))
-    upper = np.searchsorted(nodes, query, side="right")
-    upper = np.clip(upper, 1, nodes.size - 1)
-    lower = upper - 1
-    denominator = nodes[upper] - nodes[lower]
-    fractions = np.divide(
-        query - nodes[lower],
-        denominator,
-        out=np.zeros_like(query),
-        where=denominator != 0.0,
-    )
-    before = query <= nodes[0]
-    after = query >= nodes[-1]
-    lower[before] = 0
-    upper[before] = 0
-    fractions[before] = 0.0
-    lower[after] = nodes.size - 1
-    upper[after] = nodes.size - 1
-    fractions[after] = 0.0
-    return path_values[:, lower] + fractions * (path_values[:, upper] - path_values[:, lower])
 
 
 def _scenario_present_value(
@@ -60,21 +32,19 @@ def _scenario_present_value(
         return np.zeros(rate_shocks.shape[0], dtype=np.float64)
     tenors = np.ascontiguousarray(cashflow_times[remaining] - valuation_time)
     amounts = cashflow_amounts[remaining]
-    base_rates = np.asarray(curve.zero_rate(tenors), dtype=np.float64)
-    shocks = _interpolate_paths(tenors, curve.times, rate_shocks)
+    prepared = _PreparedScenarioValuation.build(tenors, curve)
+    total_node_shocks = rate_shocks + spread_shocks[:, None]
+    discounts = prepared.discount_factors(total_node_shocks)
     scaled_amounts: FloatArray
     if amount_scales is None:
-        scaled_amounts = np.broadcast_to(amounts, shocks.shape)
+        scaled_amounts = np.broadcast_to(amounts, discounts.shape)
     else:
         scaled_amounts = amount_scales[:, remaining] * amounts[None, :]
     return cast(
         FloatArray,
         np.sum(
             scaled_amounts
-            * np.exp(
-                -(base_rates[None, :] + shocks + spread_shocks[:, None])
-                * tenors[None, :]
-            ),
+            * discounts,
             axis=1,
             dtype=np.float64,
         ),
@@ -82,8 +52,10 @@ def _scenario_present_value(
 
 
 def _weighted_asset_cashflows(model: ALMModel) -> tuple[FloatArray, FloatArray]:
-    times, amounts, offsets = flatten_bond_cashflows(
-        model.assets.bonds, settlement=model.assets.settlement
+    times, amounts, offsets, _ = _prepare_curve_cashflows(
+        model.assets.bonds,
+        model.curve,
+        model.assets.settlement,
     )
     counts = np.diff(offsets)
     weights = np.repeat(model.assets.quantities, counts)
@@ -101,7 +73,6 @@ def _numpy_path_chunk(
     period_count = scenarios.period_count
     output_width = period_count + 1
     dt = scenarios.period_length
-    curve_times = model.curve.times
     rate_paths = scenarios.rate_shocks[start:stop]
     spread_paths = scenarios.credit_spread_shocks[start:stop]
     equity_returns = scenarios.equity_returns[start:stop]
@@ -110,7 +81,7 @@ def _numpy_path_chunk(
     asset_times, asset_amounts = _weighted_asset_cashflows(model)
     liability_times, liability_amounts = model.liabilities.buffers()
     liability_linkage = model.liabilities.inflation_linkage
-    zero_shocks = np.zeros((scenario_count, curve_times.size), dtype=np.float64)
+    zero_shocks = np.zeros((scenario_count, model.curve.times.size), dtype=np.float64)
     zero_spreads = np.zeros(scenario_count, dtype=np.float64)
     initial_bond = float(
         _scenario_present_value(
@@ -160,7 +131,8 @@ def _numpy_path_chunk(
         where=liabilities[:, 0] != 0.0,
     )
 
-    base_short_rate = model.curve.zero_rate(dt)
+    short_tenor = np.array([dt], dtype=np.float64)
+    short_prepared = _PreparedScenarioValuation.build(short_tenor, model.curve)
     for period in range(period_count):
         period_start = period * dt
         period_end = (period + 1) * dt
@@ -184,18 +156,20 @@ def _numpy_path_chunk(
             end_rate_shocks,
             end_spreads,
         )
-        tenor = np.array([dt], dtype=np.float64)
-        average_short_shock = 0.5 * (
-            _interpolate_paths(tenor, curve_times, start_rate_shocks)[:, 0]
-            + _interpolate_paths(tenor, curve_times, end_rate_shocks)[:, 0]
-        )
-        cash_growth = np.exp((base_short_rate + average_short_shock) * dt)
+        start_short_rates = -np.log(
+            short_prepared.discount_factors(start_rate_shocks)[:, 0]
+        ) / dt
+        end_short_rates = -np.log(
+            short_prepared.discount_factors(end_rate_shocks)[:, 0]
+        ) / dt
+        average_short_rate = 0.5 * (start_short_rates + end_short_rates)
+        cash_growth = np.exp(average_short_rate * dt)
         received = (asset_times > period_start + 1.0e-12) & (asset_times <= period_end + 1.0e-12)
         if np.any(received):
             received_wealth = np.sum(
                 asset_amounts[received][None, :]
                 * np.exp(
-                    (base_short_rate + average_short_shock[:, None])
+                    average_short_rate[:, None]
                     * (period_end - asset_times[received])[None, :]
                 ),
                 axis=1,
@@ -207,7 +181,7 @@ def _numpy_path_chunk(
             end_index + received_wealth,
             start_index,
             out=cash_growth.copy(),
-            where=np.abs(start_index) > 1.0e-15,
+            where=start_index != 0.0,
         )
         bond_balance *= bond_return
         cash_balance *= cash_growth
@@ -229,7 +203,7 @@ def _numpy_path_chunk(
                 total_after_payment,
                 total_before_payment,
                 out=np.ones_like(total_after_payment),
-                where=np.abs(total_before_payment) > 1.0e-15,
+                where=total_before_payment != 0.0,
             )
             bond_balance *= scale
             cash_balance *= scale
@@ -253,7 +227,7 @@ def _numpy_path_chunk(
                 cash_balance,
                 non_equity_before,
                 out=np.zeros_like(cash_balance),
-                where=np.abs(non_equity_before) > 1.0e-15,
+                where=non_equity_before != 0.0,
             )
             cash_share = np.clip(cash_share, 0.0, 1.0)
             rebalanced_non_equity = (1.0 - strategy.target_equity_weight) * after_cost
@@ -310,12 +284,11 @@ def project_alm_paths(
 
     scenarios.validate_curve(model.curve)
     selected_strategy = strategy or RebalancingStrategy()
-    try:
-        chunk_size = integer_index(scenario_chunk_size)
-    except TypeError as exc:
-        raise ValueError("scenario_chunk_size must be a positive integer") from exc
-    if isinstance(scenario_chunk_size, bool) or chunk_size <= 0:
-        raise ValueError("scenario_chunk_size must be a positive integer")
+    chunk_size = require_integer(
+        scenario_chunk_size,
+        "scenario_chunk_size",
+        minimum=1,
+    )
     if engine not in ("auto", "numpy", "native"):
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     asset_times, asset_amounts = _weighted_asset_cashflows(model)
@@ -329,9 +302,9 @@ def project_alm_paths(
         _native.require()
         selected = "native"
     else:
-        # The 0.6 benchmark found no stable native crossover through 10,000
-        # scenarios. Keep auto deterministic and performance-led while retaining
-        # the native implementation as an explicit parity-tested profiling path.
+        # Current 30-period public-API measurements are non-monotonic: native is
+        # faster for small/medium paths but NumPy wins at 10,000 scenarios. Keep
+        # the conservative deterministic default until a stable policy emerges.
         selected = "numpy"
 
     shape = (scenarios.scenario_count, scenarios.period_count + 1)

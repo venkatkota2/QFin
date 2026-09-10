@@ -124,7 +124,7 @@ def test_empty_model_point_book_is_supported_by_both_engines() -> None:
 
 def test_non_empty_life_auto_dispatch_uses_measured_native_path() -> None:
     result = qfin.project_liabilities([qfin.LifePolicy(40, 100_000, 500, 1)], _assumptions())
-    assert result.engine == "native"
+    assert result.engine == "mixed"
 
 
 def test_life_model_point_and_assumption_validation() -> None:

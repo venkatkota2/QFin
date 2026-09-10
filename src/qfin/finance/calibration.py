@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from itertools import pairwise
-from math import isfinite
-from operator import index as integer_index
+from math import exp, isfinite, log
 from typing import Literal, TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import brentq
 
+from qfin._validation import readonly_float64, require_integer
 from qfin.finance.curves import CurveExtrapolation, CurveInterpolation, YieldCurve
 from qfin.finance.dates import (
     BusinessDayConvention,
@@ -152,15 +153,8 @@ class SimpleSwap:
         identifier: str | None = None,
     ) -> None:
         normalized = _normalize_maturity(maturity)
-        try:
-            normalized_frequency = integer_index(frequency)
-        except TypeError as exc:
-            raise ValueError("swap frequency must divide 12") from exc
-        if (
-            isinstance(frequency, bool)
-            or normalized_frequency <= 0
-            or 12 % normalized_frequency != 0
-        ):
+        normalized_frequency = require_integer(frequency, "frequency", minimum=1)
+        if 12 % normalized_frequency != 0:
             raise ValueError("swap frequency must be one of 1, 2, 3, 4, 6, or 12")
         object.__setattr__(self, "maturity", normalized)
         object.__setattr__(self, "fixed_rate", _finite(fixed_rate, "fixed rate"))
@@ -206,6 +200,38 @@ class CurveBootstrapReport:
     forward_rates: FloatArray
     tolerance: float
     success: bool
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.curve, YieldCurve):
+            raise TypeError("curve must be a YieldCurve")
+        input_instruments = tuple(self.input_instruments)
+        instruments = tuple(self.instruments)
+        node_times = readonly_float64(np.asarray(self.node_times).reshape(-1))
+        discount_factors = readonly_float64(np.asarray(self.discount_factors).reshape(-1))
+        zero_rates = readonly_float64(np.asarray(self.zero_rates).reshape(-1))
+        forward_rates = readonly_float64(np.asarray(self.forward_rates).reshape(-1))
+        if (
+            node_times.size == 0
+            or discount_factors.shape != node_times.shape
+            or zero_rates.shape != node_times.shape
+            or forward_rates.shape != (max(node_times.size - 1, 0),)
+        ):
+            raise ValueError("bootstrap report curve arrays have inconsistent dimensions")
+        if not all(
+            np.all(np.isfinite(values))
+            for values in (node_times, discount_factors, zero_rates, forward_rates)
+        ) or np.any(discount_factors <= 0.0):
+            raise ValueError("bootstrap report curve arrays must be finite with positive discounts")
+        if not isfinite(self.tolerance) or self.tolerance <= 0.0:
+            raise ValueError("tolerance must be finite and positive")
+        if len(input_instruments) != len(instruments):
+            raise ValueError("bootstrap report inputs and results must align")
+        object.__setattr__(self, "input_instruments", input_instruments)
+        object.__setattr__(self, "instruments", instruments)
+        object.__setattr__(self, "node_times", node_times)
+        object.__setattr__(self, "discount_factors", discount_factors)
+        object.__setattr__(self, "zero_rates", zero_rates)
+        object.__setattr__(self, "forward_rates", forward_rates)
 
     @property
     def maximum_absolute_residual(self) -> float:
@@ -401,6 +427,55 @@ def _direct_discount(
     return None
 
 
+def _bracket_log_discount_root(
+    quote_error: Callable[[float], float],
+    *,
+    initial_log_discount: float,
+    identifier: str,
+) -> tuple[float, float]:
+    """Adaptively bracket a finite quote residual in log-discount space."""
+
+    lower_limit = -700.0
+    upper_limit = 700.0
+    center = float(np.clip(initial_log_discount, lower_limit, upper_limit))
+    evaluations: dict[float, float] = {}
+
+    def evaluate(point: float) -> None:
+        if point in evaluations:
+            return
+        try:
+            value = float(quote_error(point))
+        except (FloatingPointError, OverflowError, ValueError):
+            return
+        if isfinite(value):
+            evaluations[point] = value
+
+    evaluate(center)
+    span = 0.5
+    while True:
+        evaluate(max(lower_limit, center - span))
+        evaluate(min(upper_limit, center + span))
+        ordered = sorted(evaluations.items())
+        for (left, left_value), (right, right_value) in pairwise(ordered):
+            if left_value == 0.0:
+                return left, left
+            if right_value == 0.0:
+                return right, right
+            if np.signbit(left_value) != np.signbit(right_value):
+                return left, right
+        if center - span <= lower_limit and center + span >= upper_limit:
+            break
+        span *= 2.0
+
+    residuals = ", ".join(
+        f"logD={point:.6g}: {value:.6g}" for point, value in sorted(evaluations.items())
+    )
+    detail = residuals or "no finite residual evaluations"
+    raise CurveBootstrapError(
+        f"{identifier}: positive discount-factor root is not bracketed in log space; {detail}"
+    )
+
+
 def bootstrap_curve(
     instruments: list[BootstrapInstrument] | tuple[BootstrapInstrument, ...],
     *,
@@ -459,11 +534,12 @@ def bootstrap_curve(
             solved_discount = direct
         else:
 
-            def quote_error(
-                candidate: float,
+            def quote_error_log_discount(
+                log_candidate: float,
                 instrument_to_price: BootstrapInstrument = instrument,
                 node_maturity: float = maturity_time,
             ) -> float:
+                candidate = exp(log_candidate)
                 trial_curve = _temporary_curve(
                     [*node_times, node_maturity],
                     [*discounts, candidate],
@@ -476,17 +552,35 @@ def bootstrap_curve(
                     instrument_to_price, trial_curve, normalized_valuation
                 ) - _input_quote(instrument_to_price)
 
-            lower, upper = 1.0e-8, 5.0
-            lower_value = quote_error(lower)
-            upper_value = quote_error(upper)
-            if lower_value * upper_value > 0:
-                raise CurveBootstrapError(
-                    f"{instrument.identifier}: positive discount-factor root is not bracketed; "
-                    f"residuals=({lower_value:.6g}, {upper_value:.6g})"
+            if len(node_times) > 1:
+                last_log_discount = log(discounts[-1])
+                prior_log_discount = log(discounts[-2])
+                log_slope = (last_log_discount - prior_log_discount) / (
+                    node_times[-1] - node_times[-2]
                 )
-            solved_discount = float(
-                brentq(quote_error, lower, upper, xtol=min(tolerance * 0.1, 1.0e-13))
+                initial_log_discount = last_log_discount + log_slope * (
+                    maturity_time - node_times[-1]
+                )
+            else:
+                initial_log_discount = -0.03 * maturity_time
+            lower, upper = _bracket_log_discount_root(
+                quote_error_log_discount,
+                initial_log_discount=initial_log_discount,
+                identifier=instrument.identifier,
             )
+            if lower == upper:
+                solved_log_discount = lower
+            else:
+                solved_log_discount = float(
+                    brentq(
+                        quote_error_log_discount,
+                        lower,
+                        upper,
+                        xtol=min(tolerance * 0.1, 1.0e-13),
+                        rtol=4.0 * np.finfo(np.float64).eps,
+                    )
+                )
+            solved_discount = exp(solved_log_discount)
         node_times.append(maturity_time)
         discounts.append(solved_discount)
 
@@ -499,6 +593,7 @@ def bootstrap_curve(
         selected_day_count,
     )
     object.__setattr__(curve, "input_type", "bootstrapped_instruments")
+    object.__setattr__(curve, "_origin_input_type", "bootstrapped_instruments")
     results: list[BootstrapInstrumentResult] = []
     for instrument, maturity_time in zip(ordered, maturities, strict=True):
         input_quote = _input_quote(instrument)
@@ -520,6 +615,20 @@ def bootstrap_curve(
     if failed:
         detail = ", ".join(f"{item.identifier}={item.residual:.6g}" for item in failed)
         raise CurveBootstrapError(f"instrument repricing exceeded tolerance: {detail}")
+    object.__setattr__(
+        curve,
+        "_quote_provenance",
+        tuple(
+            (
+                "bootstrap_instrument",
+                item.identifier,
+                item.instrument_type,
+                item.maturity_time,
+                item.input_quote,
+            )
+            for item in results
+        ),
+    )
     node_array = np.asarray(node_times, dtype=np.float64)
     discount_array = np.asarray(discounts, dtype=np.float64)
     forwards = -np.diff(np.log(discount_array)) / np.diff(node_array)

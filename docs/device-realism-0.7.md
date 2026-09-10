@@ -1,5 +1,8 @@
 # QFin 0.7: device realism and interoperability
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 QFin 0.7 adds a tested boundary between logical finance circuits and realistic
 device constraints. It does not add a QFin simulator, submit hardware jobs, or
 claim that a routed circuit is currently useful on a quantum processor.

@@ -10,6 +10,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin import _native
+from qfin._numerics import stable_weighted_sum
+from qfin._validation import readonly_float64, require_integer
 from qfin.finance.distributions import EmpiricalDistribution
 from qfin.finance.fixed_income import Engine
 
@@ -24,13 +26,15 @@ class LossDistribution:
     probabilities: FloatArray | None = None
 
     def __post_init__(self) -> None:
-        losses = np.ascontiguousarray(self.losses, dtype=np.float64).reshape(-1)
+        losses = readonly_float64(np.asarray(self.losses, dtype=np.float64).reshape(-1))
         if losses.size == 0 or not np.all(np.isfinite(losses)):
             raise ValueError("losses must contain at least one finite value")
         if self.probabilities is None:
             probabilities = np.full(losses.size, 1.0 / losses.size, dtype=np.float64)
         else:
-            probabilities = np.ascontiguousarray(self.probabilities, dtype=np.float64).reshape(-1)
+            probabilities = readonly_float64(
+                np.asarray(self.probabilities, dtype=np.float64).reshape(-1)
+            )
             if probabilities.shape != losses.shape:
                 raise ValueError("probabilities must have the same shape as losses")
             if not np.all(np.isfinite(probabilities)) or np.any(probabilities < 0):
@@ -39,9 +43,9 @@ class LossDistribution:
             if scale <= 0:
                 raise ValueError("probabilities must have positive total mass")
             scaled = probabilities / scale
-            probabilities = scaled / float(np.sum(scaled))
-        losses.setflags(write=False)
-        probabilities.setflags(write=False)
+            probabilities = readonly_float64(scaled / float(np.sum(scaled)))
+        if self.probabilities is None:
+            probabilities.setflags(write=False)
         object.__setattr__(self, "losses", losses)
         object.__setattr__(self, "probabilities", probabilities)
 
@@ -186,17 +190,18 @@ def bootstrap_risk_interval(
         raise ValueError("confidence must lie strictly between zero and one")
     if not isfinite(interval_level) or not 0 < interval_level < 1:
         raise ValueError("interval_level must lie strictly between zero and one")
-    if resamples < 2:
-        raise ValueError("resamples must be at least two")
-    resolved_sample_size = distribution.losses.size if sample_size is None else sample_size
-    if resolved_sample_size < 1:
-        raise ValueError("sample_size must be positive")
+    resample_count = require_integer(resamples, "resamples", minimum=2)
+    resolved_sample_size = (
+        distribution.losses.size
+        if sample_size is None
+        else require_integer(sample_size, "sample_size", minimum=1)
+    )
     probabilities = distribution.probabilities
     assert probabilities is not None
     generator = np.random.default_rng(seed)
-    var_samples = np.empty(resamples, dtype=np.float64)
-    cvar_samples = np.empty(resamples, dtype=np.float64)
-    for index in range(resamples):
+    var_samples = np.empty(resample_count, dtype=np.float64)
+    cvar_samples = np.empty(resample_count, dtype=np.float64)
+    for index in range(resample_count):
         draw = generator.choice(
             distribution.losses,
             size=resolved_sample_size,
@@ -213,7 +218,7 @@ def bootstrap_risk_interval(
     return RiskConfidenceInterval(
         confidence=confidence,
         interval_level=interval_level,
-        resamples=resamples,
+        resamples=resample_count,
         sample_size=resolved_sample_size,
         value_at_risk=(float(var_bounds[0]), float(var_bounds[1])),
         expected_shortfall=(float(cvar_bounds[0]), float(cvar_bounds[1])),
@@ -231,11 +236,11 @@ def _numpy_risk(distribution: LossDistribution, confidence: float) -> dict[str, 
     previous = np.concatenate((np.array([0.0]), cumulative[:-1]))
     overlap = np.maximum(cumulative - np.maximum(previous, confidence), 0.0)
     with np.errstate(over="ignore", invalid="ignore"):
-        mean = float(np.dot(losses, probabilities))
-        variance = float(np.dot((losses - mean) ** 2, probabilities))
+        mean = stable_weighted_sum(losses, probabilities)
+        variance = stable_weighted_sum((losses - mean) ** 2, probabilities)
     if not (isfinite(mean) and isfinite(variance)):
         raise ValueError("weighted loss moments exceed the finite double range")
-    expected_shortfall = float(np.dot(losses, overlap) / (1.0 - confidence))
+    expected_shortfall = stable_weighted_sum(losses, overlap) / (1.0 - confidence)
     if not isfinite(expected_shortfall):
         raise ValueError("expected shortfall exceeds the finite double range")
     return {
@@ -267,10 +272,9 @@ def aggregate_risk(
     elif engine == "numpy":
         selected = "numpy"
     else:
-        # Measured sort-heavy tail aggregation has no stable native crossover yet.
-        # Keep automatic execution on NumPy; native remains an explicit profiling
-        # and parity path until repeatable evidence supports a threshold.
-        selected = "numpy"
+        # Current end-to-end benchmarks show native wins from 1,000 through
+        # 1,000,000 weighted losses, including conversion and boundary costs.
+        selected = "native" if _native.available() else "numpy"
     assert distribution.probabilities is not None
     if selected == "native":
         raw = cast(

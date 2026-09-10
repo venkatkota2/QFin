@@ -1,5 +1,8 @@
 # QFin 1.0 structured factor-risk benchmark
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 Measured on 2026-08-31 with
 `python examples/structured_factor_risk_benchmark.py`. These are observed
 wall-clock results from one environment, not promised performance.

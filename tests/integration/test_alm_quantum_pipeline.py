@@ -1,3 +1,5 @@
+from importlib.util import find_spec
+
 import numpy as np
 import pytest
 
@@ -5,6 +7,7 @@ import qfin
 
 
 def test_alm_scenarios_feed_tested_quantum_cvar_workflow() -> None:
+    pytest.importorskip("pennylane")
     curve = qfin.YieldCurve([0, 1, 5, 10], [0.02, 0.025, 0.03, 0.035])
     model = qfin.ALMModel(
         qfin.AssetPortfolio([qfin.FixedRateBond(5, 0.03)], [10]),
@@ -50,8 +53,14 @@ def test_system_info_separates_qfin_native_from_lightning() -> None:
     assert info["native_extension"]
     assert info["native_backend"] == "qfin-native"
     assert info["native_cpp_standard"] == "C++20"
-    assert info["pennylane_lightning"]
-    assert info["preferred_quantum_device"] == "lightning.qubit"
+    lightning_installed = find_spec("pennylane_lightning") is not None
+    pennylane_installed = find_spec("pennylane") is not None
+    assert info["pennylane_lightning"] == lightning_installed
+    expected_device = (
+        "lightning.qubit" if lightning_installed
+        else "default.qubit" if pennylane_installed else None
+    )
+    assert info["preferred_quantum_device"] == expected_device
 
 
 def test_multiperiod_alm_and_life_scenarios_preserve_quantum_risk_bridge() -> None:

@@ -14,6 +14,7 @@ from typing import TypeVar
 import numpy as np
 
 import qfin
+from qfin.circuits import ProbabilityTreePreparation
 
 ResultT = TypeVar("ResultT")
 
@@ -49,9 +50,9 @@ def _factor_encoding(factors: int, qubits: int) -> qfin.FactorizedDistributionEn
 
 def _flattened_angles(
     encoding: qfin.FactorizedDistributionEncoding,
-) -> qfin.ProbabilityTreePreparation:
+) -> ProbabilityTreePreparation:
     probabilities = encoding.materialize(max_points=65_536).probabilities
-    return qfin.ProbabilityTreePreparation.from_probabilities(probabilities)
+    return ProbabilityTreePreparation.from_probabilities(probabilities)
 
 
 def _optimization_problem(assets: int) -> qfin.MeanVarianceProblem:

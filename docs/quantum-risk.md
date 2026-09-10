@@ -1,19 +1,19 @@
 # Quantum Tail-Risk Workflow
 
-QFin 0.5 implements an experimental, simulator-tested path from a finite
+QFin implements an experimental, simulator-tested path from a finite
 financial loss distribution to tail probability, value-at-risk, and
 conditional value-at-risk estimates. It reuses QFin's distribution compiler,
 gate-decomposable state preparation, maximum-likelihood amplitude estimation
 (MLAE), PennyLane, and PennyLane-Lightning.
 
-This milestone demonstrates a correct financial-to-quantum abstraction. It
-does not claim hardware readiness or quantum advantage.
+This is an experimental financial-to-quantum workflow. It does not claim
+hardware readiness or quantum advantage.
 
-QFin 1.0 additionally implements VaR/CVaR directly over the reversible
+QFin additionally implements VaR/CVaR directly over the reversible
 factorized loss register, avoiding the generic joint objective table for its
 supported sparse exposure algebra. See
 [`structured-factor-risk-1.0.md`](structured-factor-risk-1.0.md); the generic
-finite-distribution path documented here remains supported and unchanged.
+finite-distribution path documented here remains supported.
 
 ## Public problems
 
@@ -67,7 +67,12 @@ f_i = 1[L_i > K].
 
 The objective amplitude is therefore `P(L > K)`. `inclusive=True` changes the
 event to `L >= K`. MLAE executes the requested Grover-power schedule and
-returns a point estimate and local Fisher-information 95% interval.
+returns a point estimate and a likelihood-based 95% confidence region.
+The main region unions the likelihood-ratio region with a simultaneous exact
+binomial confidence set for the fixed schedule, guarding low-shot and boundary
+cases. Disjoint regions preserve ambiguous Grover modes; the displayed interval
+is their envelope. Fisher information remains diagnostic only. See
+[the seeded coverage study](mlae-validation.md).
 
 ## Value-at-risk
 
@@ -81,7 +86,7 @@ inside a classical binary search over occupied encoded grid points. Each
 comparison is driven by an MLAE estimate of `P(L <= K)`. The point estimate is
 the first tested loss threshold whose estimated CDF reaches `alpha`.
 
-The reported VaR interval combines each local MLAE interval with CDF
+The reported VaR interval combines each per-experiment MLAE interval with CDF
 monotonicity. It is useful diagnostic information, but it is not a
 simultaneous-coverage theorem across every adaptive threshold test.
 
@@ -159,6 +164,7 @@ device abstraction. PennyLane-Lightning's compiled C++ simulator applies gates,
 evolves the state vector, and samples measurements. No simulator functionality
 was added to QFin C++.
 
-See [quantum-risk-performance.md](quantum-risk-performance.md) for measured
+See [performance](performance.md) and the preserved
+[earlier quantum-risk benchmark](quantum-risk-performance.md) for measured
 `default.qubit` and `lightning.qubit` timings produced by
 `examples/quantum_risk_benchmark.py`.

@@ -34,6 +34,11 @@ def test_slsqp_solution_is_feasible_and_improves_the_baseline(
     )
     assert result.variance == pytest.approx(problem.portfolio_variance(result.weights))
     assert result.solver == "scipy_slsqp_continuous_mean_variance"
+    metadata = qfin.compile(problem).to_dict()
+    assert metadata["problem_category"] == "portfolio_optimization"
+    assert metadata["compilation_converged"]
+    assert metadata["target_error"] is None
+    assert not metadata["quantum_execution_available"]
 
 
 def test_target_return_and_custom_bounds_are_enforced() -> None:
@@ -64,6 +69,74 @@ def test_unbounded_closed_form_satisfies_first_order_conditions() -> None:
     assert np.sum(result.weights) == pytest.approx(1.0, abs=1e-10)
     np.testing.assert_allclose(gradient, np.full(3, gradient[0]), atol=1e-10)
     assert "closed_form" in result.solver
+
+
+def test_rank_deficient_closed_form_with_duplicate_assets_is_well_posed() -> None:
+    problem = qfin.MeanVarianceProblem(
+        np.array([0.07, 0.07]),
+        np.array([[0.04, 0.04], [0.04, 0.04]]),
+        risk_aversion=3.0,
+        long_only=False,
+    )
+
+    result = problem.solve(method="closed_form")
+
+    np.testing.assert_allclose(result.weights, [0.5, 0.5], atol=1.0e-14)
+    assert result.variance == pytest.approx(0.04)
+    assert result.expected_return == pytest.approx(0.07)
+    assert "singular_kkt" in result.solver
+
+
+def test_zero_variance_asset_can_be_part_of_finite_closed_form_optimum() -> None:
+    problem = qfin.MeanVarianceProblem(
+        np.array([0.10, 0.05]),
+        np.diag([1.0, 0.0]),
+        risk_aversion=1.0,
+        long_only=False,
+    )
+
+    result = problem.solve(method="closed_form")
+
+    np.testing.assert_allclose(result.weights, [0.05, 0.95], atol=1.0e-13)
+    assert np.sum(result.weights) == pytest.approx(1.0, abs=1.0e-14)
+
+
+def test_budget_neutral_zero_variance_return_direction_is_unbounded() -> None:
+    problem = qfin.MeanVarianceProblem(
+        np.array([0.04, 0.09]),
+        np.array([[0.03, 0.03], [0.03, 0.03]]),
+        risk_aversion=2.0,
+        long_only=False,
+    )
+
+    with pytest.raises(
+        qfin.OptimizationError,
+        match="unbounded mean-variance problem due to zero-variance budget-neutral",
+    ):
+        problem.solve(method="closed_form")
+
+
+def test_expected_return_neutral_covariance_null_space_is_valid() -> None:
+    covariance = np.array(
+        [
+            [0.01, 0.02, 0.03],
+            [0.02, 0.04, 0.06],
+            [0.03, 0.06, 0.09],
+        ]
+    )
+    expected_returns = np.array([0.03, 0.06, 0.09])
+    problem = qfin.MeanVarianceProblem(
+        expected_returns,
+        covariance,
+        risk_aversion=4.0,
+        long_only=False,
+    )
+
+    result = problem.solve(method="closed_form")
+
+    assert np.sum(result.weights) == pytest.approx(1.0, abs=1.0e-13)
+    gradient = problem.risk_aversion * covariance @ result.weights - expected_returns
+    np.testing.assert_allclose(gradient, np.full(3, gradient[0]), atol=1.0e-12)
 
 
 @pytest.mark.parametrize(

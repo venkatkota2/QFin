@@ -1,5 +1,8 @@
 # Roadmap
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 ## 0.1 to 0.3 — European-option quantum vertical slice (complete)
 
 - calls and puts under Black-Scholes;

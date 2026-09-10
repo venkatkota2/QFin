@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from math import isfinite
 from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
+from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends import (
     CompressedPennyLaneBackend,
     DensePennyLaneBackend,
@@ -43,24 +45,50 @@ class ErrorBudget:
     discretization: float
     algorithmic: float
     sampling: float
+    target_error_unit: str = "currency / price units"
+
+    def __post_init__(self) -> None:
+        components = (
+            self.domain_truncation,
+            self.discretization,
+            self.algorithmic,
+            self.sampling,
+        )
+        if not isfinite(self.total) or self.total <= 0.0:
+            raise ValueError("target_error must be finite and greater than zero")
+        if any(not isfinite(value) or value < 0.0 for value in components):
+            raise ValueError("error-budget allocations must be finite and non-negative")
+        if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
+            raise ValueError("error-budget allocations must sum to total")
+        if not self.target_error_unit.strip():
+            raise ValueError("target_error_unit must not be empty")
 
     @classmethod
-    def allocate(cls, target_error: float) -> ErrorBudget:
+    def allocate(
+        cls,
+        target_error: float,
+        *,
+        target_error_unit: str = "currency / price units",
+    ) -> ErrorBudget:
+        if not isfinite(target_error) or target_error <= 0.0:
+            raise ValueError("target_error must be finite and greater than zero")
         return cls(
             total=target_error,
             domain_truncation=0.15 * target_error,
             discretization=0.35 * target_error,
             algorithmic=0.25 * target_error,
             sampling=0.25 * target_error,
+            target_error_unit=target_error_unit,
         )
 
-    def to_dict(self) -> dict[str, float]:
+    def to_dict(self) -> dict[str, float | str]:
         return {
             "total": self.total,
             "domain_truncation": self.domain_truncation,
             "discretization": self.discretization,
             "algorithmic": self.algorithmic,
             "sampling": self.sampling,
+            "target_error_unit": self.target_error_unit,
         }
 
 
@@ -78,6 +106,7 @@ class PricingResult:
     payoff_approximation_error: float
     estimation_error: float
     target_error: float
+    target_error_unit: str
     meets_target_error: bool
     amplitude: AmplitudeEstimate
     resources: ResourceReport
@@ -87,6 +116,17 @@ class PricingResult:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "problem_category": "option_pricing",
+            "financial_objective": "european_option_price",
+            "representation": self.resources.backend_mode,
+            "algorithm_error": self.payoff_approximation_error,
+            "sampling_statistical_error": max(
+                abs(self.value - self.confidence_interval_95[0]),
+                abs(self.confidence_interval_95[1] - self.value),
+            ),
+            "sampling_error_definition": "maximum distance to the reported 95% interval endpoints",
+            "quantum_execution_available": True,
+            "resource_estimate_type": "logical_circuit_counts",
             "value": self.value,
             "confidence_interval_95": list(self.confidence_interval_95),
             "classical_value": self.classical_value,
@@ -97,6 +137,7 @@ class PricingResult:
             "payoff_approximation_error": self.payoff_approximation_error,
             "estimation_error": self.estimation_error,
             "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
             "meets_target_error": self.meets_target_error,
             "amplitude_estimation": self.amplitude.to_dict(),
             "resources": self.resources.to_dict(),
@@ -133,6 +174,38 @@ class CompiledPricingModel:
     state_preparation_strategy: StatePreparationStrategyReport
     backend_name: str = "pennylane"
     algorithm_name: str = "maximum_likelihood_amplitude_estimation"
+
+    def to_dict(self) -> dict[str, object]:
+        """Describe compilation without executing a circuit or inventing shot error."""
+
+        return {
+            "problem_category": "option_pricing",
+            "financial_objective": f"european_{self.instrument.kind}_price",
+            "backend": self.backend_name,
+            "representation": self.representation_method,
+            "algorithm": self.algorithm_name,
+            "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
+            "representation_error": self.representation_error,
+            "discretization_error": self.representation.discretization_error,
+            "algorithm_error": self.payoff_approximation_error,
+            "sampling_statistical_error": None,
+            "compilation_converged": self.compilation_converged,
+            "quantum_execution_available": self.backend_name == "pennylane",
+            "resource_estimate_type": "logical_circuit_counts",
+            "error_budget": self.error_budget.to_dict(),
+            "limitations": [
+                "Experimental simulator workflow; optional quantum dependencies required.",
+                "Logical counts are not hardware runtime or evidence of quantum advantage.",
+                "Representation error is checked against the Black-Scholes reference.",
+            ],
+        }
+
+    @property
+    def target_error_unit(self) -> str:
+        """Unit attached to every stage of this compilation budget."""
+
+        return self.error_budget.target_error_unit
 
     @property
     def compilation_converged(self) -> bool:
@@ -312,6 +385,11 @@ class CompiledPricingModel:
     def explain(self) -> str:
         """Return a compact, human-readable compiler decision report."""
         status = "met" if self.representation_converged else "not met at max_qubits"
+        successive_grid_change = (
+            "not estimated"
+            if self.representation.discretization_error is None
+            else f"{self.representation.discretization_error:.6g}"
+        )
         representation_allocation = (
             self.error_budget.domain_truncation + self.error_budget.discretization
         )
@@ -339,14 +417,19 @@ class CompiledPricingModel:
             f"Representation validation error: {self.representation_error:.6g} "
             f"({status}; domain + discretization allocation="
             f"{representation_allocation:.6g})\n"
-            f"Successive-grid price change: "
-            f"{self.representation.discretization_error:.6g}\n"
+            f"Target error: {self.target_error:.6g} {self.target_error_unit}\n"
+            f"Successive-grid price change: {successive_grid_change}\n"
             f"Encoding: {self.representation.encoding_method}; "
             f"state preparation={self.representation.state_preparation_method}\n"
             f"Selection: {self.state_preparation_strategy.selection_reason}\n"
             f"{payoff_report}\n"
             f"Circuit: {circuit_report}, gate-level reflections\n"
-            f"Algorithm: MLAE on PennyLane; payoff scale={self.payoff_scale:.6f}\n"
+            f"Backend: {self.backend_name}; algorithm: MLAE; "
+            f"payoff scale={self.payoff_scale:.6f}\n"
+            f"Compilation converged: {self.compilation_converged}; "
+            "sampling error: not estimated before execution.\n"
+            "Resources: logical circuit counts, not a hardware-runtime estimate; "
+            "experimental simulator workflow, no quantum-advantage claim.\n"
             f"Discrete price={self.discrete_value:.6f}; "
             f"compiled-circuit price={self.circuit_value:.6f}; "
             f"Black-Scholes={self.classical_value:.6f}"
@@ -366,7 +449,7 @@ class CompiledPricingModel:
         device_name: str = "auto",
     ) -> PricingResult:
         """Execute MLAE and return a validated financial result."""
-        powers = tuple(int(power) for power in schedule)
+        powers, shot_count = _validated_schedule(schedule, shots)
         resolved_mode = self._resolve_backend_mode(backend_mode)
         resolved_device = resolve_quantum_device(device_name)
         backend = self.to_pennylane(
@@ -376,7 +459,7 @@ class CompiledPricingModel:
             max_compressed_terms=max_compressed_terms,
             device_name=resolved_device,
         )
-        observations = backend.run_schedule(powers, shots=shots, seed=seed)
+        observations = backend.run_schedule(powers, shots=shot_count, seed=seed)
         amplitude = maximum_likelihood_amplitude_estimate(
             observations,
             grid_size=likelihood_grid_size,
@@ -393,7 +476,7 @@ class CompiledPricingModel:
         estimation_error = abs(value - reference_value)
         resources = self.resources(
             schedule=powers,
-            shots=shots,
+            shots=shot_count,
             backend_mode=resolved_mode,
             device_name=resolved_device,
         )
@@ -408,6 +491,7 @@ class CompiledPricingModel:
             payoff_approximation_error=payoff_approximation_error,
             estimation_error=estimation_error,
             target_error=self.target_error,
+            target_error_unit=self.target_error_unit,
             meets_target_error=absolute_error <= self.target_error,
             amplitude=amplitude,
             resources=resources,

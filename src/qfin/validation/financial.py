@@ -21,7 +21,11 @@ FloatArray = NDArray[np.float64]
 
 @dataclass(frozen=True, slots=True)
 class FinancialTolerance:
-    """Absolute, relative, and business-scale acceptance thresholds."""
+    """Numerical and financial gates, both required when ``financial > 0``.
+
+    A zero financial allowance preserves the numerical-only default. Financial
+    profiles are explicit validation choices, not guarantees for every use case.
+    """
 
     absolute: float = 1.0e-10
     relative: float = 1.0e-10
@@ -36,9 +40,39 @@ class FinancialTolerance:
             raise ValueError("validation tolerance unit must not be empty")
 
     def allowed_error(self, expected: float) -> float:
-        """Return the largest applicable error allowance."""
+        """Return the stricter numerical/financial allowance in the stated unit."""
 
-        return max(self.absolute, self.financial, self.relative * abs(expected))
+        numerical = self.numerical_allowed_error(expected)
+        return min(numerical, self.financial) if self.financial > 0 else numerical
+
+    def numerical_allowed_error(self, expected: float) -> float:
+        if not isfinite(expected):
+            raise ValueError("expected value must be finite")
+        return max(self.absolute, self.relative * abs(expected))
+
+    @classmethod
+    def for_quantity(cls, quantity: str, *, notional: float = 100.0) -> FinancialTolerance:
+        """Select an auditable financial-materiality profile.
+
+        PV and risk-currency limits are one cent per million units of notional.
+        Numerical parity is independently required at 1e-10 absolute/relative.
+        """
+
+        if not isfinite(notional) or notional <= 0:
+            raise ValueError("notional must be finite and positive")
+        profiles = {
+            "price_per_100": (0.01, "currency per 100 face"),
+            "pv": (1e-8 * notional, "currency"),
+            "dv01": (1e-10 * notional, "currency per basis point"),
+            "duration": (1e-7, "years"),
+            "convexity": (1e-6, "years squared"),
+            "risk_currency": (1e-8 * notional, "loss units"),
+            "probability": (1e-10, "probability units"),
+        }
+        if quantity not in profiles:
+            raise ValueError(f"unknown financial quantity: {quantity!r}")
+        financial, unit = profiles[quantity]
+        return cls(financial=financial, unit=unit)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +87,10 @@ class FinancialValidationCheck:
     allowed_error: float
     unit: str
     passed: bool
+    numerical_allowed_error: float | None = None
+    financial_allowed_error: float | None = None
+    numerical_passed: bool | None = None
+    financial_passed: bool | None = None
 
     @property
     def diagnostic(self) -> str:
@@ -60,7 +98,8 @@ class FinancialValidationCheck:
         return (
             f"{status} {self.label}: actual={self.actual:.12g}, "
             f"expected={self.expected:.12g}, difference={self.difference:.6g} "
-            f"{self.unit}, allowed={self.allowed_error:.6g} {self.unit}"
+            f"{self.unit}, allowed={self.allowed_error:.6g} {self.unit}; "
+            f"numerical gate={self.numerical_passed}, financial gate={self.financial_passed}"
         )
 
 
@@ -149,6 +188,19 @@ def validate_financial_values(
                 allowed_error=allowed,
                 unit=selected_tolerance.unit,
                 passed=abs(difference) <= allowed,
+                numerical_allowed_error=selected_tolerance.numerical_allowed_error(
+                    float(expected_value)
+                ),
+                financial_allowed_error=selected_tolerance.financial or None,
+                numerical_passed=(
+                    abs(difference) <= selected_tolerance.numerical_allowed_error(
+                        float(expected_value)
+                    )
+                ),
+                financial_passed=(
+                    abs(difference) <= selected_tolerance.financial
+                    if selected_tolerance.financial > 0 else None
+                ),
             )
         )
     return FinancialValidationReport(name=name, checks=tuple(checks))

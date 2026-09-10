@@ -34,9 +34,12 @@ double interpolate_flat_linear(
     const auto upper = std::upper_bound(curve_times.begin(), curve_times.end(), time);
     const auto upper_index = static_cast<std::size_t>(upper - curve_times.begin());
     const auto lower_index = upper_index - 1;
-    const double fraction = (time - curve_times[lower_index]) /
-                            (curve_times[upper_index] - curve_times[lower_index]);
-    return values[lower_index] + fraction * (values[upper_index] - values[lower_index]);
+    const double interval = curve_times[upper_index] - curve_times[lower_index];
+    // Evaluate both basis weights directly. Subtracting nearly equal rates or
+    // deriving a tiny lower weight as 1 - upper_weight loses small exposures.
+    const double lower_weight = (curve_times[upper_index] - time) / interval;
+    const double upper_weight = (time - curve_times[lower_index]) / interval;
+    return lower_weight * values[lower_index] + upper_weight * values[upper_index];
 }
 
 double discount_factor(

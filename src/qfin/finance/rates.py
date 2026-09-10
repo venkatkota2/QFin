@@ -110,6 +110,7 @@ def convert_rate(
     if source is target:
         if not (isfinite(rate) and isfinite(time) and time > 0):
             raise ValueError("rate and time must be finite, with time positive")
+        continuous_rate(rate, source, time=time)
         return rate
     return rate_from_discount_factor(discount_factor(rate, time, source), time, target)
 

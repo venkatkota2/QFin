@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## Unreleased — 1.1.1 hardening
+
+- Corrected scenario interpolation to match shifted curves across supported
+  methodologies, centralized dated ALM settlement, rejected unbounded singular
+  optimizations, and made unestimated encoding errors explicit.
+- Strengthened interpolation diagnostics, log-discount bootstrapping, curve
+  provenance, target-error units and compiler/result contracts.
+- Reused scenario and key-rate buffers, retained tiny sensitivities with stable
+  arithmetic, reused par-yield schedules, reduced large temporary reductions and
+  native output copying, and improved cancellation-sensitive aggregates.
+- Added guarded likelihood confidence regions and deterministic all-mode MLAE
+  optimization with dense-reference and seeded coverage validation.
+- Standardized immutable array ownership, integer/factory validation, metadata
+  version lookup, finance-first API deprecations and the intentionally small CLI.
+- Expanded mathematical properties, randomized native differential tests,
+  financial tolerances, cross-platform installed-wheel/minimum-dependency CI,
+  strict C++ warnings, ASan/UBSan and structured performance evidence.
+- Preserved existing modelling scope and research limitations. No license grant
+  or new model/algorithm/backend is introduced.
 
 ## 1.1.0 — 2026-09-04
 

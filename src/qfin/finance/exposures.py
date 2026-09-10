@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from qfin._validation import require_integer
+
 if TYPE_CHECKING:
     from qfin.representation.factorized import FactorizedDistributionEncoding
 
@@ -176,9 +178,11 @@ class FactorizedLossModel:
     ) -> tuple[NDArray[np.int64], FloatArray, FloatArray]:
         """Return indices, losses, and probabilities for one bounded flat slice."""
 
-        if not 0 <= start <= stop <= self.joint_grid_points:
+        start_index = require_integer(start, "start", minimum=0)
+        stop_index = require_integer(stop, "stop", minimum=start_index)
+        if stop_index > self.joint_grid_points:
             raise ValueError("chunk bounds must lie inside the joint index range")
-        flat = np.arange(start, stop, dtype=np.int64)
+        flat = np.arange(start_index, stop_index, dtype=np.int64)
         residual = flat.copy()
         indices = np.empty((flat.size, self.encoding.factor_count), dtype=np.int64)
         for factor_index in range(self.encoding.factor_count - 1, -1, -1):
@@ -348,13 +352,13 @@ def evaluate_factor_risk(
     for bounded memory and is a correctness oracle, not the fast execution path.
     """
 
-    if chunk_size < 1 or max_points < 1:
-        raise ValueError("chunk_size and max_points must be positive")
+    resolved_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
+    point_limit = require_integer(max_points, "max_points", minimum=1)
     points = problem.model.joint_grid_points
-    if points > max_points:
+    if points > point_limit:
         raise ValueError(
             f"factorized validation requires {points} streamed points, "
-            f"above max_points={max_points}"
+            f"above max_points={point_limit}"
         )
 
     total_mass = 0.0
@@ -363,8 +367,8 @@ def evaluate_factor_risk(
     minimum = float("inf")
     maximum = float("-inf")
     chunks_per_pass = 0
-    for start in range(0, points, chunk_size):
-        stop = min(start + chunk_size, points)
+    for start in range(0, points, resolved_chunk_size):
+        stop = min(start + resolved_chunk_size, points)
         _, losses, weights = problem.model.chunk(start, stop)
         total_mass += float(np.sum(weights))
         weighted_sum += float(np.dot(losses, weights))
@@ -381,8 +385,8 @@ def evaluate_factor_risk(
     def cdf(threshold: float) -> float:
         nonlocal cdf_evaluations
         mass = 0.0
-        for start in range(0, points, chunk_size):
-            stop = min(start + chunk_size, points)
+        for start in range(0, points, resolved_chunk_size):
+            stop = min(start + resolved_chunk_size, points)
             _, losses, weights = problem.model.chunk(start, stop)
             mass += float(np.sum(weights[losses <= threshold]))
         cdf_evaluations += 1
@@ -402,8 +406,8 @@ def evaluate_factor_risk(
         value_at_risk = _float_from_order_key(upper_key)
 
     weighted_excess = 0.0
-    for start in range(0, points, chunk_size):
-        stop = min(start + chunk_size, points)
+    for start in range(0, points, resolved_chunk_size):
+        stop = min(start + resolved_chunk_size, points)
         _, losses, weights = problem.model.chunk(start, stop)
         weighted_excess += float(np.dot(np.maximum(losses - value_at_risk, 0.0), weights))
 
@@ -438,18 +442,18 @@ def evaluate_factor_tail_probability(
 ) -> FactorTailProbabilitySummary:
     """Evaluate a factorized tail probability with bounded working memory."""
 
-    if chunk_size < 1 or max_points < 1:
-        raise ValueError("chunk_size and max_points must be positive")
+    resolved_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
+    point_limit = require_integer(max_points, "max_points", minimum=1)
     points = problem.model.joint_grid_points
-    if points > max_points:
+    if points > point_limit:
         raise ValueError(
             f"factorized validation requires {points} streamed points, "
-            f"above max_points={max_points}"
+            f"above max_points={point_limit}"
         )
     probability = 0.0
     chunks = 0
-    for start in range(0, points, chunk_size):
-        stop = min(start + chunk_size, points)
+    for start in range(0, points, resolved_chunk_size):
+        stop = min(start + resolved_chunk_size, points)
         _, losses, weights = problem.model.chunk(start, stop)
         selected = losses >= problem.threshold if problem.inclusive else losses > problem.threshold
         probability += float(np.sum(weights[selected]))

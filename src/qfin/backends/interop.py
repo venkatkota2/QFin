@@ -8,6 +8,7 @@ from importlib import import_module
 from importlib.util import find_spec
 from typing import Any, Literal
 
+from qfin._validation import require_integer
 from qfin.backends.devices import DeviceTarget
 from qfin.exceptions import BackendUnavailableError
 from qfin.resources.device import (
@@ -153,14 +154,22 @@ def inspect_qiskit_backend(
 ) -> ProviderCapabilityReport:
     """Inspect a BackendV2-like object without credentials or job submission."""
 
-    if required_wires is not None and required_wires < 1:
-        raise ValueError("required_wires must be positive")
+    resolved_required_wires = (
+        None
+        if required_wires is None
+        else require_integer(required_wires, "required_wires", minimum=1)
+    )
     backend_name = str(_backend_value(backend, "name", type(backend).__name__))
     provider_object = _backend_value(backend, "provider")
     provider = type(provider_object).__name__ if provider_object is not None else "unknown"
-    num_qubits = int(_backend_value(backend, "num_qubits", 0))
-    if num_qubits < 1:
-        raise ValueError("backend must expose a positive num_qubits value")
+    try:
+        num_qubits = require_integer(
+            _backend_value(backend, "num_qubits", 0),
+            "backend num_qubits",
+            minimum=1,
+        )
+    except ValueError as exc:
+        raise ValueError("backend must expose a positive integer num_qubits value") from exc
 
     names_value = _backend_value(backend, "operation_names", ())
     operation_names = tuple(sorted({str(name).lower() for name in names_value}))
@@ -179,13 +188,13 @@ def inspect_qiskit_backend(
     dynamic = {"if_else", "while_loop", "for_loop", "switch_case"}
     has_measurement = "measure" in operation_names
     has_entangling = bool(entangling.intersection(operation_names))
-    sufficient = required_wires is None or num_qubits >= required_wires
+    sufficient = resolved_required_wires is None or num_qubits >= resolved_required_wires
     connected = _connected(num_qubits, coupling_map) if coupling_map else num_qubits == 1
     compatible = (
         has_measurement
         and has_entangling
         and sufficient
-        and (connected or required_wires in (None, 1))
+        and (connected or resolved_required_wires in (None, 1))
     )
     return ProviderCapabilityReport(
         backend_name=backend_name,
@@ -198,7 +207,7 @@ def inspect_qiskit_backend(
         has_reset="reset" in operation_names,
         has_entangling_gate=has_entangling,
         supports_dynamic_circuits=bool(dynamic.intersection(operation_names)),
-        required_wires=required_wires,
+        required_wires=resolved_required_wires,
         sufficient_wires=sufficient,
         qfin_export_compatible=compatible,
     )

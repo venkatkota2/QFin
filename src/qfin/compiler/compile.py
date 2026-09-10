@@ -10,6 +10,7 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import require_integer
 from qfin.circuits import WalshPayoffApproximation
 from qfin.compiler.factorized_models import (
     CompiledFactorTailModel,
@@ -96,10 +97,75 @@ def compile(
 ):
     """Compile a supported financial problem into the QFin pipeline.
 
-    ``target_error`` is stated in price units. The returned object can be
-    inspected without PennyLane; PennyLane is imported only when ``run`` or
-    ``to_pennylane`` executes a circuit.
+    ``target_error`` uses the financial objective's output unit: currency/price
+    units for European options, loss units for VaR and CVaR, and probability
+    units for tail-probability objectives. The unit is recorded as
+    ``target_error_unit`` on compiled models and execution results. The returned
+    object can be inspected without PennyLane; PennyLane is imported only when
+    ``run`` or ``to_pennylane`` executes a circuit.
     """
+
+    if not isfinite(target_error) or target_error <= 0:
+        raise ValueError("target_error must be finite and greater than zero")
+    min_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
+    max_qubits = require_integer(max_qubits, "max_qubits", minimum=min_qubits)
+    payoff_max_terms = (
+        None
+        if payoff_max_terms is None
+        else require_integer(payoff_max_terms, "payoff_max_terms", minimum=1)
+    )
+    max_state_preparation_parameters = require_integer(
+        max_state_preparation_parameters,
+        "max_state_preparation_parameters",
+        minimum=0,
+    )
+    max_state_preparation_memory_bytes = require_integer(
+        max_state_preparation_memory_bytes,
+        "max_state_preparation_memory_bytes",
+        minimum=1,
+    )
+    max_arithmetic_qubits = require_integer(
+        max_arithmetic_qubits,
+        "max_arithmetic_qubits",
+        minimum=1,
+    )
+    max_affine_output_qubits = require_integer(
+        max_affine_output_qubits,
+        "max_affine_output_qubits",
+        minimum=1,
+    )
+    max_factor_validation_points = require_integer(
+        max_factor_validation_points,
+        "max_factor_validation_points",
+        minimum=1,
+    )
+    factor_validation_chunk_size = require_integer(
+        factor_validation_chunk_size,
+        "factor_validation_chunk_size",
+        minimum=1,
+    )
+    max_integer_monomials = require_integer(
+        max_integer_monomials,
+        "max_integer_monomials",
+        minimum=1,
+    )
+    max_factorized_wires = require_integer(
+        max_factorized_wires,
+        "max_factorized_wires",
+        minimum=1,
+    )
+    if representation_method not in ("auto", "quantile", "probability"):
+        raise ValueError("representation_method must be 'auto', 'quantile', or 'probability'")
+    if not isfinite(payoff_angle_tolerance) or payoff_angle_tolerance <= 0:
+        raise ValueError("payoff_angle_tolerance must be finite and positive")
+    if arithmetic_scale is not None and (
+        not isfinite(arithmetic_scale) or arithmetic_scale <= 0.0
+    ):
+        raise ValueError("arithmetic_scale must be finite and positive")
+    if tail_probability is not None and (
+        not isfinite(tail_probability) or not 0.0 < tail_probability < 1.0
+    ):
+        raise ValueError("tail_probability must lie strictly between zero and one")
 
     if isinstance(problem, (FactorVaR, FactorCVaR)):
         if market is not None:
@@ -180,18 +246,10 @@ def compile(
     resolved_backend = "pennylane" if backend == "auto" else backend
     if resolved_backend != "pennylane":
         raise CompilationError("option compilation supports backend='pennylane' only")
-    if not isfinite(target_error) or target_error <= 0:
-        raise ValueError("target_error must be finite and greater than zero")
-    if min_qubits < 1 or max_qubits < min_qubits:
-        raise ValueError("require 1 <= min_qubits <= max_qubits")
-    if representation_method not in ("auto", "quantile", "probability"):
-        raise ValueError("representation_method must be 'auto', 'quantile', or 'probability'")
-    if not isfinite(payoff_angle_tolerance) or payoff_angle_tolerance <= 0:
-        raise ValueError("payoff_angle_tolerance must be finite and positive")
-    if payoff_max_terms is not None and payoff_max_terms < 1:
-        raise ValueError("payoff_max_terms must be positive")
-
-    budget = ErrorBudget.allocate(target_error)
+    budget = ErrorBudget.allocate(
+        target_error,
+        target_error_unit="currency / price units",
+    )
     if tail_probability is None:
         financial_scale = max(market.spot, problem.strike, 1.0)
         tail_probability = float(
@@ -385,7 +443,13 @@ def _compile_risk_problem(
     max_state_preparation_parameters: int,
     max_state_preparation_memory_bytes: int,
 ) -> CompiledRiskModel:
-    budget = RiskErrorBudget.allocate(target_error)
+    target_error_unit = (
+        "probability units" if isinstance(problem, TailProbability) else "loss units"
+    )
+    budget = RiskErrorBudget.allocate(
+        target_error,
+        target_error_unit=target_error_unit,
+    )
     if min_qubits < 1 or max_qubits < min_qubits:
         raise ValueError("require 1 <= min_qubits <= max_qubits")
     effective_max_qubits = max_qubits

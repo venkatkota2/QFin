@@ -3,10 +3,40 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: "2"
+  PYTHONHASHSEED: "0"
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
 
 jobs:
-  test:
-    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+  static-quality:
+    name: Ruff and strict mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check .
+      - run: python -m mypy src/qfin
+
+  tests:
+    name: tests / ${{ matrix.os }} / Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -22,97 +52,173 @@ jobs:
             python-version: "3.12"
           - os: windows-latest
             python-version: "3.12"
-    env:
-      CMAKE_BUILD_PARALLEL_LEVEL: "2"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - name: Install optional Qiskit and independent-validation dependencies
+      - name: Install optional interoperability and independent validation
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: python -m pip install -e ".[qiskit,validation]"
       - name: Verify compiled backends
         run: >-
           python -c "import qfin; info=qfin.system_info();
-          assert info['native_extension'];
-          assert info['pennylane_lightning'];
-          print(info)"
-      - run: python -m ruff check .
-      - run: python -m mypy src/qfin
-      - run: python -m pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
-      - name: Run quantum-risk smoke example
+          assert info['native_extension']; assert info['pennylane_lightning']; print(info)"
+      - run: python -m pytest --cov=qfin --cov-report=term-missing --cov-report=json:coverage.json --cov-fail-under=90
+      - name: Enforce numerical module coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python examples/quantum_risk_pipeline.py
-      - name: Run ALM and life 0.6 smoke examples
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: python examples/check_coverage.py coverage.json
+
+  native-parity:
+    name: native parity and strict C++ warnings
+    runs-on: ubuntu-latest
+    env:
+      CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e . pytest
+      - run: python -m pytest tests/native tests/finance/test_metamorphic_properties.py tests/finance/test_numerical_reductions.py
+
+  minimum-dependencies:
+    name: minimum dependencies / Python 3.11
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install numpy==1.26.0 scipy==1.11.0 pytest
+      - run: python -m pip install -e . --no-deps
+      - run: python -m pytest
+
+  sanitizers:
+    name: native ASan and UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e . pytest
+        env:
+          CMAKE_ARGS: -DCMAKE_CXX_COMPILER=g++ -DQFIN_STRICT_WARNINGS=ON -DQFIN_ENABLE_SANITIZERS=ON
+      - name: Exercise native ownership, malformed buffers, and parity
+        shell: bash
         run: |
+          export LD_PRELOAD="$(g++ -print-file-name=libasan.so):$(g++ -print-file-name=libstdc++.so)"
+          python -m pytest tests/native tests/finance/test_metamorphic_properties.py tests/finance/test_numerical_reductions.py
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+  examples:
+    name: representative examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev,qiskit,validation]"
+      - run: |
+          python examples/quantum_risk_pipeline.py
           python examples/multiperiod_alm.py
           python examples/life_products.py
           python examples/life_scenario_risk.py
-      - name: Run device-realism 0.7 smoke example
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python examples/device_realism.py
-      - name: Run scalable-representation 0.8 smoke example
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python examples/scalable_representation.py
-      - name: Run structured-oracle 0.9 smoke example
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python examples/structured_factor_tail.py
-      - name: Run structured factor-risk 1.0 smoke example
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python examples/structured_factor_risk.py
-      - name: Run financial-accuracy 1.1 smoke example
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: python examples/fixed_income_accuracy.py
-      - run: python -m build
+          python examples/device_realism.py
+          python examples/scalable_representation.py
+          python examples/structured_factor_tail.py
+          python examples/structured_factor_risk.py
+          python examples/fixed_income_accuracy.py
 
-  package-smoke:
-    name: wheel and sdist smoke test
+  source-distribution:
+    name: sdist clean install
     runs-on: ubuntu-latest
-    env:
-      CMAKE_BUILD_PARALLEL_LEVEL: "2"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-          cache: pip
-      - run: python -m pip install --upgrade pip build
-      - run: python -m build
-      - run: python -m venv wheel-test
-      - run: wheel-test/bin/python -m pip install dist/*.whl
-      - name: Smoke-test installed wheel
+      - run: python -m pip install build
+      - run: python -m build --sdist
+      - run: python -m venv sdist-test
+      - run: sdist-test/bin/python -m pip install dist/*.tar.gz
+      - run: sdist-test/bin/python examples/wheel_smoke.py
+      - name: Hash source artifact
         run: >-
-          wheel-test/bin/python -c "import qfin;
-          curve=qfin.YieldCurve([0, 1], [0.02, 0.02]);
-          result=qfin.price_bonds([qfin.FixedRateBond(1, 0.02)], curve);
-          risk=qfin.compile(qfin.TailProbability(qfin.LossDistribution([0, 1]), 0.5),
-          backend='classical', target_error=0.1, min_qubits=2, max_qubits=2);
-          factors=qfin.encode_independent_factors([qfin.Normal(), qfin.Normal()],
-          qubits_per_factor=2, method='probability');
-          strategy=qfin.compare_state_preparation_strategies(factors).require_selected();
-          factor_risk=qfin.FactorTailProbability(qfin.FactorizedLossModel(factors,
-          qfin.SparseExposureObjective(linear={'factor_0': 1.0})), threshold=0.0);
-          factor_compiled=qfin.compile(factor_risk, backend='classical',
-          arithmetic_scale=1.0);
-          factor_cvar=qfin.compile(qfin.FactorCVaR(factor_risk.model, confidence=0.75),
-          backend='classical', target_error=0.2, arithmetic_scale=1.0);
-          optimization=qfin.compile(qfin.MeanVarianceProblem([0.04, 0.08],
-          [[0.02, 0.0], [0.0, 0.05]]));
-          assert qfin.system_info()['native_extension'];
-          assert qfin.__version__ == '1.1.0';
-          assert result.dirty_prices.shape == (1,);
-          assert risk.run().probability == 0.5;
-          assert strategy.strategy == 'factorized_marginal_loader';
-          assert 0 <= factor_compiled.run().probability <= 1;
-          assert factor_cvar.run().cvar >= factor_cvar.run().var;
-          assert optimization.run().success;
-          print(qfin.system_info())"
-      - uses: actions/upload-artifact@v4
+          python -c "import hashlib,pathlib;
+          p=next(pathlib.Path('dist').glob('*.tar.gz'));
+          pathlib.Path('dist/SHA256SUMS').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: qfin-linux-build
-          path: dist/
+          name: qfin-sdist
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+  wheel-smoke:
+    name: wheel / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
+            python-path: wheel-test/bin/python
+          - os: ubuntu-latest
+            python-version: "3.12"
+            python-path: wheel-test/bin/python
+          - os: ubuntu-latest
+            python-version: "3.13"
+            python-path: wheel-test/bin/python
+          - os: macos-latest
+            python-version: "3.12"
+            python-path: wheel-test/bin/python
+          - os: windows-latest
+            python-version: "3.12"
+            python-path: wheel-test/Scripts/python.exe
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install build
+      - run: python -m build --wheel
+      - run: python -m venv wheel-test
+      - run: ${{ matrix.python-path }} -m pip install numpy scipy
+      - run: ${{ matrix.python-path }} -m pip install --no-index --no-deps --find-links dist qfin-quantum
+      - run: ${{ matrix.python-path }} examples/wheel_smoke.py
+      - name: Hash installed wheel artifact
+        run: >-
+          python -c "import hashlib,pathlib;
+          p=next(pathlib.Path('dist').glob('*.whl'));
+          pathlib.Path('dist/SHA256SUMS').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qfin-wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            dist/*.whl
+            dist/SHA256SUMS
+          if-no-files-found: error

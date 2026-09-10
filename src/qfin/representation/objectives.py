@@ -8,6 +8,7 @@ from math import isfinite
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import readonly_float64
 from qfin.representation.encoding import DistributionEncoding
 
 FloatArray = NDArray[np.float64]
@@ -30,7 +31,9 @@ class QuantumObjectiveEncoding:
     inclusive: bool | None = None
 
     def __post_init__(self) -> None:
-        values = np.ascontiguousarray(self.normalized_values, dtype=np.float64).reshape(-1)
+        values = readonly_float64(
+            np.asarray(self.normalized_values, dtype=np.float64).reshape(-1)
+        )
         if values.shape != self.distribution.probabilities.shape:
             raise ValueError("normalized_values must match the distribution grid")
         if not np.all(np.isfinite(values)) or np.any((values < 0) | (values > 1)):
@@ -43,7 +46,6 @@ class QuantumObjectiveEncoding:
             raise ValueError("label must be non-empty")
         if self.threshold is not None and not isfinite(self.threshold):
             raise ValueError("threshold must be finite")
-        values.setflags(write=False)
         object.__setattr__(self, "normalized_values", values)
 
     @property

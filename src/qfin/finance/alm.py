@@ -4,19 +4,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from operator import index as integer_index
 from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin import _native
+from qfin._numerics import stable_sum, stable_weighted_sum
+from qfin._validation import require_integer
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import (
     CashFlow,
     Engine,
     FixedRateBond,
-    flatten_bond_cashflows,
+    Settlement,
+    _normalize_bond_settlement,
+    _prepare_curve_cashflows,
     price_bonds,
 )
 from qfin.finance.scenarios import (
@@ -38,7 +41,7 @@ class AssetPortfolio:
 
     bonds: tuple[FixedRateBond, ...]
     quantities: FloatArray
-    settlement: float = 0.0
+    settlement: Settlement = None
     equity_value: float = 0.0
     cash_value: float = 0.0
 
@@ -47,7 +50,7 @@ class AssetPortfolio:
         bonds: list[FixedRateBond] | tuple[FixedRateBond, ...],
         quantities: ArrayLike | None = None,
         *,
-        settlement: float = 0.0,
+        settlement: Settlement = None,
         equity_value: float = 0.0,
         cash_value: float = 0.0,
     ) -> None:
@@ -60,8 +63,7 @@ class AssetPortfolio:
             weights = np.array(quantities, dtype=np.float64, order="C", copy=True).reshape(-1)
         if weights.shape != (len(items),) or not np.all(np.isfinite(weights)):
             raise ValueError("quantities must be finite with one value per bond")
-        if not np.isfinite(settlement) or settlement < 0:
-            raise ValueError("settlement must be finite and non-negative")
+        normalized_settlement = _normalize_bond_settlement(items, settlement)
         if not isfinite(equity_value) or equity_value < 0:
             raise ValueError("equity_value must be finite and non-negative")
         if not isfinite(cash_value) or cash_value < 0:
@@ -69,7 +71,7 @@ class AssetPortfolio:
         weights.setflags(write=False)
         object.__setattr__(self, "bonds", items)
         object.__setattr__(self, "quantities", weights)
-        object.__setattr__(self, "settlement", float(settlement))
+        object.__setattr__(self, "settlement", normalized_settlement)
         object.__setattr__(self, "equity_value", float(equity_value))
         object.__setattr__(self, "cash_value", float(cash_value))
 
@@ -194,16 +196,17 @@ class ALMFactorAttribution:
             weights.shape != (self.impacts.shape[0],)
             or not np.all(np.isfinite(weights))
             or np.any(weights < 0.0)
-            or float(np.sum(weights)) <= 0.0
+            or float(np.max(weights, initial=0.0)) <= 0.0
         ):
             raise ValueError("probabilities must be non-negative and align to scenarios")
+        weights = weights / np.max(weights)
         weights = weights / np.sum(weights)
         result = {
-            name: float(weights @ self.impacts[:, index])
+            name: stable_weighted_sum(self.impacts[:, index], weights)
             for index, name in enumerate(self.factor_names)
         }
-        result["interaction"] = float(weights @ self.interaction)
-        result["total"] = float(weights @ self.total_change)
+        result["interaction"] = stable_weighted_sum(self.interaction, weights)
+        result["total"] = stable_weighted_sum(self.total_change, weights)
         return result
 
 
@@ -243,12 +246,11 @@ class RebalancingStrategy:
             not isfinite(self.target_equity_weight) or not 0.0 <= self.target_equity_weight <= 1.0
         ):
             raise ValueError("target_equity_weight must lie in [0, 1]")
-        try:
-            frequency = integer_index(self.rebalance_frequency)
-        except TypeError as exc:
-            raise ValueError("rebalance_frequency must be a positive integer") from exc
-        if isinstance(self.rebalance_frequency, bool) or frequency <= 0:
-            raise ValueError("rebalance_frequency must be a positive integer")
+        frequency = require_integer(
+            self.rebalance_frequency,
+            "rebalance_frequency",
+            minimum=1,
+        )
         if not isfinite(self.transaction_cost_rate) or not (
             0.0 <= self.transaction_cost_rate < 1.0
         ):
@@ -280,12 +282,7 @@ class ALMPathResult:
 
         from qfin.finance.risk import LossDistribution
 
-        try:
-            index = integer_index(period)
-        except TypeError as exc:
-            raise ValueError("period must be an integer") from exc
-        if isinstance(period, bool):
-            raise ValueError("period must be an integer")
+        index = require_integer(period, "period")
         if index < 0:
             index += self.surplus.shape[1]
         if not 0 <= index < self.surplus.shape[1]:
@@ -370,11 +367,11 @@ def _liability_metrics(
             selected,
         )
     present_values = amounts * np.asarray(curve.discount(times), dtype=np.float64)
-    value = float(np.sum(present_values))
-    if abs(value) <= 1.0e-15:
+    value = stable_sum(present_values)
+    if value == 0.0:
         return value, 0.0, 0.0, selected
-    duration = float(np.dot(times, present_values) / value)
-    convexity = float(np.dot(times * times, present_values) / value)
+    duration = stable_weighted_sum(times, present_values) / value
+    convexity = stable_weighted_sum(times * times, present_values) / value
     return value, duration, convexity, selected
 
 
@@ -397,8 +394,10 @@ def _factor_alm_values(
     """Evaluate one-period factor subsets for exact residual attribution."""
 
     scenarios.validate_curve(model.curve)
-    asset_times, asset_amounts, asset_offsets = flatten_bond_cashflows(
-        model.assets.bonds, settlement=model.assets.settlement
+    asset_times, asset_amounts, asset_offsets, _ = _prepare_curve_cashflows(
+        model.assets.bonds,
+        model.curve,
+        model.assets.settlement,
     )
     rate_shocks = (
         scenarios.rate_shocks[:, 0, :]
@@ -456,6 +455,19 @@ class ALMModel:
     liabilities: LiabilityPortfolio
     curve: YieldCurve
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.assets, AssetPortfolio):
+            raise TypeError("assets must be an AssetPortfolio")
+        if not isinstance(self.liabilities, LiabilityPortfolio):
+            raise TypeError("liabilities must be a LiabilityPortfolio")
+        if not isinstance(self.curve, YieldCurve):
+            raise TypeError("curve must be a YieldCurve")
+        _normalize_bond_settlement(
+            self.assets.bonds,
+            self.assets.settlement,
+            curve=self.curve,
+        )
+
     def evaluate(self, *, engine: Engine = "auto") -> ALMResult:
         asset_analytics = price_bonds(
             self.assets.bonds,
@@ -464,26 +476,29 @@ class ALMModel:
             engine=engine,
         )
         market_values = self.assets.quantities * asset_analytics.dirty_prices
-        bond_pv = float(np.sum(market_values))
+        bond_pv = stable_sum(market_values)
         asset_pv = bond_pv + self.assets.equity_value + self.assets.cash_value
         asset_duration = (
             0.0
-            if abs(asset_pv) <= 1.0e-15
-            else float(np.dot(market_values, asset_analytics.macaulay_duration) / asset_pv)
+            if asset_pv == 0.0
+            else stable_weighted_sum(market_values, asset_analytics.macaulay_duration)
+            / asset_pv
         )
         asset_convexity = (
             0.0
-            if abs(asset_pv) <= 1.0e-15
-            else float(np.dot(market_values, asset_analytics.convexity) / asset_pv)
+            if asset_pv == 0.0
+            else stable_weighted_sum(market_values, asset_analytics.convexity) / asset_pv
         )
         liability_pv, liability_duration, liability_convexity, liability_engine = (
             _liability_metrics(self.liabilities, self.curve, engine)
         )
         surplus = asset_pv - liability_pv
-        ratio = liability_pv / asset_pv if abs(asset_pv) > 1.0e-15 else 0.0
-        funding = asset_pv / liability_pv if abs(liability_pv) > 1.0e-15 else float("inf")
+        ratio = liability_pv / asset_pv if asset_pv != 0.0 else 0.0
+        funding = asset_pv / liability_pv if liability_pv != 0.0 else float("inf")
         combined_engine: Literal["numpy", "native", "mixed"] = (
-            asset_analytics.engine if asset_analytics.engine == liability_engine else "mixed"
+            "numpy"
+            if asset_analytics.engine == "numpy" and liability_engine == "numpy"
+            else "mixed"
         )
         return ALMResult(
             asset_pv=asset_pv,
@@ -510,8 +525,10 @@ class ALMModel:
         """Revalue both sides under node-aligned rate shocks in bounded memory."""
 
         base = self.evaluate(engine=engine)
-        asset_times, asset_amounts, asset_offsets = flatten_bond_cashflows(
-            self.assets.bonds, settlement=self.assets.settlement
+        asset_times, asset_amounts, asset_offsets, _ = _prepare_curve_cashflows(
+            self.assets.bonds,
+            self.curve,
+            self.assets.settlement,
         )
         asset_values, asset_engine = scenario_portfolio_values(
             asset_times,
@@ -543,7 +560,7 @@ class ALMModel:
             where=liability_values != 0,
         )
         combined_engine: Literal["numpy", "native", "mixed"] = (
-            asset_engine if asset_engine == liability_engine else "mixed"
+            "numpy" if asset_engine == "numpy" and liability_engine == "numpy" else "mixed"
         )
         return ALMScenarioResult(
             scenarios.labels,
@@ -610,7 +627,7 @@ class ALMModel:
             where=full_liability != 0.0,
         )
         combined_engine: Literal["numpy", "native", "mixed"] = (
-            asset_engine if asset_engine == liability_engine else "mixed"
+            "numpy" if asset_engine == "numpy" and liability_engine == "numpy" else "mixed"
         )
         return ALMFactorScenarioResult(
             labels=scenarios.labels,

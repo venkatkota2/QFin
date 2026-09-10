@@ -1,5 +1,19 @@
 """QFin public API."""
 
+from __future__ import annotations
+
+from importlib import import_module
+from importlib.metadata import PackageNotFoundError, version
+from typing import Any
+from warnings import warn
+
+try:
+    __version__ = version("qfin-quantum")
+except PackageNotFoundError:
+    # Source trees without installed package metadata deliberately use an
+    # unmistakable development value instead of duplicating pyproject.toml.
+    __version__ = "0+unknown"
+
 from qfin.backends.devices import DeviceTarget, available_tested_devices
 from qfin.backends.interop import (
     ProviderCapabilityReport,
@@ -10,10 +24,8 @@ from qfin.backends.noise import NoiseMitigationReport, NoiseModel
 from qfin.circuits import (
     FactorizedPreparation,
     PayoffRotation,
-    ProbabilityTreePreparation,
     UniformQuantilePreparation,
     WalshPayoffApproximation,
-    WalshTerm,
 )
 from qfin.compiler import (
     CompiledFactorRiskModel,
@@ -150,16 +162,10 @@ from qfin.representation import (
     BlockEncodingFeasibility,
     DistributionEncoding,
     FactorizedDistributionEncoding,
-    IntegerHingePlan,
-    IntegerPolynomialPlan,
-    IntegerQuadraticTerm,
     LinearFactorTransform,
     MaterializedFactorGrid,
     QuantumObjectiveEncoding,
-    ReversibleAffineTransformPlan,
-    StatePreparationCost,
     StatePreparationStrategyReport,
-    StructuredLossOraclePlan,
     StructuredRiskOracleValidation,
     StructuredTailOracleValidation,
     analyze_block_encoding,
@@ -203,7 +209,43 @@ from qfin.validation import (
     validate_financial_values,
 )
 
-__version__ = "1.1.0"
+_DEPRECATED_TOP_LEVEL_EXPORTS: dict[str, tuple[str, str]] = {
+    "IntegerHingePlan": ("qfin.representation", "IntegerHingePlan"),
+    "IntegerPolynomialPlan": ("qfin.representation", "IntegerPolynomialPlan"),
+    "IntegerQuadraticTerm": ("qfin.representation", "IntegerQuadraticTerm"),
+    "ProbabilityTreePreparation": ("qfin.circuits", "ProbabilityTreePreparation"),
+    "ReversibleAffineTransformPlan": (
+        "qfin.representation",
+        "ReversibleAffineTransformPlan",
+    ),
+    "StatePreparationCost": ("qfin.representation", "StatePreparationCost"),
+    "StructuredLossOraclePlan": ("qfin.representation", "StructuredLossOraclePlan"),
+    "WalshTerm": ("qfin.circuits", "WalshTerm"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Resolve deprecated implementation aliases for one compatibility cycle."""
+
+    target = _DEPRECATED_TOP_LEVEL_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(f"module 'qfin' has no attribute {name!r}")
+    module_name, attribute_name = target
+    warn(
+        f"qfin.{name} is deprecated at the top level; import "
+        f"{module_name}.{attribute_name} instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    value = getattr(import_module(module_name), attribute_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """Include compatibility aliases in interactive discovery."""
+
+    return sorted({*globals(), *_DEPRECATED_TOP_LEVEL_EXPORTS})
 
 __all__ = [
     "GOLDEN_BOND_CASES",

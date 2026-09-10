@@ -66,6 +66,8 @@ def test_end_to_end_quantum_run_is_close_to_discrete_value(
     small_model: qfin.CompiledPricingModel,
 ) -> None:
     result = small_model.run(shots=4_000, schedule=(0, 1, 2, 4), seed=11)
+    assert result.target_error_unit == "currency / price units"
+    assert result.to_dict()["target_error_unit"] == "currency / price units"
     assert result.estimation_error < 1.0
     assert result.confidence_interval_95[0] <= result.value
     assert result.value <= result.confidence_interval_95[1]
@@ -100,3 +102,28 @@ def test_auto_device_falls_back_when_lightning_is_absent(
     backend = small_model.to_pennylane()
     assert backend.device_name == "default.qubit"
     assert small_model.resources().backend == "pennylane.default.qubit"
+
+
+@pytest.mark.parametrize("seed", [19, 127, 811])
+def test_seeded_backend_matrix_preserves_the_encoded_objective(seed: int) -> None:
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    market = qfin.BlackScholes(100, float(rng.uniform(-.03, .10)),
+                              float(rng.uniform(.1, .5)))
+    option = qfin.EuropeanPut(float(rng.uniform(80, 120)), 1)
+    model = qfin.compile(option, market, target_error=.01, min_qubits=3, max_qubits=3,
+                         payoff_angle_tolerance=1e-12)
+    dense = model.to_pennylane(mode="dense", device_name="default.qubit")
+    for device in ("default.qubit", "lightning.qubit"):
+        if device == "lightning.qubit" and not qfin.system_info()["pennylane_lightning"]:
+            continue
+        for mode in ("dense", "structured", "compressed"):
+            runtime = model.to_pennylane(mode=mode, device_name=device)
+            for power in (0, 1, 3):
+                assert runtime.probability(power) == pytest.approx(
+                    dense.probability(power), abs=2e-12,
+                )
+            first = runtime.run_schedule(schedule=(0, 1), shots=20, seed=seed)
+            second = runtime.run_schedule(schedule=(0, 1), shots=20, seed=seed)
+            assert first == second

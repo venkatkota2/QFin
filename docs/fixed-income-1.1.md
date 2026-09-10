@@ -1,5 +1,8 @@
 # Fixed-income accuracy in QFin 1.1
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 QFin 1.1 adds dated bond semantics and independent validation while preserving
 the floating-year APIs and C++ kernels from earlier releases. Accuracy takes
 priority over backend selection: unsupported curve/native combinations fall

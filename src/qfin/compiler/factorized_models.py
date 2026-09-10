@@ -47,6 +47,20 @@ class StructuredOracleErrorBudget:
     payoff: float
     estimation: float
     interval_level: float = 0.95
+    target_error_unit: str = "probability units"
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.total) or self.total <= 0.0:
+            raise ValueError("target_error must be finite and greater than zero")
+        components = (self.transform, self.payoff, self.estimation)
+        if any(not isfinite(value) or value < 0.0 for value in components):
+            raise ValueError("oracle error-budget allocations must be finite and non-negative")
+        if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
+            raise ValueError("oracle error-budget allocations must sum to total")
+        if not 0.0 < self.interval_level < 1.0:
+            raise ValueError("interval_level must lie strictly between zero and one")
+        if not self.target_error_unit.strip():
+            raise ValueError("target_error_unit must not be empty")
 
     @property
     def oracle(self) -> float:
@@ -63,6 +77,7 @@ class StructuredOracleErrorBudget:
             transform=0.2 * target_error,
             payoff=0.2 * target_error,
             estimation=0.6 * target_error,
+            target_error_unit="probability units",
         )
 
     def to_dict(self) -> dict[str, float | str]:
@@ -73,6 +88,7 @@ class StructuredOracleErrorBudget:
             "oracle": self.oracle,
             "estimation": self.estimation,
             "interval_level": self.interval_level,
+            "target_error_unit": self.target_error_unit,
             "reference_note": (
                 "The encoded factor distribution is the validation reference. "
                 "Transform and payoff allocations share one measured comparator-disagreement "
@@ -94,6 +110,7 @@ class FactorQuantumTailResult:
     disagreement_probability: float
     estimation_error: float
     target_error: float
+    target_error_unit: str
     meets_target_error: bool
     estimate: AmplitudeEstimate
     resources: StructuredFactorResourceReport
@@ -102,6 +119,18 @@ class FactorQuantumTailResult:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "problem_category": "factorized_risk",
+            "financial_objective": "tail_probability",
+            "representation": "factorized_reversible_loss_oracle",
+            "algorithm_error": None,
+            "representation_error": self.disagreement_probability,
+            "sampling_statistical_error": max(
+                abs(self.probability - self.confidence_interval_95[0]),
+                abs(self.confidence_interval_95[1] - self.probability),
+            ),
+            "sampling_error_definition": "maximum distance to the reported 95% interval endpoints",
+            "quantum_execution_available": True,
+            "resource_estimate_type": "logical_circuit_counts",
             "probability": self.probability,
             "confidence_interval_95": list(self.confidence_interval_95),
             "exact_encoded_probability": self.exact_encoded_probability,
@@ -111,6 +140,7 @@ class FactorQuantumTailResult:
             "disagreement_probability": self.disagreement_probability,
             "estimation_error": self.estimation_error,
             "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
             "meets_target_error": self.meets_target_error,
             "estimate": self.estimate.to_dict(),
             "resources": self.resources.to_dict(),
@@ -138,6 +168,39 @@ class CompiledFactorTailModel:
     backend_name: str = "pennylane"
     algorithm_name: str = "factorized_reversible_comparator_mlae"
     quantum_algorithm_available: bool = True
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "problem_category": "factorized_risk",
+            "financial_objective": "tail_probability",
+            "backend": self.backend_name,
+            "representation": "factorized_reversible_loss_oracle",
+            "algorithm": (
+                self.algorithm_name if self.backend_name == "pennylane"
+                else "classical_streamed_factor_reference"
+            ),
+            "target_error": self.target_error,
+            "target_error_unit": self.target_error_unit,
+            "representation_error": self.validation.disagreement_probability,
+            "algorithm_error": None,
+            "sampling_statistical_error": None,
+            "compilation_converged": self.compilation_converged,
+            "quantum_execution_available": (
+                self.backend_name == "pennylane" and self.quantum_algorithm_available
+            ),
+            "resource_estimate_type": "logical_circuit_counts",
+            "error_budget": self.error_budget.to_dict(),
+            "limitations": [
+                "Error validation compares the oracle to the encoded factor grid.",
+                "Continuous-distribution modelling error is not included in that comparison.",
+                "Experimental simulation requires optional quantum dependencies.",
+                "Logical resources are not hardware runtime or quantum advantage.",
+            ],
+        }
+
+    @property
+    def target_error_unit(self) -> str:
+        return self.error_budget.target_error_unit
 
     @property
     def oracle_converged(self) -> bool:
@@ -242,6 +305,7 @@ class CompiledFactorTailModel:
             disagreement_probability=self.validation.disagreement_probability,
             estimation_error=abs(probability - self.validation.oracle_probability),
             target_error=self.target_error,
+            target_error_unit=self.target_error_unit,
             meets_target_error=absolute_error <= self.target_error,
             estimate=estimate,
             resources=self.resources(device_name=device_name),
@@ -353,8 +417,12 @@ class CompiledFactorTailModel:
             f"Probability-error allocation: transform={self.error_budget.transform:.3e}, "
             f"payoff={self.error_budget.payoff:.3e}, "
             f"estimation={self.error_budget.estimation:.3e}.\n"
+            f"Target error: {self.target_error:.3e} {self.target_error_unit}.\n"
             f"Backend policy: {self.backend_name}. PennyLane-Lightning performs simulation; "
-            "QFin constructs finance-specific arithmetic and compiler metadata."
+            "QFin constructs finance-specific arithmetic and compiler metadata.\n"
+            f"Compilation converged: {self.compilation_converged}; sampling error: "
+            "not estimated before shots. Error is relative to the encoded grid. "
+            "Resources are logical counts, not hardware runtime or quantum advantage."
         )
 
 

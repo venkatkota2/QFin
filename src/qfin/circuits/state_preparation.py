@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import readonly_float64, require_integer
 from qfin.exceptions import BackendUnavailableError
 
 if TYPE_CHECKING:
@@ -72,6 +73,17 @@ class ProbabilityTreePreparation:
 
     levels: tuple[NDArray[np.float64], ...]
 
+    def __post_init__(self) -> None:
+        levels = tuple(
+            readonly_float64(np.asarray(level).reshape(-1)) for level in self.levels
+        )
+        if not levels or any(
+            level.shape != (2**position,) or not np.all(np.isfinite(level))
+            for position, level in enumerate(levels)
+        ):
+            raise ValueError("levels must contain finite binary-tree rotation arrays")
+        object.__setattr__(self, "levels", levels)
+
     @classmethod
     def from_probabilities(cls, probabilities: NDArray[np.float64]) -> ProbabilityTreePreparation:
         return cls(levels=probability_tree_angles(probabilities))
@@ -111,8 +123,11 @@ class UniformQuantilePreparation:
     qubits: int
 
     def __post_init__(self) -> None:
-        if self.qubits < 1:
-            raise ValueError("qubits must be positive")
+        object.__setattr__(
+            self,
+            "qubits",
+            require_integer(self.qubits, "qubits", minimum=1),
+        )
 
     @property
     def gate_count(self) -> int:

@@ -8,7 +8,9 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import readonly_float64, require_integer
 from qfin.algorithms import CircuitObservation
+from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.circuits import (
     UniformQuantilePreparation,
     WalshPayoffApproximation,
@@ -30,7 +32,7 @@ class CompressedPennyLaneBackend:
         device_name: str = "lightning.qubit",
         max_compressed_terms: int = 32_767,
     ) -> None:
-        payoff = np.asarray(normalized_payoff, dtype=np.float64).reshape(-1)
+        payoff = readonly_float64(np.asarray(normalized_payoff).reshape(-1))
         if payoff.shape != representation.probabilities.shape:
             raise ValueError("normalized_payoff must match the representation grid")
         if np.any((payoff < 0) | (payoff > 1)) or not np.all(np.isfinite(payoff)):
@@ -42,10 +44,15 @@ class CompressedPennyLaneBackend:
             raise ValueError("compressed backend requires uniform_quantile_hadamard")
         if payoff_approximation.qubits != representation.qubits:
             raise ValueError("payoff approximation must match representation qubits")
-        if payoff_approximation.parameter_count > max_compressed_terms:
+        term_limit = require_integer(
+            max_compressed_terms,
+            "max_compressed_terms",
+            minimum=1,
+        )
+        if payoff_approximation.parameter_count > term_limit:
             raise ResourceLimitError(
                 f"compressed payoff requires {payoff_approximation.parameter_count} "
-                f"Pauli rotations, above the configured limit of {max_compressed_terms}; "
+                f"Pauli rotations, above the configured limit of {term_limit}; "
                 "reduce max_qubits or increase max_compressed_terms explicitly"
             )
         self.representation = representation
@@ -92,11 +99,10 @@ class CompressedPennyLaneBackend:
     def queue_circuit(self, power: int = 0) -> None:
         """Queue one decomposable MLAE circuit on the active PennyLane tape."""
 
-        if power < 0:
-            raise ValueError("power must be non-negative")
+        resolved_power = require_integer(power, "power", minimum=0)
         qml = self._qml()
         self._apply_a()
-        for _ in range(power):
+        for _ in range(resolved_power):
             qml.PauliZ(wires=self.objective_wire)
             qml.adjoint(self._apply_a)()
             apply_zero_reflection(self.register_wires, work_wire=self.work_wire)
@@ -109,18 +115,20 @@ class CompressedPennyLaneBackend:
         return qml.tape.make_qscript(lambda: self.queue_circuit(power))()
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
-        if power < 0:
-            raise ValueError("power must be non-negative")
+        resolved_power = require_integer(power, "power", minimum=0)
+        resolved_shots = (
+            None if shots is None else require_integer(shots, "shots", minimum=1)
+        )
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 
         @qml.qnode(device)  # type: ignore[untyped-decorator]
         def circuit() -> Any:
-            self.queue_circuit(power)
+            self.queue_circuit(resolved_power)
             return qml.probs(wires=self.objective_wire)
 
-        if shots is not None:
-            return qml.set_shots(circuit, shots=shots)
+        if resolved_shots is not None:
+            return qml.set_shots(circuit, shots=resolved_shots)
         return circuit
 
     def probability(
@@ -165,17 +173,15 @@ class CompressedPennyLaneBackend:
         shots: int,
         seed: int | None = None,
     ) -> tuple[CircuitObservation, ...]:
-        if shots <= 0:
-            raise ValueError("shots must be positive")
-        powers = tuple(int(power) for power in schedule)
-        if not powers or len(set(powers)) != len(powers) or any(power < 0 for power in powers):
-            raise ValueError("schedule must contain unique, non-negative powers")
+        powers, shot_count = _validated_schedule(schedule, shots)
         observations: list[CircuitObservation] = []
         for index, power in enumerate(powers):
             circuit_seed = None if seed is None else seed + index
-            probability = self.probability(power, shots=shots, seed=circuit_seed)
-            successes = int(np.clip(round(probability * shots), 0, shots))
-            observations.append(CircuitObservation(power=power, successes=successes, shots=shots))
+            probability = self.probability(power, shots=shot_count, seed=circuit_seed)
+            successes = int(np.clip(round(probability * shot_count), 0, shot_count))
+            observations.append(
+                CircuitObservation(power=power, successes=successes, shots=shot_count)
+            )
         return tuple(observations)
 
     def draw(self, power: int = 0) -> str:

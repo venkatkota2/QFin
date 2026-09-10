@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from qfin._validation import require_integer
 from qfin.exceptions import BackendUnavailableError
 
 
@@ -43,7 +44,5 @@ def apply_zero_reflection(register_wires: Sequence[int], *, work_wire: int) -> N
 
 def zero_reflection_operation_count(register_qubits: int) -> int:
     """Return high-level operations queued by ``apply_zero_reflection``."""
-    if register_qubits < 2:
-        raise ValueError("register_qubits must be at least two")
-    return 2 * register_qubits + 3
-
+    qubit_count = require_integer(register_qubits, "register_qubits", minimum=2)
+    return 2 * qubit_count + 3

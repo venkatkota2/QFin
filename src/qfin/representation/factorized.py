@@ -10,6 +10,7 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import readonly_float64, require_integer, require_integer_sequence
 from qfin.finance.distributions import Distribution, Normal
 from qfin.finance.factors import GaussianFactorModel
 from qfin.representation.encoding import DistributionEncoding, encode, encode_quantiles
@@ -32,8 +33,8 @@ class LinearFactorTransform:
     output_names: Sequence[str]
 
     def __post_init__(self) -> None:
-        matrix = np.asarray(self.matrix, dtype=np.float64)
-        offset = np.asarray(self.offset, dtype=np.float64).reshape(-1)
+        matrix = readonly_float64(self.matrix)
+        offset = readonly_float64(np.asarray(self.offset, dtype=np.float64).reshape(-1))
         names = tuple(self.output_names)
         if matrix.ndim != 2 or matrix.shape[0] == 0 or matrix.shape[1] == 0:
             raise ValueError("matrix must be a non-empty output-by-latent array")
@@ -45,10 +46,6 @@ class LinearFactorTransform:
             raise ValueError("output_names must contain one non-empty name per output")
         if len(set(names)) != len(names):
             raise ValueError("output_names must be unique")
-        matrix = np.ascontiguousarray(matrix)
-        offset = np.ascontiguousarray(offset)
-        matrix.setflags(write=False)
-        offset.setflags(write=False)
         object.__setattr__(self, "matrix", matrix)
         object.__setattr__(self, "offset", offset)
         object.__setattr__(self, "output_names", names)
@@ -87,8 +84,10 @@ class MaterializedFactorGrid:
     value_names: Sequence[str]
 
     def __post_init__(self) -> None:
-        values = np.asarray(self.values, dtype=np.float64)
-        probabilities = np.asarray(self.probabilities, dtype=np.float64).reshape(-1)
+        values = readonly_float64(self.values)
+        probabilities = readonly_float64(
+            np.asarray(self.probabilities, dtype=np.float64).reshape(-1)
+        )
         names = tuple(self.value_names)
         if values.ndim != 2 or values.shape[0] != probabilities.size:
             raise ValueError("values and probabilities must contain the same points")
@@ -98,10 +97,6 @@ class MaterializedFactorGrid:
             raise ValueError("materialized values and probabilities must be finite")
         if np.any(probabilities < 0) or not np.isclose(np.sum(probabilities), 1.0):
             raise ValueError("probabilities must be non-negative and sum to one")
-        values = np.ascontiguousarray(values)
-        probabilities = np.ascontiguousarray(probabilities)
-        values.setflags(write=False)
-        probabilities.setflags(write=False)
         object.__setattr__(self, "values", values)
         object.__setattr__(self, "probabilities", probabilities)
         object.__setattr__(self, "value_names", names)
@@ -169,11 +164,10 @@ class FactorizedDistributionEncoding:
         prevents an accidental exponential allocation.
         """
 
-        if max_points < 1:
-            raise ValueError("max_points must be positive")
-        if self.joint_grid_points > max_points:
+        point_limit = require_integer(max_points, "max_points", minimum=1)
+        if self.joint_grid_points > point_limit:
             raise ValueError(
-                f"joint grid has {self.joint_grid_points} points, above max_points={max_points}; "
+                f"joint grid has {self.joint_grid_points} points, above max_points={point_limit}; "
                 "use marginal metadata or increase the validation limit explicitly"
             )
         value_meshes = np.meshgrid(
@@ -228,10 +222,23 @@ def _qubit_allocation(
     factor_count: int,
     qubits_per_factor: int | Sequence[int],
 ) -> tuple[int, ...]:
-    if isinstance(qubits_per_factor, int):
-        allocation = (qubits_per_factor,) * factor_count
+    if isinstance(qubits_per_factor, (int, np.integer)) and not isinstance(
+        qubits_per_factor, bool
+    ):
+        allocation = (
+            require_integer(qubits_per_factor, "qubits_per_factor", minimum=1),
+        ) * factor_count
     else:
-        allocation = tuple(int(value) for value in qubits_per_factor)
+        try:
+            allocation = require_integer_sequence(
+                qubits_per_factor,  # type: ignore[arg-type]
+                "qubits_per_factor",
+                minimum=1,
+            )
+        except TypeError as exc:
+            raise ValueError(
+                "qubits_per_factor must be an integer or an iterable of integers"
+            ) from exc
     if len(allocation) != factor_count or any(value < 1 for value in allocation):
         raise ValueError("qubits_per_factor must provide one positive value per factor")
     return allocation

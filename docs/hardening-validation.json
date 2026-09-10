@@ -1,0 +1,106 @@
+{
+  "date_utc": "2026-09-10T04:46:16.825561+00:00",
+  "audited_main_sha": "3dba3b3803f54891d12ad2c138b4dcc276de9d42",
+  "pr_url": "https://github.com/venkatkota2/QFin/pull/14",
+  "package_version": "1.1.1",
+  "environment": {
+    "python": "3.12.14",
+    "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "pennylane": "0.45.1",
+    "pennylane_lightning": "0.45.0"
+  },
+  "recovered_baseline": {
+    "date": "2026-09-09",
+    "qfin": "1.1.0",
+    "passed": 217,
+    "skipped": 2,
+    "line_coverage_percent": 87.71,
+    "ruff": "passed",
+    "strict_mypy": "passed",
+    "mypy_source_files": 65,
+    "note": "Isolated untouched-main installation with original native extension. Original temporary pre-H1 logs were lost; this repeat does not reconstruct original timings."
+  },
+  "final_local": {
+    "passed": 654,
+    "skipped": 2,
+    "line_coverage_percent": 92.95988773242895,
+    "statements": 8551,
+    "covered_lines": 7949,
+    "ruff": "passed",
+    "strict_mypy": "passed",
+    "mypy_source_files": 67,
+    "module_coverage": {
+      "finance": {
+        "statements": 3916,
+        "covered_lines": 3739,
+        "line_coverage_percent": 95.48008171603678,
+        "required_percent": 95
+      },
+      "compiler": {
+        "statements": 1131,
+        "covered_lines": 1047,
+        "line_coverage_percent": 92.57294429708223,
+        "required_percent": 92
+      },
+      "representation": {
+        "statements": 1214,
+        "covered_lines": 1122,
+        "line_coverage_percent": 92.42174629324548,
+        "required_percent": 92
+      },
+      "resources": {
+        "statements": 362,
+        "covered_lines": 327,
+        "line_coverage_percent": 90.33149171270718,
+        "required_percent": 90
+      },
+      "backends": {
+        "statements": 926,
+        "covered_lines": 807,
+        "line_coverage_percent": 87.14902807775378,
+        "required_percent": 85
+      },
+      "_native": {
+        "statements": 19,
+        "covered_lines": 19,
+        "line_coverage_percent": 100.0,
+        "required_percent": 95
+      }
+    }
+  },
+  "ci_contract": {
+    "jobs": 16,
+    "final_status_source": "PR checks for the final head; must be green before merge",
+    "test_and_wheel_matrix": {
+      "linux": [
+        "3.11",
+        "3.12",
+        "3.13"
+      ],
+      "macos": [
+        "3.12"
+      ],
+      "windows": [
+        "3.12"
+      ]
+    },
+    "minimum_dependencies": {
+      "python": "3.11",
+      "numpy": "1.26.0",
+      "scipy": "1.11.0"
+    },
+    "native_sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "global_line_coverage_floor": 90
+  },
+  "limitations": [
+    "Python line coverage is not C++ line or branch coverage.",
+    "Two optional dependency tests are skipped locally; CI Linux 3.12 installs their dependencies.",
+    "Repository administration is unavailable; main protection remains a maintainer action.",
+    "No license grant or PyPI publication is claimed."
+  ]
+}

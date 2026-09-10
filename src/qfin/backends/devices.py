@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from importlib.util import find_spec
 from typing import Literal
 
+from qfin._validation import require_integer
 from qfin.exceptions import BackendUnavailableError
 
 Topology = Literal["all_to_all", "linear", "custom"]
@@ -80,8 +81,8 @@ class DeviceTarget:
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ValueError("target name must not be empty")
-        if self.wires < 2:
-            raise ValueError("target requires at least two wires")
+        wire_count = require_integer(self.wires, "wires", minimum=2)
+        object.__setattr__(self, "wires", wire_count)
         if self.topology not in ("all_to_all", "linear", "custom"):
             raise ValueError("topology must be 'all_to_all', 'linear', or 'custom'")
         if not self.basis_gates or len(set(self.basis_gates)) != len(self.basis_gates):
@@ -96,7 +97,9 @@ class DeviceTarget:
             raise ValueError("portable targets currently require RX, RY, RZ, and CNOT")
 
         normalized: list[tuple[int, int]] = []
-        for left, right in self.coupling_map:
+        for position, (left_value, right_value) in enumerate(self.coupling_map):
+            left = require_integer(left_value, f"coupling_map[{position}][0]", minimum=0)
+            right = require_integer(right_value, f"coupling_map[{position}][1]", minimum=0)
             if left == right:
                 raise ValueError("coupling edges cannot be self-loops")
             if not 0 <= left < self.wires or not 0 <= right < self.wires:
@@ -139,21 +142,25 @@ class DeviceTarget:
 
     @classmethod
     def all_to_all(cls, wires: int) -> DeviceTarget:
+        wire_count = require_integer(wires, "wires", minimum=2)
         return cls(
-            name=f"research-all-to-all-{wires}q",
-            wires=wires,
+            name=f"research-all-to-all-{wire_count}q",
+            wires=wire_count,
             coupling_map=tuple(
-                (left, right) for left in range(wires) for right in range(left + 1, wires)
+                (left, right)
+                for left in range(wire_count)
+                for right in range(left + 1, wire_count)
             ),
             topology="all_to_all",
         )
 
     @classmethod
     def linear(cls, wires: int) -> DeviceTarget:
+        wire_count = require_integer(wires, "wires", minimum=2)
         return cls(
-            name=f"research-linear-{wires}q",
-            wires=wires,
-            coupling_map=tuple((wire, wire + 1) for wire in range(wires - 1)),
+            name=f"research-linear-{wire_count}q",
+            wires=wire_count,
+            coupling_map=tuple((wire, wire + 1) for wire in range(wire_count - 1)),
             topology="linear",
         )
 

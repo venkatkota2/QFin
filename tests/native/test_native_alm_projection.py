@@ -20,6 +20,8 @@ def test_native_alm_scenarios_match_numpy_with_chunking() -> None:
     native = model.run_scenarios(scenarios, engine="native", chunk_size=37)
     np.testing.assert_allclose(native.asset_pv, reference.asset_pv, rtol=1e-13)
     np.testing.assert_allclose(native.liability_pv, reference.liability_pv, rtol=1e-13)
+    assert native.engine == "mixed"
+    assert model.evaluate(engine="native").engine == "mixed"
 
 
 def test_native_policy_projection_matches_python_oracle() -> None:
@@ -44,6 +46,7 @@ def test_native_policy_projection_matches_python_oracle() -> None:
     )
     reference = qfin.project_liabilities(policies, assumptions, engine="numpy")
     native = qfin.project_liabilities(policies, assumptions, engine="native")
+    assert native.engine == "mixed"
     np.testing.assert_allclose(
         native.expected_premiums, reference.expected_premiums, rtol=1e-13
     )
@@ -83,3 +86,58 @@ def test_native_binding_rejects_malformed_buffers_without_unsafe_access() -> Non
             np.array([0.02, 0.02]),
             np.zeros((1, 2)),
         )
+    with pytest.raises(ValueError, match="offsets must contain"):
+        native.scenario_instrument_present_values(
+            np.array([], dtype=np.float64),
+            np.array([], dtype=np.float64),
+            np.array([], dtype=np.int64),
+            np.array([0.0, 1.0]),
+            np.array([0.02, 0.02]),
+            np.zeros((1, 2)),
+        )
+
+
+def test_native_scenario_changes_validate_base_and_preserve_empty_segments() -> None:
+    native = qfin._native.require()
+    times = np.array([1.0])
+    amounts = np.array([100.0])
+    offsets = np.array([0, 0, 1, 1], dtype=np.int64)
+    nodes = np.array([0.0, 1.0])
+    rates = np.array([0.02, 0.02])
+    shocks = np.array([[0.0, 0.0], [1.0e-12, 1.0e-12]])
+    values = native.scenario_instrument_present_values(
+        times, amounts, offsets, nodes, rates, shocks, changes_from_base=True
+    )
+    np.testing.assert_array_equal(values[:, [0, 2]], np.zeros((2, 2)))
+    assert values[0, 1] == pytest.approx(100 * np.exp(-0.02), rel=2.0e-15)
+    assert values[1, 1] == pytest.approx(
+        100 * np.exp(-0.02) * np.expm1(-1.0e-12), rel=2.0e-15, abs=0.0
+    )
+    with pytest.raises(ValueError, match="base scenario must contain zero shocks"):
+        native.scenario_instrument_present_values(
+            times, amounts, offsets, nodes, rates, shocks[1:], changes_from_base=True
+        )
+    empty = native.scenario_instrument_present_values(
+        times, amounts, offsets, nodes, rates, np.empty((0, 2)), changes_from_base=True
+    )
+    assert empty.shape == (0, 3)
+
+
+def test_native_output_owns_storage_after_subsequent_calls_and_collection() -> None:
+    import gc
+
+    native = qfin._native.require()
+    times = np.array([1.])
+    amounts = np.array([100.])
+    offsets = np.array([0, 1], dtype=np.int64)
+    nodes = np.array([0., 1.])
+    rates = np.array([.02, .02])
+    shocks = np.zeros((128, 2))
+    retained = native.scenario_instrument_present_values(times, amounts, offsets,
+                                                        nodes, rates, shocks)
+    assert retained.flags.owndata and retained.flags.c_contiguous
+    assert retained.base is None
+    for _ in range(5):
+        native.scenario_instrument_present_values(times, 2*amounts, offsets, nodes, rates, shocks)
+    gc.collect()
+    np.testing.assert_allclose(retained, np.full((128, 1), 100*np.exp(-.02)), rtol=2e-15)

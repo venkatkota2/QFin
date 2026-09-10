@@ -1,0 +1,23 @@
+{
+  "compiler": "/usr/bin/g++",
+  "compile_flags": [
+    "-O3",
+    "-DNDEBUG",
+    "-std=c++20",
+    "-fPIC",
+    "-fvisibility=hidden",
+    "-O3",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+    "-Wshadow",
+    "-Wconversion",
+    "-Wsign-conversion",
+    "-flto=auto",
+    "-fno-fat-lto-objects"
+  ],
+  "configuration": "Release; QFIN_STRICT_WARNINGS=ON; QFIN_ENABLE_SANITIZERS=OFF",
+  "source": "CMake compile_commands.json from the editable build used for final verification",
+  "cpp_standard": "C++20"
+}

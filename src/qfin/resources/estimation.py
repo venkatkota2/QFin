@@ -4,6 +4,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from qfin._validation import require_integer, require_integer_sequence
+
 BackendMode = Literal["compressed", "structured", "dense"]
 
 
@@ -76,35 +78,36 @@ def estimate_resources(
 ) -> ResourceReport:
     """Estimate resources for a non-adaptive MLAE execution."""
 
-    powers = tuple(int(power) for power in schedule)
-    if not powers or any(power < 0 for power in powers):
+    powers = require_integer_sequence(schedule, "schedule", minimum=0)
+    if not powers:
         raise ValueError("schedule must contain non-negative Grover powers")
     if len(set(powers)) != len(powers):
         raise ValueError("schedule powers must be unique")
-    if shots <= 0:
-        raise ValueError("shots must be positive")
-    if data_qubits < 1:
-        raise ValueError("data_qubits must be positive")
+    shot_count = require_integer(shots, "shots", minimum=1)
+    qubit_count = require_integer(data_qubits, "data_qubits", minimum=1)
     if backend_mode not in ("compressed", "structured", "dense"):
         raise ValueError("backend_mode must be 'compressed', 'structured', or 'dense'")
 
     max_power = max(powers)
-    oracle_queries = shots * sum(2 * power + 1 for power in powers)
-    joint_dimension = 2 ** (data_qubits + 1)
+    oracle_queries = shot_count * sum(2 * power + 1 for power in powers)
+    joint_dimension = 2 ** (qubit_count + 1)
 
-    grid_points = 2**data_qubits
-    if payoff_terms is not None and not 0 <= payoff_terms <= grid_points:
-        raise ValueError("payoff_terms must lie between zero and the grid size")
+    grid_points = 2**qubit_count
+    resolved_payoff_terms = (
+        None
+        if payoff_terms is None
+        else require_integer(payoff_terms, "payoff_terms", minimum=0, maximum=grid_points)
+    )
 
     if backend_mode == "compressed":
         work_qubits = 1
-        total_qubits = data_qubits + 2
+        total_qubits = qubit_count + 2
         distribution_rotations = 0
-        distribution_gates = data_qubits
-        payoff_rotations = grid_points if payoff_terms is None else payoff_terms
+        distribution_gates = qubit_count
+        payoff_rotations = grid_points if resolved_payoff_terms is None else resolved_payoff_terms
         state_preparation_rotations = payoff_rotations
         state_preparation_gates = distribution_gates + payoff_rotations
-        register_qubits = data_qubits + 1
+        register_qubits = qubit_count + 1
         zero_reflection_operations = 2 * register_qubits + 3
         max_gates = (2 * max_power + 1) * state_preparation_gates
         max_gates += max_power * (zero_reflection_operations + 1)
@@ -113,12 +116,12 @@ def estimate_resources(
         estimate_kind = "quantile_walsh_pauli_logical_estimate"
     elif backend_mode == "structured":
         work_qubits = 1
-        total_qubits = data_qubits + 2
+        total_qubits = qubit_count + 2
         distribution_rotations = grid_points - 1
         distribution_gates = distribution_rotations
         payoff_rotations = grid_points
         state_preparation_rotations = distribution_rotations + payoff_rotations
-        register_qubits = data_qubits + 1
+        register_qubits = qubit_count + 1
         zero_reflection_operations = 2 * register_qubits + 3
         max_gates = (2 * max_power + 1) * state_preparation_rotations
         max_gates += max_power * (zero_reflection_operations + 1)
@@ -127,7 +130,7 @@ def estimate_resources(
         estimate_kind = "structured_multiplexed_rotation_logical_estimate"
     else:
         work_qubits = 0
-        total_qubits = data_qubits + 1
+        total_qubits = qubit_count + 1
         distribution_rotations = 0
         distribution_gates = 0
         payoff_rotations = 0
@@ -140,7 +143,7 @@ def estimate_resources(
         estimate_kind = "dense_householder_reference_estimate"
 
     return ResourceReport(
-        data_qubits=data_qubits,
+        data_qubits=qubit_count,
         objective_qubits=1,
         work_qubits=work_qubits,
         estimation_qubits=0,
@@ -148,8 +151,8 @@ def estimate_resources(
         grid_points=grid_points,
         schedule=powers,
         circuits=len(powers),
-        shots_per_circuit=shots,
-        total_shots=shots * len(powers),
+        shots_per_circuit=shot_count,
+        total_shots=shot_count * len(powers),
         oracle_queries=oracle_queries,
         estimated_state_preparation_rotations=state_preparation_rotations,
         estimated_max_primitive_gates=max_gates,

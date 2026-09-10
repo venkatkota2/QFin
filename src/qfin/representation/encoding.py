@@ -8,6 +8,7 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._validation import readonly_float64, require_integer
 from qfin.finance.distributions import Distribution, EmpiricalDistribution
 
 Objective = Literal["expectation"] | Callable[[NDArray[np.float64]], NDArray[np.float64]]
@@ -23,21 +24,44 @@ class DistributionEncoding:
     lower_bound: float
     upper_bound: float
     tail_probability: float
-    discretization_error: float
+    discretization_error: float | None
     mean_error: float
     objective: str
     encoding_method: str = "probability_amplitude"
     state_preparation_method: str = "probability_tree_multiplexed_ry"
 
     def __post_init__(self) -> None:
-        grid = np.asarray(self.grid, dtype=np.float64).reshape(-1)
-        probabilities = np.asarray(self.probabilities, dtype=np.float64).reshape(-1)
-        if grid.shape != probabilities.shape or grid.size != 2**self.qubits:
+        qubits = require_integer(self.qubits, "qubits", minimum=1)
+        grid = readonly_float64(self.grid).reshape(-1)
+        probabilities = readonly_float64(self.probabilities).reshape(-1)
+        if grid.shape != probabilities.shape or grid.size != 2**qubits:
             raise ValueError("grid and probabilities must each contain 2**qubits values")
-        if np.any(probabilities < 0) or not np.isclose(np.sum(probabilities), 1.0):
+        if not np.all(np.isfinite(grid)):
+            raise ValueError("grid values must be finite")
+        probability_total = float(np.sum(probabilities, dtype=np.float64))
+        if (
+            not np.all(np.isfinite(probabilities))
+            or np.any(probabilities < 0)
+            or not np.isclose(probability_total, 1.0, rtol=0.0, atol=1.0e-12)
+        ):
             raise ValueError("probabilities must be non-negative and sum to one")
-        grid.setflags(write=False)
-        probabilities.setflags(write=False)
+        if (
+            not isfinite(self.lower_bound)
+            or not isfinite(self.upper_bound)
+            or self.lower_bound > self.upper_bound
+        ):
+            raise ValueError("encoding bounds must be finite and ordered")
+        if not isfinite(self.tail_probability) or not 0.0 <= self.tail_probability < 1.0:
+            raise ValueError("tail_probability must lie in [0, 1)")
+        if self.discretization_error is not None and (
+            np.isnan(self.discretization_error) or self.discretization_error < 0.0
+        ):
+            raise ValueError("discretization_error must be non-negative or None")
+        if not isfinite(self.mean_error) or self.mean_error < 0.0:
+            raise ValueError("mean_error must be finite and non-negative")
+        if not self.objective or not self.encoding_method or not self.state_preparation_method:
+            raise ValueError("encoding metadata labels must not be empty")
+        object.__setattr__(self, "qubits", qubits)
         object.__setattr__(self, "grid", grid)
         object.__setattr__(self, "probabilities", probabilities)
 
@@ -53,7 +77,7 @@ class DistributionEncoding:
         """Return amplitudes whose squared magnitudes equal the probabilities."""
         return np.sqrt(self.probabilities)
 
-    def to_dict(self) -> dict[str, float | int | str]:
+    def to_dict(self) -> dict[str, float | int | str | None]:
         return {
             "encoding_method": self.encoding_method,
             "state_preparation_method": self.state_preparation_method,
@@ -133,7 +157,7 @@ def _fixed_encoding(
     tail_probability: float,
     bounds: tuple[float, float] | None,
     objective: Objective,
-    convergence_error: float,
+    convergence_error: float | None,
 ) -> DistributionEncoding:
     lower, upper = _domain_bounds(distribution, tail_probability, bounds)
     edges = np.linspace(lower, upper, 2**qubits + 1, dtype=np.float64)
@@ -186,31 +210,43 @@ def encode(
         raise ValueError("target_error must be finite and greater than zero")
     if not 0 <= tail_probability < 1:
         raise ValueError("tail_probability must lie in [0, 1)")
-    if min_qubits < 1 or max_qubits < min_qubits:
+    minimum_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
+    maximum_qubits = require_integer(max_qubits, "max_qubits", minimum=minimum_qubits)
+    selected_qubits = (
+        None
+        if qubits is None
+        else require_integer(
+            qubits,
+            "qubits",
+            minimum=minimum_qubits,
+            maximum=maximum_qubits,
+        )
+    )
+    if maximum_qubits < minimum_qubits:
         raise ValueError("require 1 <= min_qubits <= max_qubits")
-    if qubits is not None and not min_qubits <= qubits <= max_qubits:
-        raise ValueError("qubits must lie between min_qubits and max_qubits")
 
-    if qubits is not None:
-        return _fixed_encoding(
+    if selected_qubits is not None:
+        encoding = _fixed_encoding(
             distribution,
-            qubits=qubits,
+            qubits=selected_qubits,
             tail_probability=tail_probability,
             bounds=bounds,
             objective=objective,
-            convergence_error=0.0,
+            convergence_error=None,
         )
+        _objective_values(objective, encoding.grid)
+        return encoding
 
     previous_value: float | None = None
     selected: DistributionEncoding | None = None
-    for candidate in range(min_qubits, max_qubits + 1):
+    for candidate in range(minimum_qubits, maximum_qubits + 1):
         encoding = _fixed_encoding(
             distribution,
             qubits=candidate,
             tail_probability=tail_probability,
             bounds=bounds,
             objective=objective,
-            convergence_error=float("inf"),
+            convergence_error=None,
         )
         values = _objective_values(objective, encoding.grid)
         current_value = float(np.dot(encoding.probabilities, values))
@@ -242,7 +278,7 @@ def _fixed_quantile_encoding(
     qubits: int,
     tail_probability: float,
     objective: Objective,
-    convergence_error: float,
+    convergence_error: float | None,
 ) -> DistributionEncoding:
     """Build midpoint quadrature in probability space.
 
@@ -308,29 +344,41 @@ def encode_quantiles(
         raise ValueError("target_error must be finite and greater than zero")
     if not 0 < tail_probability < 1:
         raise ValueError("tail_probability must lie strictly between zero and one")
-    if min_qubits < 1 or max_qubits < min_qubits:
+    minimum_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
+    maximum_qubits = require_integer(max_qubits, "max_qubits", minimum=minimum_qubits)
+    selected_qubits = (
+        None
+        if qubits is None
+        else require_integer(
+            qubits,
+            "qubits",
+            minimum=minimum_qubits,
+            maximum=maximum_qubits,
+        )
+    )
+    if maximum_qubits < minimum_qubits:
         raise ValueError("require 1 <= min_qubits <= max_qubits")
-    if qubits is not None and not min_qubits <= qubits <= max_qubits:
-        raise ValueError("qubits must lie between min_qubits and max_qubits")
 
-    if qubits is not None:
-        return _fixed_quantile_encoding(
+    if selected_qubits is not None:
+        encoding = _fixed_quantile_encoding(
             distribution,
-            qubits=qubits,
+            qubits=selected_qubits,
             tail_probability=tail_probability,
             objective=objective,
-            convergence_error=0.0,
+            convergence_error=None,
         )
+        _objective_values(objective, encoding.grid)
+        return encoding
 
     previous_value: float | None = None
     selected: DistributionEncoding | None = None
-    for candidate in range(min_qubits, max_qubits + 1):
+    for candidate in range(minimum_qubits, maximum_qubits + 1):
         encoding = _fixed_quantile_encoding(
             distribution,
             qubits=candidate,
             tail_probability=tail_probability,
             objective=objective,
-            convergence_error=float("inf"),
+            convergence_error=None,
         )
         values = _objective_values(objective, encoding.grid)
         current_value = float(np.mean(values))

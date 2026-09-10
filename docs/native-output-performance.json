@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "date_utc": "2026-09-09T17:21:54.377606+00:00",
+    "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "architecture": "x86_64",
+    "python": "3.12.14",
+    "qfin": "1.1.1",
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "compiler": "GNU 13.3.0",
+    "compiler_configuration": "not supplied to benchmark process",
+    "compiler_flags": "-O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects",
+    "pennylane": "0.45.1",
+    "pennylane_lightning": "0.45.0",
+    "thread_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    },
+    "native_threads": 1,
+    "compiler_flags_source": "docs/build-configuration.json; same release/strict build configuration"
+  },
+  "benchmarks": [
+    {
+      "benchmark": "Private native output investigation",
+      "problem_size": "100,000 scenarios x one zero-time cash flow",
+      "reference": "Audited-main vector then array",
+      "qfin_engine": "Current NumPy-owned output",
+      "reference_seconds": 0.0011292890000049738,
+      "qfin_seconds": 0.0012349060000360623,
+      "speedup": 0.9144736522229188,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-09T17:21:54.377606+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "AMD EPYC 9V74 80-Core Processor",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.1",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "-O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1,
+        "compiler_flags_source": "docs/build-configuration.json; same release/strict build configuration"
+      }
+    },
+    {
+      "benchmark": "Private native output investigation",
+      "problem_size": "1,000,000 scenarios x one zero-time cash flow",
+      "reference": "Audited-main vector then array",
+      "qfin_engine": "Current NumPy-owned output",
+      "reference_seconds": 0.011195969000027617,
+      "qfin_seconds": 0.012008629999968434,
+      "speedup": 0.9323269182293938,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-09T17:21:54.377606+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "AMD EPYC 9V74 80-Core Processor",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.1",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "-O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1,
+        "compiler_flags_source": "docs/build-configuration.json; same release/strict build configuration"
+      }
+    }
+  ],
+  "baseline_commit": "3dba3b3803f54891d12ad2c138b4dcc276de9d42",
+  "interpretation": "Private batched-call investigation, not a public API speedup. Current code also validates stressed-node discounts and output finiteness. The difference cannot be attributed entirely to output-copy removal. Retained change saves one scenario-length vector and copy; no capsule ownership transfer is used."
+}

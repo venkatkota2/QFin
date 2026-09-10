@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from math import isclose
-from operator import index as integer_index
 from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 from qfin import _native
+from qfin._validation import require_integer
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import Engine
 from qfin.finance.life import (
@@ -69,7 +69,7 @@ class LifeSensitivityReport:
     lapse_absolute_bump: float
     rate_absolute_bump: float
     expense_relative_bump: float
-    engine: Literal["numpy", "native"]
+    engine: Literal["numpy", "native", "mixed"]
 
     def to_dict(self) -> dict[str, float | str]:
         return {
@@ -260,18 +260,16 @@ def project_liability_scenarios(
     ]
     if mismatched:
         raise ValueError("all policies must match the supplied mortality-table category")
-    try:
-        scenario_chunk = integer_index(scenario_chunk_size)
-        policy_chunk = integer_index(policy_chunk_size)
-    except TypeError as exc:
-        raise ValueError("chunk sizes must be positive integers") from exc
-    if (
-        isinstance(scenario_chunk_size, bool)
-        or isinstance(policy_chunk_size, bool)
-        or scenario_chunk <= 0
-        or policy_chunk <= 0
-    ):
-        raise ValueError("chunk sizes must be positive integers")
+    scenario_chunk = require_integer(
+        scenario_chunk_size,
+        "scenario_chunk_size",
+        minimum=1,
+    )
+    policy_chunk = require_integer(
+        policy_chunk_size,
+        "policy_chunk_size",
+        minimum=1,
+    )
     if engine not in ("auto", "numpy", "native"):
         raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     workload = scenarios.scenario_count * model_points.model_point_count * maximum_term
