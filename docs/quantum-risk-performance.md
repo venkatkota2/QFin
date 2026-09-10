@@ -1,5 +1,8 @@
 # QFin Quantum-Risk Simulator Performance
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 These are measured simulator timings, not a hardware or quantum-advantage claim.
 
 ## Environment

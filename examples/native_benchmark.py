@@ -8,16 +8,21 @@ Python public-API conversion and the Python/C++ boundary, not only kernel time.
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import platform
+import shlex
 import statistics
 import sys
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from math import exp
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 
@@ -33,6 +38,8 @@ class Measurement:
     reference_seconds: float
     native_seconds: float
     maximum_difference: float
+    reference_repetitions: int | None = None
+    qfin_repetitions: int | None = None
 
     @property
     def speedup(self) -> float:
@@ -63,6 +70,18 @@ def _package_version(name: str) -> str:
         return version(name)
     except PackageNotFoundError:
         return "not installed"
+
+
+def _compiler_flags() -> str:
+    """Read captured build options; do not guess flags from the compiler name."""
+    path = os.environ.get("QFIN_COMPILE_COMMANDS")
+    if path is None:
+        return "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json"
+    commands = json.loads(Path(path).read_text())
+    arguments = commands[0].get("arguments") or shlex.split(commands[0]["command"])
+    return " ".join(argument for argument in arguments if argument.startswith(
+        ("-O", "-g", "-W", "-f", "-std=", "-DNDEBUG", "/O", "/W", "/std:")
+    ))
 
 
 def _cpu_description() -> str:
@@ -101,7 +120,7 @@ def _python_bond_metrics(
 
 
 def _bond_measurements(full: bool, repeats: int) -> list[Measurement]:
-    sizes = [1, 100, 10_000, 100_000] if full else [1, 100, 10_000]
+    sizes = [1, 100, 1_000, 10_000, 100_000] if full else [1, 100, 1_000, 10_000]
     curve = qfin.YieldCurve(
         [0, 1, 5, 10, 30], [0.02, 0.025, 0.03, 0.035, 0.04]
     )
@@ -143,7 +162,7 @@ def _bond_measurements(full: bool, repeats: int) -> list[Measurement]:
                 difference,
             )
         )
-        if size <= (100_000 if full else 100):
+        if size <= (1_000 if full else 100):
             python_result, python_seconds = _once_with_result(
                 lambda bonds=bonds: _python_bond_metrics(bonds, curve)
             )
@@ -164,6 +183,7 @@ def _bond_measurements(full: bool, repeats: int) -> list[Measurement]:
                     python_seconds,
                     native_seconds,
                     float(np.max(np.abs(python_result - native_metrics), initial=0.0)),
+                    reference_repetitions=1,
                 )
             )
     return measurements
@@ -221,13 +241,14 @@ def _life_measurements(full: bool, repeats: int) -> list[Measurement]:
                 reference_seconds,
                 native_seconds,
                 abs(reference.present_value - native.present_value),
+                reference_repetitions=1 if size >= 10_000 else repeats,
             )
         )
     return measurements
 
 
 def _yield_measurements(full: bool, repeats: int) -> list[Measurement]:
-    sizes = [100, 10_000] if full else [100]
+    sizes = [100, 1_000, 10_000, 100_000] if full else [100, 1_000]
     measurements: list[Measurement] = []
     for size in sizes:
         bonds = [
@@ -324,7 +345,7 @@ def _alm_measurements(full: bool, repeats: int) -> list[Measurement]:
 
 
 def _risk_measurements(full: bool, repeats: int) -> list[Measurement]:
-    sizes = [1_000, 10_000, 100_000] if full else [1_000, 10_000]
+    sizes = [1_000, 10_000, 100_000, 1_000_000] if full else [1_000, 10_000]
     rng = np.random.default_rng(7)
     measurements: list[Measurement] = []
     for size in sizes:
@@ -376,44 +397,136 @@ def _risk_measurements(full: bool, repeats: int) -> list[Measurement]:
 
 
 def _scenario_measurements(full: bool, repeats: int) -> list[Measurement]:
-    sizes = [1_000, 10_000] if full else [1_000]
-    curve = qfin.YieldCurve(
-        [0, 1, 5, 10, 30], [0.02, 0.025, 0.03, 0.035, 0.04]
-    )
-    bonds = [qfin.FixedRateBond(1 + index % 20, 0.04) for index in range(1_000)]
-    model = qfin.ALMModel(
-        qfin.AssetPortfolio(bonds, np.ones(len(bonds))),
-        qfin.LiabilityPortfolio.from_arrays(
-            np.arange(1, 31, dtype=float), np.linspace(100, 500, 30)
-        ),
-        curve,
-    )
+    shapes = [(100, 1_000, 5), (1_000, 1_000, 9)]
+    if full:
+        shapes += [(1_000, 10_000, 17), (10_000, 1_000, 17)]
     measurements: list[Measurement] = []
-    for size in sizes:
-        scenarios = qfin.RateScenarioSet.parallel(
-            curve, np.linspace(-0.02, 0.02, size)
+    for assets, scenario_count, nodes in shapes:
+        curve = qfin.YieldCurve(np.linspace(0, 50, nodes), np.linspace(-0.01, 0.06, nodes))
+        bonds = [qfin.FixedRateBond(
+            1 + index % 40, 0.04, frequency=(1, 2, 4)[index % 3],
+        ) for index in range(assets)]
+        model = qfin.ALMModel(
+            qfin.AssetPortfolio(bonds, np.ones(assets)),
+            qfin.LiabilityPortfolio.from_arrays(
+                np.arange(1, 31, dtype=float), np.linspace(100, 500, 30),
+            ),
+            curve,
         )
-        reference = model.run_scenarios(scenarios, engine="numpy")
-        native = model.run_scenarios(scenarios, engine="native")
-        reference_seconds = _seconds(
-            lambda scenarios=scenarios: model.run_scenarios(scenarios, engine="numpy"),
-            repeats,
+        scenarios = qfin.RateScenarioSet(
+            np.random.default_rng(412).normal(0, 0.01, (scenario_count, nodes))
         )
-        native_seconds = _seconds(
-            lambda scenarios=scenarios: model.run_scenarios(scenarios, engine="native"),
-            repeats,
+        case_repeats = 1 if assets * scenario_count >= 10_000_000 else repeats
+        reference, reference_seconds = _measure_result(
+            partial(model.run_scenarios, scenarios, engine="numpy"), case_repeats,
         )
-        measurements.append(
-            Measurement(
-                "ALM scenarios",
-                f"1,000 bonds x {size:,} scenarios",
-                "NumPy",
-                "QFin C++",
-                reference_seconds,
-                native_seconds,
-                float(np.max(np.abs(reference.surplus - native.surplus))),
+        native, native_seconds = _measure_result(
+            partial(model.run_scenarios, scenarios, engine="native"), case_repeats,
+        )
+        assert isinstance(reference, qfin.ALMScenarioResult)
+        assert isinstance(native, qfin.ALMScenarioResult)
+        measurements.append(Measurement(
+            "ALM scenarios", f"{assets:,} bonds x {scenario_count:,} scenarios x {nodes} nodes",
+            "NumPy", "QFin C++", reference_seconds, native_seconds,
+            float(np.max(np.abs(reference.surplus - native.surplus))),
+            case_repeats, case_repeats,
+        ))
+    return measurements
+
+
+def _measure_result(function: Callable[[], object], repeats: int) -> tuple[object, float]:
+    start = time.perf_counter()
+    result = function()
+    elapsed = time.perf_counter() - start
+    if repeats > 1:
+        elapsed = _seconds(function, repeats, warmup=False)
+    return result, elapsed
+
+
+def _brute_force_key_rate(
+    bonds: Sequence[qfin.FixedRateBond], curve: qfin.YieldCurve,
+) -> np.ndarray:
+    base = qfin.price_bonds(bonds, curve, engine="numpy").dirty_prices
+    columns = []
+    for index in range(curve.times.size):
+        shock = np.zeros(curve.times.size)
+        shock[index] = 1e-4
+        down = qfin.price_bonds(bonds, curve.shifted(-shock), engine="numpy").dirty_prices
+        up = qfin.price_bonds(bonds, curve.shifted(shock), engine="numpy").dirty_prices
+        columns.append((down - up) / 2)
+    down = qfin.price_bonds(bonds, curve.shifted(-1e-4), engine="numpy").dirty_prices
+    up = qfin.price_bonds(bonds, curve.shifted(1e-4), engine="numpy").dirty_prices
+    return np.column_stack([base, *columns, (down - up) / 2])
+
+
+def _key_rate_measurements(full: bool, repeats: int) -> list[Measurement]:
+    shapes = [(1, 5), (100, 5), (100, 17), (1_000, 17)]
+    if full:
+        shapes += [(1_000, 33), (5_000, 17), (5_000, 33), (10_000, 33)]
+    measurements = []
+    for count, nodes in shapes:
+        curve = qfin.YieldCurve(np.linspace(0, 50, nodes), np.linspace(-0.01, 0.05, nodes))
+        bonds = [qfin.FixedRateBond(
+            1 + index % 40, 0.03, frequency=(1, 2, 4)[index % 3],
+        ) for index in range(count)]
+        case_repeats = repeats
+        reference, reference_seconds = _measure_result(
+            partial(_brute_force_key_rate, bonds, curve), case_repeats,
+        )
+        native, native_seconds = _measure_result(
+            partial(qfin.key_rate_risk, bonds, curve, engine="native"), case_repeats,
+        )
+        numpy_result, numpy_seconds = _measure_result(
+            partial(qfin.key_rate_risk, bonds, curve, engine="numpy"), case_repeats,
+        )
+        assert isinstance(reference, np.ndarray)
+        assert isinstance(native, qfin.KeyRateRiskReport)
+        assert isinstance(numpy_result, qfin.KeyRateRiskReport)
+        actual = np.column_stack([native.base_prices, native.key_rate_dv01, native.parallel_dv01])
+        measurements.append(Measurement(
+            "Key-rate risk", f"{count:,} bonds x {nodes} nodes",
+            "Brute-force public repricing", "Prepared QFin C++", reference_seconds, native_seconds,
+            float(np.max(np.abs(reference - actual))), case_repeats, case_repeats,
+        ))
+        numpy_values = np.column_stack([
+            numpy_result.base_prices, numpy_result.key_rate_dv01, numpy_result.parallel_dv01,
+        ])
+        measurements.append(Measurement(
+            "Key-rate engine comparison", f"{count:,} bonds x {nodes} nodes",
+            "Prepared NumPy", "Prepared QFin C++", numpy_seconds, native_seconds,
+            float(np.max(np.abs(numpy_values - actual))), case_repeats, case_repeats,
+        ))
+    return measurements
+
+
+def _curve_measurements(_full: bool, repeats: int) -> list[Measurement]:
+    measurements = []
+    for method in qfin.CurveInterpolation:
+        for dated in (False, True):
+            curve = qfin.YieldCurve(
+                [0, 1, 10, 50], [-0.02, 0.08, 0.03, -0.005],
+                interpolation=method, extrapolation="flat_forward",
+                valuation_date="2025-04-30" if dated else None,
             )
-        )
+            if dated:
+                bonds = [qfin.FixedRateBond.from_dates(
+                    "2024-01-31", f"{2026 + index % 40}-01-31", 0.04,
+                    frequency=(1, 2, 4)[index % 3], end_of_month=True,
+                ) for index in range(1_000)]
+            else:
+                bonds = [qfin.FixedRateBond(
+                    0.25 + index % 50, 0.04, frequency=(1, 2, 4)[index % 3],
+                ) for index in range(1_000)]
+            reference = qfin.price_bonds(bonds, curve, engine="numpy")
+            automatic = qfin.price_bonds(bonds, curve, engine="auto")
+            measurements.append(Measurement(
+                "Curve semantics",
+                f"1,000 {'dated' if dated else 'floating'} bonds; {method.value}",
+                "NumPy", "auto",
+                _seconds(partial(qfin.price_bonds, bonds, curve, engine="numpy"), repeats),
+                _seconds(partial(qfin.price_bonds, bonds, curve, engine="auto"), repeats),
+                float(np.max(np.abs(reference.dirty_prices - automatic.dirty_prices))),
+            ))
     return measurements
 
 
@@ -446,12 +559,20 @@ def _quantum_measurements(repeats: int) -> list[Measurement]:
             _seconds(lambda: default_backend.probability(0), quantum_repeats),
             _seconds(lambda: lightning_backend.probability(0), quantum_repeats),
             abs(default_probability - lightning_probability),
+            quantum_repeats, quantum_repeats,
         )
     ]
 
 
-def _markdown(measurements: list[Measurement], repeats: int) -> str:
-    info = qfin.system_info()
+def _markdown(
+    measurements: list[Measurement], repeats: int,
+    *, environment: dict[str, object] | None = None,
+) -> str:
+    # Rendering saved evidence must not replace its environment with the renderer's.
+    if environment is None:
+        environment = cast(dict[str, object], _structured_report([], repeats)["environment"])
+    threads = cast(dict[str, object], environment["thread_environment"])
+    private = all(item.section.startswith("Private ") for item in measurements)
     fixed_public = {
         measurement.problem: measurement
         for measurement in measurements
@@ -473,27 +594,32 @@ def _markdown(measurements: list[Measurement], repeats: int) -> str:
         if measurement.section == "Risk aggregation"
     ]
     lines = [
-        "# QFin native performance",
+        "# QFin performance evidence",
         "",
-        "These are measured end-to-end public-API timings; no result is fabricated. "
-        "Object-to-buffer conversion and Python/C++ boundary costs are included.",
+        ("Private batched-kernel investigation; these are not public-API speedup measurements."
+         if private else
+         "Measured end-to-end public-API timings, including object-to-buffer conversion "
+         "and Python/C++ boundary costs."),
         "",
         "## Environment",
         "",
-        f"- Measurement date (UTC): {datetime.now(UTC).date().isoformat()}",
-        f"- OS: {platform.platform()}",
-        f"- CPU: {_cpu_description()}",
-        f"- Architecture: {platform.machine()}",
-        f"- Python: {sys.version.split()[0]}",
-        f"- QFin: {qfin.__version__}",
-        f"- NumPy: {np.__version__}",
-        f"- PennyLane: {_package_version('pennylane')}",
-        f"- PennyLane-Lightning: {_package_version('pennylane-lightning')}",
-        f"- QFin native: {info['native_backend']} ({info['native_cpp_standard']})",
-        f"- C++ compiler: {info['native_compiler']}",
+        f"- Measurement date (UTC): {environment['date_utc']}",
+        f"- OS: {environment['os']}",
+        f"- CPU: {environment['cpu']}",
+        f"- Architecture: {environment['architecture']}",
+        f"- Python: {environment['python']}",
+        f"- QFin: {environment['qfin']}",
+        f"- NumPy: {environment['numpy']}",
+        f"- SciPy: {environment['scipy']}",
+        f"- Thread environment: OMP={threads['OMP_NUM_THREADS']}; "
+        f"OpenBLAS={threads['OPENBLAS_NUM_THREADS']}; MKL={threads['MKL_NUM_THREADS']}",
+        f"- PennyLane: {environment['pennylane']}",
+        f"- PennyLane-Lightning: {environment['pennylane_lightning']}",
+        f"- C++ compiler: {environment['compiler']}",
+        f"- Compiler flags: {environment['compiler_flags']}",
         f"- Requested repetitions: median of {repeats}",
-        "- Large Python/NumPy references: one timed run",
-        "- Quantum device rows: median of at least 5 runs",
+        "- Per-row reference and QFin repetition counts are recorded in JSON; "
+        "some large reference cases use one timed run.",
         "- Native threading: deterministic single-threaded execution (no OpenMP)",
         "",
         "## Results",
@@ -515,10 +641,10 @@ def _markdown(measurements: list[Measurement], repeats: int) -> str:
             "## Numerical acceptance",
             "",
             "`Max difference` is the largest absolute difference over the compared "
-            "outputs. Parity tests use relative tolerance `1e-13` for fixed-income, "
-            "ALM, scenario, and life outputs (`1e-11` for finite-difference DV01). "
-            "Weighted expected shortfall uses an absolute `1e-10` large-batch bound; "
-            "analytical cases and all other risk statistics use tighter tolerances.",
+            "outputs. Numerical and financial-unit tolerances vary by quantity and "
+            "workload; see tests/native, tests/finance and docs/validation.md. "
+            "A small absolute difference alone is not an acceptance criterion. "
+            "Correctness tests are run before accepting a measured implementation change.",
             "",
             "## Interpretation",
             "",
@@ -553,17 +679,11 @@ def _markdown(measurements: list[Measurement], repeats: int) -> str:
             f"{max(item.speedup for item in scenarios):.2f}x."
         )
     if risk:
-        largest_risk_case = risk[-1]
-        if largest_risk_case.speedup < 1.0:
-            lines.append(
-                "Native tail-risk aggregation was slower in the largest measured case; "
-                "automatic risk dispatch therefore remains on NumPy."
-            )
-        else:
-            lines.append(
-                "Tail-risk timings remain close enough that automatic risk dispatch "
-                "stays on NumPy pending a stable crossover across environments."
-            )
+        lines.append(
+            "Risk auto-dispatch uses native when available. The displayed comparisons "
+            "show whether that policy fits this runner; near-equal timings are not a "
+            "portable speedup claim."
+        )
     lines.extend(
         [
             "The quantum row compares PennyLane devices only; Lightning C++ remains the "
@@ -576,29 +696,65 @@ def _markdown(measurements: list[Measurement], repeats: int) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _structured_report(measurements: list[Measurement], repeats: int) -> dict[str, object]:
+    info = qfin.system_info()
+    environment = {
+        "date_utc": datetime.now(UTC).isoformat(),
+        "os": platform.platform(), "cpu": _cpu_description(), "architecture": platform.machine(),
+        "python": sys.version.split()[0], "qfin": qfin.__version__, "numpy": np.__version__,
+        "scipy": _package_version("scipy"), "compiler": info["native_compiler"],
+        "compiler_configuration": os.environ.get("CMAKE_ARGS", "not supplied to benchmark process"),
+        "compiler_flags": _compiler_flags(),
+        "pennylane": _package_version("pennylane"),
+        "pennylane_lightning": _package_version("pennylane-lightning"),
+        "thread_environment": {name: os.environ.get(name, "unset") for name in
+                               ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")},
+        "native_threads": 1,
+    }
+    return {"schema_version": 1, "environment": environment, "benchmarks": [{
+        "benchmark": item.section, "problem_size": item.problem,
+        "reference": item.reference_name, "qfin_engine": item.accelerated_name,
+        "reference_seconds": item.reference_seconds, "qfin_seconds": item.native_seconds,
+        "speedup": item.speedup, "max_difference": item.maximum_difference,
+        "reference_repetitions": item.reference_repetitions or repeats,
+        "qfin_repetitions": item.qfin_repetitions or repeats,
+        "environment": environment,
+    } for item in measurements]}
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    sections: dict[str, Callable[[bool, int], list[Measurement]]] = {
+        "bonds": _bond_measurements, "yields": _yield_measurements,
+        "alm": _alm_measurements, "life": _life_measurements,
+        "scenarios": _scenario_measurements, "risk": _risk_measurements,
+        "key-rate": _key_rate_measurements, "curves": _curve_measurements,
+        "quantum": lambda _full, repeats: _quantum_measurements(repeats),
+    }
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--section", choices=tuple(sections), action="append")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--json-output", type=Path)
     args = parser.parse_args(argv)
     if args.repeats <= 0:
         parser.error("--repeats must be positive")
     if not qfin.system_info()["native_extension"]:
         parser.error("the QFin native extension must be installed")
-    measurements = [
-        *_bond_measurements(args.full, args.repeats),
-        *_yield_measurements(args.full, args.repeats),
-        *_alm_measurements(args.full, args.repeats),
-        *_life_measurements(args.full, args.repeats),
-        *_scenario_measurements(args.full, args.repeats),
-        *_risk_measurements(args.full, args.repeats),
-        *_quantum_measurements(args.repeats),
-    ]
-    report = _markdown(measurements, args.repeats)
-    if args.output is not None:
-        args.output.write_text(report, encoding="utf-8")
-    print(report)
+    measurements: list[Measurement] = []
+    for name in args.section or tuple(sections):
+        print(f"Benchmarking {name} (full={args.full}, repeats={args.repeats})",
+              file=sys.stderr, flush=True)
+        measurements.extend(sections[name](args.full, args.repeats))
+        # Checkpoint each completed section so interrupted large runs retain evidence.
+        if args.json_output is not None:
+            args.json_output.write_text(
+                json.dumps(_structured_report(measurements, args.repeats), indent=2) + "\n",
+                encoding="utf-8",
+            )
+        if args.output is not None:
+            args.output.write_text(_markdown(measurements, args.repeats), encoding="utf-8")
+    print(_markdown(measurements, args.repeats))
     return 0
 
 

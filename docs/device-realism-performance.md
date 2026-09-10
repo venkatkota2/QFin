@@ -1,5 +1,8 @@
 # QFin 0.7 device-realism performance
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 All values below were measured by the public QFin API. Timings are medians of 5 runs after one warm-up.
 
 ## Environment

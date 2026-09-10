@@ -1,5 +1,8 @@
 # Structured multivariate payoff oracles (0.9)
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 QFin 0.9 adds a bounded, executable bridge from factorized financial models to
 tail-risk amplitude estimation. Python continues to own financial objects,
 validation, compiler policy, circuit construction, and reporting. QFin-owned

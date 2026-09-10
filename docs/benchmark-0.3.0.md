@@ -1,5 +1,8 @@
 # QFin 0.3.0 numerical demonstration
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 Generated on 2026-08-27 with:
 
 ```bash

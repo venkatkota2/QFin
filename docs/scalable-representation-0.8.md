@@ -1,5 +1,8 @@
 # QFin 0.8: scalable representation research
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 QFin 0.8 addresses one specific bottleneck: a generic multivariate empirical
 distribution requires a number of stored probabilities and preparation angles
 that grows with the full Cartesian product. The release adds working

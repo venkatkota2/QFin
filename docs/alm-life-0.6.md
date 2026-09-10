@@ -1,5 +1,8 @@
 # QFin 0.6: multi-period ALM and life foundations
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 QFin 0.6 extends the finance preprocessing layer while preserving the original
 responsibility boundary:
 

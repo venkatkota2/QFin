@@ -42,3 +42,14 @@ def test_day_counts_are_antisymmetric_and_aliases_are_explicit() -> None:
     assert qfin.DayCountConvention.parse("ACTUAL/360") is qfin.DayCountConvention.ACT_360
     with pytest.raises(ValueError, match="day-count"):
         qfin.year_fraction("2024-01-01", "2025-01-01", "BUS/252")
+
+
+@pytest.mark.parametrize("convention", list(qfin.DayCountConvention))
+def test_day_counts_handle_zero_and_reverse_intervals(convention: str) -> None:
+    assert qfin.day_count("2024-02-29", "2024-02-29", convention) == 0
+    assert qfin.year_fraction("2024-02-29", "2024-02-29", convention) == 0
+    count = qfin.day_count("2023-01-01", "2026-01-01", convention)
+    assert qfin.day_count("2026-01-01", "2023-01-01", convention) == -count
+    if convention == qfin.DayCountConvention.ACT_ACT:
+        assert count == 1096
+        assert qfin.year_fraction("2023-01-01", "2026-01-01", convention) == 3

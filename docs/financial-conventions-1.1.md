@@ -1,5 +1,8 @@
 # Financial conventions foundation
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 This document defines the convention layer introduced for QFin 1.1. It is used
 by dated bond valuation, instrument curve bootstrapping, explicit fixed-income
 risk measures, and the independent validation suite.

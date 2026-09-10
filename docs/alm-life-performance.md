@@ -1,5 +1,8 @@
 # QFin 0.6 ALM and life performance
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 These are measured end-to-end public-API timings. Validation, conversion, chunk dispatch, and result construction are included; no number is fabricated.
 
 ## Environment

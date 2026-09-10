@@ -1,5 +1,8 @@
 # QFin 0.9 structured-oracle performance
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 All values below were produced by `examples/structured_oracle_benchmark.py`.
 They are medians of end-to-end public compiler/runtime calls; no result is fabricated.
 

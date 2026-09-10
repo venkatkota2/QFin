@@ -31,7 +31,9 @@ Settlement = float | DateLike | None
 
 # Current public-API benchmarks show no stable native win for ordinary pricing;
 # yield solving and key-rate repricing have separate, evidence-based policies.
-_AUTO_NATIVE_KEY_RATE_WORKLOAD = 1_000_000
+# At ~1.8M cash-flow/scenario visits, measured engine differences ranged from
+# noise to 1.4x. The 5k-bond/17-node case (~8.8M visits) gave a stable larger win.
+_AUTO_NATIVE_KEY_RATE_WORKLOAD = 8_000_000
 _REDUCEAT_CASHFLOW_THRESHOLD = 4_096
 _SCENARIO_MATRIX_TARGET_ELEMENTS = 8_000_000
 

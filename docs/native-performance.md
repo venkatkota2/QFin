@@ -1,5 +1,8 @@
 # QFin native performance
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 These are measured end-to-end public-API timings; no result is fabricated. Object-to-buffer conversion and Python/C++ boundary costs are included.
 
 ## Environment

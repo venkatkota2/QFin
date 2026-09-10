@@ -1,5 +1,8 @@
 # QFin 0.8 scalable-representation performance
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 All timings below come from public QFin APIs and are medians of 5 runs after one warm-up.
 
 ## Environment

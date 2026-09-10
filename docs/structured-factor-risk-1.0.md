@@ -1,5 +1,8 @@
 # Structured factorized VaR and CVaR (1.0)
 
+> Historical record: this document describes an earlier milestone or measurement.
+> Use the [current documentation index](README.md) for current contracts and performance.
+
 QFin 1.0 extends the 0.9 reversible factor loss register into executable
 factorized VaR and CVaR workflows. It does not introduce another simulator or
 an arbitrary payoff table. QFin constructs finance-specific arithmetic and

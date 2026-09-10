@@ -16,7 +16,7 @@ do not run CMake manually. Then run the complete validation set:
 ```bash
 ruff check .
 mypy src/qfin
-pytest --cov=qfin --cov-report=term-missing --cov-fail-under=78
+pytest --cov=qfin --cov-report=term-missing --cov-fail-under=90
 python -m build
 python examples/native_benchmark.py
 python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
@@ -30,3 +30,8 @@ Every quantum-risk change additionally requires a finite-distribution
 reference, exact state/objective-amplitude tests, deterministic seeded
 simulator tests, logical resource accounting, and documentation that separates
 simulator feasibility from hardware or advantage claims.
+
+The current hardening milestone is feature frozen. Prioritize numerical and
+financial invariants, independent oracles, deterministic native parity, strict
+types and measured public-API performance. Do not relax tolerances or checks to
+accept an optimization. See [current validation](docs/validation.md).

@@ -125,6 +125,39 @@ def test_factor_dependence_inputs_cannot_silently_change_model(
         qfin.GaussianFactorModel(**values)
 
 
+@pytest.mark.parametrize("kwargs,message", [
+    ({"values": np.empty((0, 2))}, "non-empty"),
+    ({"values": [[0, np.nan]]}, "finite"),
+    ({"factor_names": ("a",)}, "one name per factor"),
+    ({"factor_names": ("a", "")}, "non-empty"),
+    ({"factor_names": ("a", "a")}, "unique"),
+    ({"dependence_assumption": ""}, "non-empty"),
+])
+def test_factor_scenarios_validate_direct_construction(
+    kwargs: dict[str, object], message: str,
+) -> None:
+    values = {"values": [[0, 1]], "factor_names": ("a", "b"),
+              "dependence_assumption": "explicit deterministic scenarios"}
+    values.update(kwargs)
+    with pytest.raises(ValueError, match=message):
+        qfin.FactorScenarios(**values)
+
+
+def test_linear_factor_loss_mapping_preserves_order_and_probabilities() -> None:
+    scenarios = qfin.FactorScenarios(
+        [[1, 2], [-1, 3], [0, -2]], ("a", "b"), "explicit deterministic scenarios",
+    )
+    assert scenarios.scenario_count == 3
+    losses = scenarios.linear_loss_distribution([2, -1], intercept=3, probabilities=[1, 2, 1])
+    np.testing.assert_array_equal(losses.losses, [3, -2, 5])
+    np.testing.assert_array_equal(losses.probabilities, [.25, .5, .25])
+    for exposures in ([1], [np.inf, 1]):
+        with pytest.raises(ValueError, match="exposures"):
+            scenarios.linear_loss_distribution(exposures)
+    with pytest.raises(ValueError, match="intercept"):
+        scenarios.linear_loss_distribution([2, -1], intercept=np.inf)
+
+
 @pytest.mark.parametrize(
     "alias,expected",
     [("linear", "linear_zero"), ("linear zero rate", "linear_zero"),

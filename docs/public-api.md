@@ -16,7 +16,7 @@ Implementation-oriented APIs live in their canonical namespaces:
 | `qfin.backends` | Private/runtime backend adapters and interoperability |
 | `qfin.circuits` | Circuit construction primitives |
 
-The following top-level compatibility aliases are deprecated in QFin 1.1 and
+The following top-level compatibility aliases are deprecated in QFin 1.1.1 and
 emit `DeprecationWarning`; import them from the listed canonical namespace.
 
 | Deprecated alias | Canonical path |
@@ -30,6 +30,7 @@ emit `DeprecationWarning`; import them from the listed canonical namespace.
 | `qfin.ProbabilityTreePreparation` | `qfin.circuits.ProbabilityTreePreparation` |
 | `qfin.WalshTerm` | `qfin.circuits.WalshTerm` |
 
+These aliases remain through the 1.x series; removal is no earlier than 2.0.
 No canonical module path is removed by this deprecation. Other existing
 low-level top-level names remain available for compatibility but should be
 treated as provisional; new code should prefer their canonical namespaces.
