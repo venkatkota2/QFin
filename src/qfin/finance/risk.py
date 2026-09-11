@@ -265,8 +265,6 @@ def aggregate_risk(
 
     if not isfinite(confidence) or not 0 < confidence < 1:
         raise QFinValidationError("confidence must lie strictly between zero and one")
-    if engine not in ("auto", "numpy", "native"):
-        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     selected = resolve_engine(
         engine, distribution.losses.size, auto_native_threshold=POLICIES["weighted_risk"]
     )

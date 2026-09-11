@@ -41,3 +41,12 @@ periodic compounding lower boundary.
 Analytical, finite-difference, Decimal and independent QuantLib tests validate
 these measures. See [validation](validation.md) for tolerances and
 [historical convention details](fixed-income-1.1.md) for schedule examples.
+
+## 1.1.2 convention and precision corrections
+
+Forward/backward schedules derive each regular boundary from the original anchor;
+February clamping no longer shifts all subsequent coupon dates. Adjustments that
+collapse adjacent dates still fail explicitly. DV01/CS01 and effective sensitivities
+use stable `sinh`/`expm1` differences, including short maturities at large notionals.
+Dated price/accrual references use QuantLib only with matching clocks, coupon
+conventions, adjustment and settlement. See [independent validation](validation-1.1.2-spec.md).

@@ -15,7 +15,8 @@ from pathlib import Path
 
 
 def digest(path: Path) -> str:
-    return hashlib.file_digest(path.open("rb"), "sha256").hexdigest()
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def version_check() -> None:

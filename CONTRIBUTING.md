@@ -16,7 +16,8 @@ do not run CMake manually. Then run the complete validation set:
 ```bash
 ruff check .
 mypy src/qfin
-pytest --cov=qfin --cov-report=term-missing --cov-fail-under=90
+pytest --cov=qfin --cov-branch --cov-report=term-missing --cov-report=json:coverage.json --cov-fail-under=90
+python examples/check_coverage.py coverage.json
 python -m build
 python examples/native_benchmark.py
 python examples/quantum_risk_benchmark.py --repeats 1 --shots 500
@@ -35,3 +36,17 @@ The current hardening milestone is feature frozen. Prioritize numerical and
 financial invariants, independent oracles, deterministic native parity, strict
 types and measured public-API performance. Do not relax tolerances or checks to
 accept an optimization. See [current validation](docs/validation.md).
+
+The global line gate is 93%, branch gate 81%, with additional numerical module
+floors. Hypothesis uses deterministic `ci` (50 examples/property) and `stress`
+(500) profiles: `HYPOTHESIS_PROFILE=stress pytest tests/property`. Native generated
+buffer tests add fixed 100-example campaigns per property.
+
+Independent fixture generators import QuantLib/Decimal, never QFin for expected
+values. Review fixture provenance and financial materiality when regenerating;
+ordinary tests consume checked-in values without QuantLib. API snapshots in
+`tests/api/snapshots` are reviewed compatibility baselines, not routine golden
+outputs to overwrite after a failure. Run `tools/mutation_check.py --output
+mutations.json` for the bounded numerical campaign and see [reproducibility](docs/reproducibility.md),
+[statistical validation](docs/statistical-validation.md), [memory](docs/memory.md)
+and [release gates](docs/release-engineering.md).

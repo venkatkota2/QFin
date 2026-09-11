@@ -6,6 +6,13 @@ import pytest
 import qfin
 
 
+def test_solver_termination_does_not_bypass_independent_repricing(monkeypatch):
+    # Simulate a root routine returning a finite but incorrect terminal log D.
+    monkeypatch.setattr("qfin.finance.calibration.brentq", lambda *args, **kwargs: 0.0)
+    with pytest.raises(qfin.CurveBootstrapError, match="repricing exceeded"):
+        qfin.bootstrap_curve([qfin.BondMarketQuote(qfin.FixedRateBond(1, 0), 90)])
+
+
 def test_mixed_instrument_bootstrap_recovers_flat_curve_and_residuals() -> None:
     flat_rate = 0.04
     reference = qfin.YieldCurve(

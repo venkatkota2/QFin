@@ -34,3 +34,12 @@ blocker where an explicit grant is needed. The maintainer must authorize a licen
 none is invented by the hardening work. Apache-2.0, MIT or proprietary terms are
 possible choices with different obligations; selecting one is a maintainer/legal
 decision, not a technical default.
+
+## 1.1.2 operational boundaries
+
+The empirical studies do not establish workflow-wide simultaneous intervals.
+Memory guards are per operation/group, not a process RSS guarantee. Tested portable
+wheels cover Linux x86_64, macOS arm64 and Windows AMD64 on CPython 3.11–3.13.
+Manual release attestation is configured separately from normal CI; no publication
+is implied. Main protection requires repository administration, and licensing
+remains unresolved. See [the current hardening report](hardening-1.1.2.md).

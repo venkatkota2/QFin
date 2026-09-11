@@ -81,7 +81,7 @@ def compile_fixture(name, losses, weights, alpha, kind):
     return qfin.compile(problem, target_error=0.01, min_qubits=2, max_qubits=2)
 
 
-def study(*, repetitions=100, quick=False, device="lightning.qubit"):
+def study(*, repetitions=100, quick=False, ambiguity_only=False, device="lightning.qubit"):
     rows = []
     configurations = [
         (0.90, 100, (0,)),
@@ -92,6 +92,8 @@ def study(*, repetitions=100, quick=False, device="lightning.qubit"):
     ]
     if quick:
         configurations = [(0.90, 100, (0,)), (0.995, 500, (0, 1, 2))]
+    elif ambiguity_only:
+        configurations = [(0.95, 100, (1,))]
     fixtures = list(DISTRIBUTIONS.items())[:2] if quick else list(DISTRIBUTIONS.items())
     fixtures += [("factor_two_point", ([0, 1], [9, 1]))]
     if not quick:
@@ -175,12 +177,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--repetitions", type=int, default=100)
     parser.add_argument("--quick", action="store_true")
+    parser.add_argument("--ambiguity-only", action="store_true")
     parser.add_argument("--device", default="lightning.qubit")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.repetitions < 2:
         parser.error("repetitions must be at least two")
-    report = study(repetitions=args.repetitions, quick=args.quick, device=args.device)
+    report = study(
+        repetitions=args.repetitions,
+        quick=args.quick,
+        ambiguity_only=args.ambiguity_only,
+        device=args.device,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"{len(report['rows'])} end-to-end statistical cells recorded")

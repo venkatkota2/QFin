@@ -1,0 +1,64 @@
+name: Statistical and mutation evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      repetitions:
+        description: Monte Carlo repetitions per exact-reference cell
+        type: number
+        default: 100
+  schedule:
+    - cron: "41 5 * * 0"
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  PYTHONHASHSEED: "0"
+  CMAKE_BUILD_PARALLEL_LEVEL: "2"
+
+jobs:
+  statistics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Real empirical and factorized adaptive risk experiments
+        shell: bash
+        env:
+          REPETITIONS: ${{ inputs.repetitions || 100 }}
+        run: |
+          python tools/statistical_validation.py --repetitions "$REPETITIONS" --output statistical-validation.json
+          python tools/statistical_validation.py --repetitions "$REPETITIONS" --ambiguity-only --output statistical-ambiguity.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qfin-statistical-${{ github.sha }}
+          path: statistical-*.json
+          if-no-files-found: error
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - run: python tools/mutation_check.py --output mutations.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: qfin-mutations-${{ github.sha }}
+          path: mutations.json
+          if-no-files-found: error

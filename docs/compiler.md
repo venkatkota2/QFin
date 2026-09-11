@@ -39,3 +39,12 @@ or an unavailable quantum implementation.
 Logical reports precede device decomposition. Synthetic topology, noise and
 export analyses are research diagnostics, not production hardware runtime or
 fault-tolerant estimates. Read [limitations](limitations.md) alongside results.
+
+## Reproducible execution in 1.1.2
+
+Compilation options are normalized once by an internal typed configuration. No
+new user configuration object or required argument is introduced. Quantum result
+serialization adds execution provenance and explicit interval semantics while
+preserving old keys and positional result fields. [Reproducibility](reproducibility.md)
+lists the retained settings; [statistical validation](statistical-validation.md)
+distinguishes deterministic encoding error from local or conditional shot intervals.

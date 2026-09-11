@@ -555,8 +555,6 @@ def project_liabilities(
     check_allocation((maximum_term + 1,), arrays=12)
     check_allocation((model_points.model_point_count,), arrays=2)
     _validate_horizon(assumptions, maximum_term)
-    if engine not in ("auto", "numpy", "native"):
-        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     workload = model_points.model_point_count * maximum_term
     selected = resolve_engine(
         engine,
@@ -588,7 +586,10 @@ def project_liabilities(
             ),
         )
     else:
-        raw = _numpy_projection(model_points, assumptions)
+        with np.errstate(over="ignore", invalid="ignore"):
+            raw = _numpy_projection(model_points, assumptions)
+    if any(not np.all(np.isfinite(np.asarray(value, dtype=np.float64))) for value in raw.values()):
+        raise QFinValidationError("life projection exceeds the finite double range")
     times = np.arange(maximum_term + 1, dtype=np.float64)
     point_values = np.asarray(raw["policy_present_values"], dtype=np.float64)
     product_values = {

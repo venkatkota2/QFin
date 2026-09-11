@@ -567,8 +567,6 @@ def scenario_portfolio_values(
     weights = np.ascontiguousarray(position_weights, dtype=np.float64).reshape(-1)
     _validate_flat_portfolio(times, amounts, stream_offsets, weights, curve, scenarios)
     normalized_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
-    if engine not in ("auto", "numpy", "native"):
-        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     workload = times.size * scenarios.shocks.shape[0]
     selected = resolve_engine(
         engine,
@@ -640,8 +638,6 @@ def scenario_indexed_cashflow_values(
     normalized_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
     if not 0 <= period_index < scenarios.period_count:
         raise QFinValidationError("period must be in range")
-    if engine not in ("auto", "numpy", "native"):
-        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     workload = times.size * scenarios.scenario_count
     selected = resolve_engine(
         engine,

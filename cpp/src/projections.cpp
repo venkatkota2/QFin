@@ -1,3 +1,4 @@
+#include "qfin/finite_result.hpp"
 #include "qfin/checked_size.hpp"
 #include "qfin/projections.hpp"
 
@@ -137,6 +138,11 @@ PolicyProjectionResult project_term_life_policies(
     if (result.present_value != 0.0) {
         result.duration = duration_numerator / result.present_value;
     }
+    for (const auto* values : {&result.expected_premiums, &result.expected_benefits, &result.expected_expenses, &result.net_liability_cashflows, &result.in_force, &result.policy_present_values}) {
+        require_finite_result(*values);
+    }
+    require_finite_result(result.present_value);
+    require_finite_result(result.duration);
     return result;
 }
 
@@ -367,6 +373,11 @@ LifeModelPointProjectionResult project_life_model_points(
     if (result.present_value != 0.0) {
         result.duration = duration_numerator / result.present_value;
     }
+    for (const auto* values : {&result.expected_premiums, &result.expected_benefits, &result.expected_expenses, &result.expected_surrenders, &result.net_liability_cashflows, &result.active, &result.disabled, &result.deaths, &result.model_point_present_values}) {
+        require_finite_result(*values);
+    }
+    require_finite_result(result.present_value);
+    require_finite_result(result.duration);
     return result;
 }
 
@@ -636,6 +647,9 @@ LifeScenarioProjectionResult project_life_scenarios(
             }
         }
         result.present_values[scenario] = scenario_pv;
+    }
+    for (const auto* values : {&result.present_values, &result.expected_premiums, &result.expected_benefits, &result.expected_expenses, &result.expected_surrenders}) {
+        require_finite_result(*values);
     }
     return result;
 }

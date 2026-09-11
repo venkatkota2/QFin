@@ -1,3 +1,4 @@
+#include "qfin/finite_result.hpp"
 #include "qfin/checked_size.hpp"
 #include "qfin/alm.hpp"
 
@@ -311,6 +312,14 @@ ALMPathProjectionResult project_alm_paths(
                                                       ? std::numeric_limits<double>::infinity()
                                                       : result.asset_values[output_index] /
                                                             liability_value;
+        }
+    }
+    for (const auto* values : {&result.asset_values, &result.bond_values, &result.cash_values, &result.equity_values, &result.liability_values, &result.liability_payments, &result.surplus, &result.transaction_costs}) {
+        require_finite_result(*values);
+    }
+    for (std::size_t i = 0; i < result.funding_ratio.size(); ++i) {
+        if (result.liability_values[i] != 0.0) {
+            require_finite_result(result.funding_ratio[i]);
         }
     }
     return result;

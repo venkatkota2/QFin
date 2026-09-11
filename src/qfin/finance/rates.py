@@ -67,6 +67,20 @@ def _exp_result(value: float, *, subtract_one: bool = False) -> float:
         raise QFinValidationError("rate conversion exceeds the finite double range") from exc
 
 
+def _periodic_quote(log_growth: float, frequency: int) -> float:
+    result = _finite_result(frequency * _exp_result(log_growth, subtract_one=True))
+    if result <= -frequency:
+        raise QFinValidationError("periodic quote rounds to its invalid lower boundary")
+    return result
+
+
+def _simple_quote(log_growth: float, time: float) -> float:
+    result = _finite_result(_exp_result(log_growth, subtract_one=True) / time)
+    if 1.0 + result * time <= 0.0:
+        raise QFinValidationError("simple quote rounds to its invalid lower boundary")
+    return result
+
+
 def discount_factor(
     rate: float,
     time: float,
@@ -107,12 +121,10 @@ def rate_from_discount_factor(
     if selected is Compounding.CONTINUOUS:
         return _finite_result(-log(value) / time)
     if selected is Compounding.SIMPLE:
-        return _finite_result(_exp_result(-log(value), subtract_one=True) / time)
+        return _simple_quote(-log(value), time)
     frequency = compounding_frequency(selected)
     assert frequency is not None
-    return _finite_result(
-        frequency * _exp_result((-log(value) / time) / frequency, subtract_one=True)
-    )
+    return _periodic_quote((-log(value) / time) / frequency, frequency)
 
 
 def convert_rate(
@@ -134,10 +146,10 @@ def convert_rate(
     if target is Compounding.CONTINUOUS:
         return continuous
     if target is Compounding.SIMPLE:
-        return _finite_result(_exp_result(continuous * time, subtract_one=True) / time)
+        return _simple_quote(continuous * time, time)
     frequency = compounding_frequency(target)
     assert frequency is not None
-    return _finite_result(frequency * _exp_result(continuous / frequency, subtract_one=True))
+    return _periodic_quote(continuous / frequency, frequency)
 
 
 def continuous_rate(

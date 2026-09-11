@@ -90,3 +90,9 @@ def test_rate_conversion_avoids_unrepresentable_intermediate_discount():
 
     assert qfin.convert_rate(0.05, "annual", "continuous", time=1e300) == log1p(0.05)
     assert qfin.convert_rate(1e-20, "annual", "continuous") == pytest.approx(1e-20, rel=1e-15)
+
+
+@pytest.mark.parametrize("convention", ["annual", "simple"])
+def test_rate_conversion_rejects_rounding_to_invalid_lower_boundary(convention):
+    with pytest.raises(qfin.QFinValidationError, match="lower boundary"):
+        qfin.convert_rate(-1000, "continuous", convention)

@@ -286,8 +286,6 @@ def project_alm_paths(
         "scenario_chunk_size",
         minimum=1,
     )
-    if engine not in ("auto", "numpy", "native"):
-        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     asset_times, asset_amounts = _weighted_asset_cashflows(model)
     liability_times, liability_amounts = model.liabilities.buffers()
     selected = resolve_engine(
@@ -375,6 +373,13 @@ def project_alm_paths(
         for name, values in chunk.items():
             output[name][start:stop] = values
 
+    if any(
+        not np.all(np.isfinite(value)) for key, value in output.items() if key != "funding_ratio"
+    ):
+        raise QFinValidationError("ALM path projection exceeds the finite double range")
+    valid_funding = np.isfinite(output["funding_ratio"]) | (output["liability_values"] == 0)
+    if not np.all(valid_funding):
+        raise QFinValidationError("funding ratio exceeds the finite double range")
     times = np.arange(scenarios.period_count + 1, dtype=np.float64) * scenarios.period_length
     initial_surplus = float(output["surplus"][0, 0])
     return ALMPathResult(

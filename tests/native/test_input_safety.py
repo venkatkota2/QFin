@@ -93,3 +93,63 @@ def test_large_native_frequency_does_not_overflow_integer_square(frequency):
     assert result["prices"][0] == 100.0
     # d²P/dy² / P for a zero-coupon bond at y=0 is 1 + 1/f.
     assert result["convexities"][0] == pytest.approx(1 + 1 / frequency, rel=2e-15)
+
+
+@pytest.mark.parametrize("engine", ["numpy", "native"])
+def test_life_output_overflow_fails_explicitly(engine):
+    points = qfin.PolicyModelPointSet([qfin.LifePolicy(40, 1e308, 0, 1)], [2])
+    assumptions = qfin.ProjectionAssumptions(
+        qfin.MortalityTable([0, 120], [1, 1]), qfin.YieldCurve([0, 1], [0, 0])
+    )
+    with (
+        np.errstate(over="ignore", invalid="ignore"),
+        pytest.raises(qfin.QFinValidationError, match="finite double"),
+    ):
+        qfin.project_liabilities(points, assumptions, engine=engine)
+
+
+def test_direct_term_life_output_overflow_is_public_validation_error():
+    with pytest.raises(qfin.QFinValidationError, match="finite double"):
+        _native.require().project_term_life_policies(
+            [40, 40],
+            [1e308, 1e308],
+            [0, 0],
+            [1, 1],
+            [0, 120],
+            [1, 1],
+            [0],
+            0.0,
+            1.0,
+            [0, 1],
+            [0, 0],
+        )
+
+
+@pytest.mark.parametrize("engine", ["numpy", "native"])
+def test_alm_output_overflow_is_public_validation_error(engine):
+    model = qfin.ALMModel(
+        qfin.AssetPortfolio([qfin.FixedRateBond(1, 0, face_value=1e308)], quantities=[2]),
+        qfin.LiabilityPortfolio([qfin.CashFlow(1, 100)]),
+        qfin.YieldCurve([0, 1], [0, 0]),
+    )
+    with (
+        np.errstate(over="ignore", invalid="ignore"),
+        pytest.raises(qfin.QFinValidationError, match="finite double"),
+    ):
+        model.evaluate(engine=engine)
+
+
+@pytest.mark.parametrize("engine", ["numpy", "native"])
+@pytest.mark.parametrize("tiny_liability", [False, True])
+def test_alm_path_result_and_nonzero_funding_denominator_overflow(engine, tiny_liability):
+    model = qfin.ALMModel(
+        qfin.AssetPortfolio([], cash_value=1e308, equity_value=0 if tiny_liability else 1e308),
+        qfin.LiabilityPortfolio([qfin.CashFlow(1, 1e-308 if tiny_liability else 100)]),
+        qfin.YieldCurve([0, 1], [0, 0]),
+    )
+    scenarios = qfin.EconomicScenarioSet(np.zeros((1, 1, 2)))
+    with (
+        np.errstate(over="ignore", invalid="ignore"),
+        pytest.raises(qfin.QFinValidationError, match="finite double"),
+    ):
+        model.project_paths(scenarios, engine=engine)

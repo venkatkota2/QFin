@@ -42,3 +42,13 @@ booleans and floating-point coercion. Private helper structures and
 Finance C++ remains single threaded. NumPy/BLAS and PennyLane may have their own
 thread settings. Seeded generators are local; hidden global RNG state is not
 used to select scenarios or compiler decisions.
+
+## 1.1.2 reliability boundaries
+
+Internal compiler validation is normalized by the frozen `_config.CompileConfig`;
+public `compile(...)` parameters and defaults are unchanged. `_dispatch.py` owns
+static classical engine decisions. Native checked-size and finite-result headers
+are shared by the existing financial kernels. The binding remains an adapter for
+validation, spans, GIL release and owned arrays; no financial implementation was
+moved into it. A wider binding split was not needed for these focused changes.
+See [exceptions](exceptions.md), [memory](memory.md) and [reproducibility](reproducibility.md).

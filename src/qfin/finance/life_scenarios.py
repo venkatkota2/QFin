@@ -274,8 +274,6 @@ def project_liability_scenarios(
         "policy_chunk_size",
         minimum=1,
     )
-    if engine not in ("auto", "numpy", "native"):
-        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     workload = scenarios.scenario_count * model_points.model_point_count * maximum_term
     selected = resolve_engine(
         engine,
@@ -353,6 +351,8 @@ def project_liability_scenarios(
         peak_scenarios * (scenarios.period_count * (scenarios.curve_node_count + 3) + 5)
         + peak_points * 16
     )
+    if any(not np.all(np.isfinite(value)) for value in output.values()):
+        raise QFinValidationError("life scenario projection exceeds the finite double range")
     return LifeScenarioResult(
         labels=scenarios.labels,
         probabilities=scenarios.probabilities,

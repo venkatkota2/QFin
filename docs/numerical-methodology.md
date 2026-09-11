@@ -35,3 +35,13 @@ discounts, invalid compounding domains and unbounded covariance-null-space
 optimization are mathematical failures. Diagnostics distinguish those failures
 from economic unusualness. Unestimated errors and unsuccessful convergence are
 never deliberately labelled zero or success.
+
+## 1.1.2 independent and generated validation
+
+Reference origins and intentional convention differences are documented in
+`tests/reference_data/README.md`; 70-digit Decimal and QuantLib expected values
+are generated without importing QFin. The corpus adds explicit financial-unit
+bounds to numeric tolerances. Property and mutation campaigns complement
+independent validation and Python/native parity. See the [validation specification](validation-1.1.2-spec.md)
+for the critical branch gates and [hardening report](hardening-1.1.2.md) for
+measured results. Historical benchmark environments remain unchanged.

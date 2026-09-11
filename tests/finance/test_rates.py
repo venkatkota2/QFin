@@ -5,6 +5,13 @@ import pytest
 import qfin
 
 
+@pytest.mark.parametrize("rate,time", [(-0.05, 2), (0.05, 2), (0.12, 60)])
+def test_discount_to_continuous_rate_independent_inverse(rate, time):
+    assert qfin.rate_from_discount_factor(exp(-rate * time), time, "continuous") == pytest.approx(
+        rate, abs=1e-15
+    )
+
+
 @pytest.mark.parametrize(
     ("compounding", "expected"),
     [
@@ -16,9 +23,7 @@ import qfin
         ("simple", 1 / 1.10),
     ],
 )
-def test_supported_compounding_discount_factors(
-    compounding: str, expected: float
-) -> None:
+def test_supported_compounding_discount_factors(compounding: str, expected: float) -> None:
     assert qfin.discount_factor(0.05, 2.0, compounding) == pytest.approx(expected)
 
 

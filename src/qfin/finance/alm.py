@@ -487,6 +487,22 @@ class ALMModel:
         surplus = asset_pv - liability_pv
         ratio = liability_pv / asset_pv if asset_pv != 0.0 else 0.0
         funding = asset_pv / liability_pv if liability_pv != 0.0 else float("inf")
+        if not np.all(
+            np.isfinite(
+                [
+                    asset_pv,
+                    liability_pv,
+                    surplus,
+                    asset_duration,
+                    liability_duration,
+                    asset_convexity,
+                    liability_convexity,
+                ]
+            )
+        ):
+            raise QFinValidationError("ALM valuation exceeds the finite double range")
+        if liability_pv != 0.0 and not np.isfinite(funding):
+            raise QFinValidationError("funding ratio exceeds the finite double range")
         combined_engine: Literal["numpy", "native", "mixed"] = (
             "numpy"
             if asset_analytics.engine == "numpy" and liability_engine == "numpy"

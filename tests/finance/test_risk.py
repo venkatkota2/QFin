@@ -15,6 +15,8 @@ def test_weighted_var_and_expected_shortfall_boundary_mass() -> None:
     assert summary.cvar == pytest.approx(15.0)
     assert summary.minimum == -1.0
     assert summary.maximum == 20.0
+    # E[X²] - E[X]² = 60.1 - 3.9²; this checks variance centering independently.
+    assert summary.standard_deviation == pytest.approx((60.1 - 3.9**2) ** 0.5)
 
 
 def test_risk_auto_uses_current_measured_dispatch_policy() -> None:
@@ -30,6 +32,46 @@ def test_loss_distribution_normalizes_and_maps_to_empirical() -> None:
     assert distribution.as_empirical().mean == pytest.approx(1.5)
     extreme = qfin.LossDistribution([1.0, 2.0], [1.0e308, 1.0e308])
     np.testing.assert_allclose(extreme.probabilities, [0.5, 0.5])
+
+
+@pytest.mark.parametrize(
+    "losses,weights",
+    [
+        ([], None),
+        ([np.nan], None),
+        ([np.inf], None),
+        ([1, 2], [1]),
+        ([1, 2], [-1, 2]),
+        ([1, 2], [np.nan, 1]),
+        ([1, 2], [np.inf, 1]),
+        ([1, 2], [0, 0]),
+    ],
+)
+def test_malformed_loss_distribution_has_compatible_public_exception(losses, weights):
+    with pytest.raises(qfin.QFinValidationError):
+        qfin.LossDistribution(losses, weights)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"confidence": 0},
+        {"confidence": float("nan")},
+        {"interval_level": 1},
+        {"interval_level": float("inf")},
+    ],
+)
+def test_bootstrap_probability_parameters_rejected(kwargs):
+    with pytest.raises(qfin.QFinValidationError):
+        qfin.bootstrap_risk_interval(qfin.LossDistribution([0, 1]), **kwargs)
+
+
+def test_nonfinite_tail_threshold_and_unknown_engine_rejected():
+    distribution = qfin.LossDistribution([0, 1])
+    with pytest.raises(qfin.QFinValidationError):
+        qfin.TailProbability(distribution, float("nan"))
+    with pytest.raises(qfin.QFinValidationError):
+        qfin.aggregate_risk(distribution, engine="invalid")
 
 
 def test_risk_rejects_unrepresentable_moments() -> None:

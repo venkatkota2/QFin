@@ -42,3 +42,13 @@ European-option quantum demonstration. It is not intended to mirror the
 financial Python API and does not establish new modelling scope. Run `qfin
 --help` for its supported arguments and `qfin --version` for the version read
 from installed package metadata.
+
+## Automated 1.x compatibility manifest
+
+`tests/api/snapshots/qfin-1.1.1.json` records 312 exported objects, signatures,
+defaults, methods, dataclass field order and enums. A separate baseline records
+representative `to_dict()`/`explain()` key paths. Existing positional construction
+and keys are preserved; optional new provenance fields are keyword-only.
+Deprecated aliases still emit warnings at the caller's filename. Python's changing
+standard-library Enum and exception machinery is excluded from the QFin contract.
+The [exception taxonomy](exceptions.md) preserves existing built-in catches.
