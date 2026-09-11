@@ -9,6 +9,7 @@ raw measurements are not silently relabelled as later clean builds.
 | --- | --- |
 | `baseline.json`, `coverage-summary.json` | Untouched starting main `f9d4be6`, final local source, and clean checkpoint CI coverage. Coverage keeps per-file summaries; raw CI coverage remains in its Actions artifact. |
 | `ci-46ef9.json` | All 20 jobs, artifact identifiers, archive digests and selected log evidence for the implementation checkpoint. |
+| `minimum-dependency-warning.txt` | Inspected final CI warning that the intentionally tested SciPy 1.11.0 compatibility floor is yanked for License Violation; test success is not licensing clearance. |
 | `artifact-SHA256SUMS-46ef9.txt`, `artifact-contexts-46ef9.json` | Nine portable wheels and one sdist actually downloaded and verified/collected without rebuild, at `46ef9f8`. This is not a later-build manifest or a signed attestation. |
 | `compile-commands.json`, `source-digests.json` | Actual baseline/final compiler commands and a SHA-256 inventory of final financial Python/C++ sources. The last financial change is the revalidated NumPy liability auto policy. |
 | `reference-errors.json` | 1073 independent stored configurations, 1454 engine-expanded executions and 53 unit/engine-specific error summaries; includes exact dates/schedules and QuantLib dated bonds. The 26 inline extensions are additionally gated by pytest. |

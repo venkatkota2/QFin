@@ -19,6 +19,15 @@ The Windows wheel test dependency uses an exact Hypothesis pin because Windows
 command processing can interpret `<`/`>` in unquoted version ranges as file
 redirection. The development extra retains its normal supported range.
 
+The legacy minimum-dependency CI intentionally tests the declared SciPy 1.11.0
+floor. Its installation warns that PyPI yanked that version for **License
+Violation**. The compatibility test passed, but that is not a licensing clearance
+or an installation recommendation. QFin artifacts do not vendor SciPy. Before
+publication, the maintainer should review the dependency floor and choose an
+appropriate non-yanked supported release; this milestone preserves the existing
+dependency contract and performs no publication. The observed warning is retained
+in the [evidence archive](history/hardening-1.1.2/minimum-dependency-warning.txt).
+
 `release-validation.yml` is manually dispatched with an exact expected version.
 It checks metadata and any existing tag, runs the complete reusable CI workflow,
 then downloads the already-tested portable wheels and sdist. `release_artifacts.py`

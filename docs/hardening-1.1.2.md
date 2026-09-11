@@ -246,6 +246,12 @@ Windows AMD64. Portable wheels install in isolation, load the native extension,
 run the public smoke example, malformed-buffer tests and independent references.
 Those environments prove PennyLane, Qiskit and QuantLib are not core requirements.
 
+The legacy SciPy 1.11.0 minimum-dependency test passed with an inspected PyPI
+yank warning: **License Violation**. That job deliberately exercises the declared
+compatibility floor; it is not licensing clearance or a recommended installation.
+QFin's wheels do not vendor SciPy. Review the supported dependency floor before
+publication; the existing dependency contract is preserved in this milestone.
+
 The checkpoint's nine portable wheels and sdist were actually downloaded; archive
 and per-package SHA-256 values matched. `release_artifacts.py --collect` verified
 and assembled the exact already-tested bytes without rebuilding. The
@@ -282,7 +288,8 @@ or tag was created.** Merge authorization does not imply publication authorizati
   free-threaded CPython or unlisted interpreters. Timing conclusions are host and
   workload dependent.
 - An administrator must enforce main protection. The owner/legal reviewer must
-  decide licensing. Any release/tag/PyPI upload and actual candidate attestation
+  decide licensing and review the yanked SciPy 1.11.0 legacy dependency floor.
+  Any release/tag/PyPI upload and actual candidate attestation
   require separate execution; they were not performed here.
 
 ## L. Commands and verified outcomes

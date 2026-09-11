@@ -23,6 +23,8 @@
   liability valuation on NumPy; retained explicit engine overrides and modelling scope.
 - Added nine portable CPython/platform wheel builds, installed artifact tests,
   checked SHA-256 collection and a manual release-candidate attestation workflow.
+  Recorded the legacy SciPy 1.11.0 minimum-test licensing/yank warning for
+  maintainer review before any publication; dependency support is unchanged.
   No tag, GitHub Release, PyPI publication, license grant or branch-protection
   administration is performed by this milestone.
 
