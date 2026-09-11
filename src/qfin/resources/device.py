@@ -9,7 +9,7 @@ from typing import Any, Literal, Protocol, cast
 
 from qfin._validation import require_integer, require_integer_sequence
 from qfin.backends.devices import DeviceTarget, resolve_device_target
-from qfin.exceptions import BackendUnavailableError, ResourceLimitError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError, ResourceLimitError
 
 
 class CircuitRuntime(Protocol):
@@ -248,9 +248,9 @@ def estimate_device_resources(
 
     powers = require_integer_sequence(schedule, "schedule", minimum=0)
     if not powers:
-        raise ValueError("schedule must contain non-negative Grover powers")
+        raise QFinValidationError("schedule must contain non-negative Grover powers")
     if len(set(powers)) != len(powers):
-        raise ValueError("schedule powers must be unique")
+        raise QFinValidationError("schedule powers must be unique")
     shot_count = require_integer(shots, "shots", minimum=1)
     evaluations = require_integer(objective_evaluations, "objective_evaluations", minimum=1)
 

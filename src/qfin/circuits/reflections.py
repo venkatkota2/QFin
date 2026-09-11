@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from qfin._validation import require_integer
-from qfin.exceptions import BackendUnavailableError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError
 
 
 def _qml() -> Any:
@@ -24,9 +24,9 @@ def apply_zero_reflection(register_wires: Sequence[int], *, work_wire: int) -> N
     """Flip the phase of ``|0...0>`` using X, H, and multi-controlled X gates."""
     register = tuple(register_wires)
     if len(register) < 2:
-        raise ValueError("zero reflection requires at least two register wires")
+        raise QFinValidationError("zero reflection requires at least two register wires")
     if work_wire in register:
-        raise ValueError("work_wire must be outside the reflected register")
+        raise QFinValidationError("work_wire must be outside the reflected register")
     qml = _qml()
     for wire in register:
         qml.PauliX(wires=wire)

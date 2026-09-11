@@ -11,6 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin._validation import readonly_float64, require_integer, require_integer_sequence
+from qfin.exceptions import QFinValidationError
 from qfin.finance.distributions import Distribution, Normal
 from qfin.finance.factors import GaussianFactorModel
 from qfin.representation.encoding import DistributionEncoding, encode, encode_quantiles
@@ -37,15 +38,15 @@ class LinearFactorTransform:
         offset = readonly_float64(np.asarray(self.offset, dtype=np.float64).reshape(-1))
         names = tuple(self.output_names)
         if matrix.ndim != 2 or matrix.shape[0] == 0 or matrix.shape[1] == 0:
-            raise ValueError("matrix must be a non-empty output-by-latent array")
+            raise QFinValidationError("matrix must be a non-empty output-by-latent array")
         if not np.all(np.isfinite(matrix)):
-            raise ValueError("matrix must be finite")
+            raise QFinValidationError("matrix must be finite")
         if offset.shape != (matrix.shape[0],) or not np.all(np.isfinite(offset)):
-            raise ValueError("offset must contain one finite value per output")
+            raise QFinValidationError("offset must contain one finite value per output")
         if len(names) != matrix.shape[0] or not all(names):
-            raise ValueError("output_names must contain one non-empty name per output")
+            raise QFinValidationError("output_names must contain one non-empty name per output")
         if len(set(names)) != len(names):
-            raise ValueError("output_names must be unique")
+            raise QFinValidationError("output_names must be unique")
         object.__setattr__(self, "matrix", matrix)
         object.__setattr__(self, "offset", offset)
         object.__setattr__(self, "output_names", names)
@@ -61,7 +62,7 @@ class LinearFactorTransform:
     def apply(self, latent_values: FloatArray) -> FloatArray:
         values = np.asarray(latent_values, dtype=np.float64)
         if values.ndim != 2 or values.shape[1] != self.latent_factors:
-            raise ValueError("latent_values must be point-by-latent-factor")
+            raise QFinValidationError("latent_values must be point-by-latent-factor")
         return np.asarray(values @ self.matrix.T + self.offset, dtype=np.float64)
 
     def to_dict(self) -> dict[str, object]:
@@ -90,13 +91,13 @@ class MaterializedFactorGrid:
         )
         names = tuple(self.value_names)
         if values.ndim != 2 or values.shape[0] != probabilities.size:
-            raise ValueError("values and probabilities must contain the same points")
+            raise QFinValidationError("values and probabilities must contain the same points")
         if values.shape[1] != len(names):
-            raise ValueError("value_names must contain one name per value column")
+            raise QFinValidationError("value_names must contain one name per value column")
         if not np.all(np.isfinite(values)) or not np.all(np.isfinite(probabilities)):
-            raise ValueError("materialized values and probabilities must be finite")
+            raise QFinValidationError("materialized values and probabilities must be finite")
         if np.any(probabilities < 0) or not np.isclose(np.sum(probabilities), 1.0):
-            raise ValueError("probabilities must be non-negative and sum to one")
+            raise QFinValidationError("probabilities must be non-negative and sum to one")
         object.__setattr__(self, "values", values)
         object.__setattr__(self, "probabilities", probabilities)
         object.__setattr__(self, "value_names", names)
@@ -115,15 +116,15 @@ class FactorizedDistributionEncoding:
         factors = tuple(self.factors)
         names = tuple(self.factor_names)
         if not factors:
-            raise ValueError("at least one factor encoding is required")
+            raise QFinValidationError("at least one factor encoding is required")
         if len(names) != len(factors) or not all(names):
-            raise ValueError("factor_names must contain one non-empty name per factor")
+            raise QFinValidationError("factor_names must contain one non-empty name per factor")
         if len(set(names)) != len(names):
-            raise ValueError("factor_names must be unique")
+            raise QFinValidationError("factor_names must be unique")
         if not self.dependence_assumption.strip():
-            raise ValueError("dependence_assumption must not be empty")
+            raise QFinValidationError("dependence_assumption must not be empty")
         if self.transform is not None and self.transform.latent_factors != len(factors):
-            raise ValueError("transform must consume one column per latent factor")
+            raise QFinValidationError("transform must consume one column per latent factor")
         object.__setattr__(self, "factors", factors)
         object.__setattr__(self, "factor_names", names)
 
@@ -166,7 +167,7 @@ class FactorizedDistributionEncoding:
 
         point_limit = require_integer(max_points, "max_points", minimum=1)
         if self.joint_grid_points > point_limit:
-            raise ValueError(
+            raise QFinValidationError(
                 f"joint grid has {self.joint_grid_points} points, above max_points={point_limit}; "
                 "use marginal metadata or increase the validation limit explicitly"
             )
@@ -194,7 +195,9 @@ class FactorizedDistributionEncoding:
         grid = self.materialize(max_points=max_points)
         values = np.asarray(objective(grid.values), dtype=np.float64).reshape(-1)
         if values.shape != grid.probabilities.shape or not np.all(np.isfinite(values)):
-            raise ValueError("objective must return one finite value per materialized point")
+            raise QFinValidationError(
+                "objective must return one finite value per materialized point"
+            )
         return float(np.dot(grid.probabilities, values))
 
     def to_dict(self) -> dict[str, object]:
@@ -222,9 +225,7 @@ def _qubit_allocation(
     factor_count: int,
     qubits_per_factor: int | Sequence[int],
 ) -> tuple[int, ...]:
-    if isinstance(qubits_per_factor, (int, np.integer)) and not isinstance(
-        qubits_per_factor, bool
-    ):
+    if isinstance(qubits_per_factor, (int, np.integer)) and not isinstance(qubits_per_factor, bool):
         allocation = (
             require_integer(qubits_per_factor, "qubits_per_factor", minimum=1),
         ) * factor_count
@@ -236,11 +237,11 @@ def _qubit_allocation(
                 minimum=1,
             )
         except TypeError as exc:
-            raise ValueError(
+            raise QFinValidationError(
                 "qubits_per_factor must be an integer or an iterable of integers"
             ) from exc
     if len(allocation) != factor_count or any(value < 1 for value in allocation):
-        raise ValueError("qubits_per_factor must provide one positive value per factor")
+        raise QFinValidationError("qubits_per_factor must provide one positive value per factor")
     return allocation
 
 
@@ -259,11 +260,11 @@ def encode_independent_factors(
 
     factors = tuple(distributions)
     if not factors:
-        raise ValueError("distributions must not be empty")
+        raise QFinValidationError("distributions must not be empty")
     if not isfinite(target_error) or target_error <= 0:
-        raise ValueError("target_error must be finite and positive")
+        raise QFinValidationError("target_error must be finite and positive")
     if method not in ("quantile", "probability"):
-        raise ValueError("method must be 'quantile' or 'probability'")
+        raise QFinValidationError("method must be 'quantile' or 'probability'")
     allocation = _qubit_allocation(len(factors), qubits_per_factor)
     names = (
         tuple(f"factor_{index}" for index in range(len(factors)))

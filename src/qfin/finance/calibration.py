@@ -14,6 +14,7 @@ from numpy.typing import NDArray
 from scipy.optimize import brentq
 
 from qfin._validation import readonly_float64, require_integer
+from qfin.exceptions import CalibrationError, QFinTypeError, QFinValidationError
 from qfin.finance.curves import CurveExtrapolation, CurveInterpolation, YieldCurve
 from qfin.finance.dates import (
     BusinessDayConvention,
@@ -34,7 +35,7 @@ def _normalize_maturity(value: Maturity, name: str = "maturity") -> float | date
     if isinstance(value, (float, int)):
         result = float(value)
         if not isfinite(result) or result <= 0:
-            raise ValueError(f"{name} must be finite and positive")
+            raise QFinValidationError(f"{name} must be finite and positive")
         return result
     return as_date(value, name=name)
 
@@ -42,7 +43,7 @@ def _normalize_maturity(value: Maturity, name: str = "maturity") -> float | date
 def _finite(value: float, name: str) -> float:
     result = float(value)
     if not isfinite(result):
-        raise ValueError(f"{name} must be finite")
+        raise QFinValidationError(f"{name} must be finite")
     return result
 
 
@@ -94,7 +95,7 @@ class ZeroCouponInstrument:
         normalized_price = _finite(price, "zero-coupon price")
         normalized_face = _finite(face_value, "face_value")
         if normalized_price <= 0 or normalized_face <= 0:
-            raise ValueError("zero-coupon price and face_value must be positive")
+            raise QFinValidationError("zero-coupon price and face_value must be positive")
         object.__setattr__(self, "maturity", normalized)
         object.__setattr__(self, "price", normalized_price)
         object.__setattr__(self, "face_value", normalized_face)
@@ -112,11 +113,11 @@ class BondMarketQuote:
 
     def __post_init__(self) -> None:
         if not isinstance(self.bond, FixedRateBond):
-            raise TypeError("bond must be a FixedRateBond")
+            raise QFinTypeError("bond must be a FixedRateBond")
         if not isfinite(self.clean_price) or self.clean_price <= 0:
-            raise ValueError("clean_price must be finite and positive")
+            raise QFinValidationError("clean_price must be finite and positive")
         if not self.identifier.strip():
-            raise ValueError("identifier must not be empty")
+            raise QFinValidationError("identifier must not be empty")
 
     @property
     def maturity(self) -> float | date:
@@ -155,7 +156,7 @@ class SimpleSwap:
         normalized = _normalize_maturity(maturity)
         normalized_frequency = require_integer(frequency, "frequency", minimum=1)
         if 12 % normalized_frequency != 0:
-            raise ValueError("swap frequency must be one of 1, 2, 3, 4, 6, or 12")
+            raise QFinValidationError("swap frequency must be one of 1, 2, 3, 4, 6, or 12")
         object.__setattr__(self, "maturity", normalized)
         object.__setattr__(self, "fixed_rate", _finite(fixed_rate, "fixed rate"))
         object.__setattr__(self, "frequency", normalized_frequency)
@@ -203,7 +204,7 @@ class CurveBootstrapReport:
 
     def __post_init__(self) -> None:
         if not isinstance(self.curve, YieldCurve):
-            raise TypeError("curve must be a YieldCurve")
+            raise QFinTypeError("curve must be a YieldCurve")
         input_instruments = tuple(self.input_instruments)
         instruments = tuple(self.instruments)
         node_times = readonly_float64(np.asarray(self.node_times).reshape(-1))
@@ -216,16 +217,18 @@ class CurveBootstrapReport:
             or zero_rates.shape != node_times.shape
             or forward_rates.shape != (max(node_times.size - 1, 0),)
         ):
-            raise ValueError("bootstrap report curve arrays have inconsistent dimensions")
+            raise QFinValidationError("bootstrap report curve arrays have inconsistent dimensions")
         if not all(
             np.all(np.isfinite(values))
             for values in (node_times, discount_factors, zero_rates, forward_rates)
         ) or np.any(discount_factors <= 0.0):
-            raise ValueError("bootstrap report curve arrays must be finite with positive discounts")
+            raise QFinValidationError(
+                "bootstrap report curve arrays must be finite with positive discounts"
+            )
         if not isfinite(self.tolerance) or self.tolerance <= 0.0:
-            raise ValueError("tolerance must be finite and positive")
+            raise QFinValidationError("tolerance must be finite and positive")
         if len(input_instruments) != len(instruments):
-            raise ValueError("bootstrap report inputs and results must align")
+            raise QFinValidationError("bootstrap report inputs and results must align")
         object.__setattr__(self, "input_instruments", input_instruments)
         object.__setattr__(self, "instruments", instruments)
         object.__setattr__(self, "node_times", node_times)
@@ -250,13 +253,11 @@ class CurveBootstrapReport:
                 None if self.curve.valuation_date is None else self.curve.valuation_date.isoformat()
             ),
             "instrument_count": len(self.instruments),
-            "instrument_identifiers": tuple(
-                item.identifier for item in self.input_instruments
-            ),
+            "instrument_identifiers": tuple(item.identifier for item in self.input_instruments),
         }
 
 
-class CurveBootstrapError(ValueError):
+class CurveBootstrapError(CalibrationError):
     """Raised when a bootstrap root cannot be found or repricing fails."""
 
 
@@ -268,10 +269,10 @@ def _maturity_time(
     if isinstance(maturity, float):
         return maturity
     if valuation_date is None:
-        raise ValueError("dated bootstrap instruments require valuation_date")
+        raise QFinValidationError("dated bootstrap instruments require valuation_date")
     result = year_fraction(valuation_date, maturity, curve_day_count)
     if result <= 0:
-        raise ValueError("bootstrap instrument maturity must follow valuation_date")
+        raise QFinValidationError("bootstrap instrument maturity must follow valuation_date")
     return result
 
 
@@ -281,9 +282,7 @@ def _instrument_time(
     curve_day_count: DayCountConvention,
 ) -> float:
     if isinstance(instrument, BondMarketQuote) and instrument.bond.is_dated:
-        return _maturity_time(
-            instrument.bond.payment_dates[-1], valuation_date, curve_day_count
-        )
+        return _maturity_time(instrument.bond.payment_dates[-1], valuation_date, curve_day_count)
     if isinstance(instrument, SimpleSwap) and isinstance(instrument.maturity, date):
         times, _ = _swap_cashflows(instrument, valuation_date, curve_day_count)
         return float(times[-1])
@@ -294,7 +293,7 @@ def _deposit_accrual(instrument: Deposit, valuation_date: date | None) -> float:
     if isinstance(instrument.maturity, float):
         return instrument.maturity
     if valuation_date is None:
-        raise ValueError("dated deposits require valuation_date")
+        raise QFinValidationError("dated deposits require valuation_date")
     return year_fraction(valuation_date, instrument.maturity, instrument.day_count)
 
 
@@ -311,7 +310,7 @@ def _swap_cashflows(
         previous = np.concatenate((np.asarray([0.0]), payment_times[:-1]))
         return payment_times, payment_times - previous
     if valuation_date is None:
-        raise ValueError("dated swaps require valuation_date")
+        raise QFinValidationError("dated swaps require valuation_date")
     schedule = Schedule(
         valuation_date,
         instrument.maturity,
@@ -495,15 +494,15 @@ def bootstrap_curve(
     """
 
     if not isfinite(tolerance) or tolerance <= 0:
-        raise ValueError("tolerance must be finite and positive")
+        raise QFinValidationError("tolerance must be finite and positive")
     items = tuple(instruments)
     if not items:
-        raise ValueError("at least one bootstrap instrument is required")
+        raise QFinValidationError("at least one bootstrap instrument is required")
     if any(
         not isinstance(item, (Deposit, ZeroCouponInstrument, BondMarketQuote, SimpleSwap))
         for item in items
     ):
-        raise TypeError("unsupported bootstrap instrument")
+        raise QFinTypeError("unsupported bootstrap instrument")
     selected_day_count = DayCountConvention.parse(day_count)
     selected_interpolation = CurveInterpolation.parse(interpolation)
     selected_extrapolation = CurveExtrapolation.parse(extrapolation)
@@ -520,7 +519,7 @@ def bootstrap_curve(
         _instrument_time(item, normalized_valuation, selected_day_count) for item in ordered
     ]
     if any(right - left <= 1.0e-12 for left, right in pairwise(maturities)):
-        raise ValueError("bootstrap instrument maturities must be unique")
+        raise QFinValidationError("bootstrap instrument maturities must be unique")
 
     node_times = [0.0]
     discounts = [1.0]

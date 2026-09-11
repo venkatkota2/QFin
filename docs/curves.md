@@ -43,3 +43,15 @@ model or instrument is introduced.
 interpolation/extrapolation and immutable provenance for applied shifts and
 originating quotes where present. Shifting does not relabel an originally periodic
 quote as if the user had entered a continuous quote.
+
+## Independent 1.1.2 checks
+
+The checked-in corpus covers every existing interpolator and extrapolator,
+including negative and nearly zero rates and 60-year horizons. Independent
+Hermite-polynomial tests exercise turning-point PCHIP slopes; exact node and
+shifted-curve scenario semantics remain separately tested. Rate conversions now
+avoid a rounded intermediate discount factor and reject unrepresentable results.
+Bootstrap success still requires input-quote repricing after root termination.
+At trillion-scale prices, an absolute default tolerance smaller than one ULP can
+correctly fail; choose an explicit financial-unit tolerance and independently
+check the recovered curve. The default has not been loosened.

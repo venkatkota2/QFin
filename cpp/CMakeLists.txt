@@ -4,6 +4,10 @@ project(qfin_native LANGUAGES CXX)
 option(QFIN_STRICT_WARNINGS "Treat additional native warnings as errors in CI" OFF)
 option(QFIN_ENABLE_SANITIZERS "Enable address and undefined-behavior sanitizers" OFF)
 
+if(QFIN_ENABLE_SANITIZERS)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+endif()
+
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
 
@@ -32,12 +36,12 @@ target_compile_definitions(
 )
 
 if(MSVC)
-    target_compile_options(_qfin_native PRIVATE /O2 /W4 /permissive-)
+    target_compile_options(_qfin_native PRIVATE /W4 /permissive- /fp:strict)
     if(QFIN_STRICT_WARNINGS)
         target_compile_options(_qfin_native PRIVATE /WX)
     endif()
 else()
-    target_compile_options(_qfin_native PRIVATE -O3 -Wall -Wextra -Wpedantic)
+    target_compile_options(_qfin_native PRIVATE -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off)
     if(QFIN_STRICT_WARNINGS)
         target_compile_options(_qfin_native PRIVATE
             -Werror -Wshadow -Wconversion -Wsign-conversion)
@@ -49,7 +53,7 @@ if(QFIN_ENABLE_SANITIZERS)
         message(FATAL_ERROR "QFin sanitizer CI requires GCC or Clang")
     endif()
     target_compile_options(_qfin_native PRIVATE
-        -fsanitize=address,undefined -fno-omit-frame-pointer)
+        -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
     target_link_options(_qfin_native PRIVATE -fsanitize=address,undefined)
 endif()
 

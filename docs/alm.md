@@ -31,3 +31,10 @@ scenario-by-instrument-by-period cubes. Local seeded Gaussian generators and
 probability-aware loss conversion are reproducible. Native support remains
 restricted to the curve methodology it implements exactly; NumPy remains the
 reference for all supported interpolation modes.
+
+## Reliability and memory
+
+Valuation and path results reject overflowing finite-input monetary calculations.
+An infinite funding ratio remains intentional for zero liabilities. Public
+scenario chunk sizes do not bound the size of the full returned path matrix; see
+[the memory contract](memory.md) and [exception compatibility](exceptions.md).

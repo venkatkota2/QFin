@@ -8,6 +8,7 @@ from math import ceil, log2
 from typing import Literal
 
 from qfin._validation import require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.resources.estimation import ResourceReport, estimate_resources
 
 RiskProblemKind = Literal["tail_probability", "value_at_risk", "conditional_value_at_risk"]
@@ -83,13 +84,13 @@ def estimate_risk_resources(
         maximum=2**qubit_count,
     )
     if not 1 <= occupied_count <= 2**qubit_count:
-        raise ValueError("occupied_grid_points must lie in the encoded grid")
+        raise QFinValidationError("occupied_grid_points must lie in the encoded grid")
     if problem_kind not in (
         "tail_probability",
         "value_at_risk",
         "conditional_value_at_risk",
     ):
-        raise ValueError("unsupported risk problem kind")
+        raise QFinValidationError("unsupported risk problem kind")
     if threshold_evaluations is None:
         if problem_kind == "tail_probability":
             resolved_threshold_evaluations = 1
@@ -111,9 +112,7 @@ def estimate_risk_resources(
         backend_mode="structured",
     )
     encoded_grid_points = 2**qubit_count
-    estimated_sort_comparisons = (
-        0 if point_count < 2 else ceil(point_count * log2(point_count))
-    )
+    estimated_sort_comparisons = 0 if point_count < 2 else ceil(point_count * log2(point_count))
     # Input losses/probabilities plus encoded grid/probabilities, all doubles.
     estimated_preprocessing_bytes = 16 * (point_count + encoded_grid_points)
     return RiskResourceReport(

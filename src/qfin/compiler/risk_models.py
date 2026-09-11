@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from math import isfinite
 from typing import Any, Literal
 
 import numpy as np
 
+from qfin._provenance import execution_provenance, interval_semantics
 from qfin._validation import require_integer
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
 from qfin.algorithms.amplitude_estimation import _validated_schedule
@@ -16,6 +18,7 @@ from qfin.backends.devices import DeviceTarget, resolve_quantum_device
 from qfin.backends.interop import QasmExport, export_openqasm, export_qiskit
 from qfin.backends.noise import NoiseMitigationReport, NoiseModel, analyze_noise
 from qfin.backends.risk import RiskPennyLaneBackend
+from qfin.exceptions import QFinValidationError
 from qfin.finance.fixed_income import Engine
 from qfin.finance.risk import (
     CVaR,
@@ -61,16 +64,18 @@ class RiskErrorBudget:
 
     def __post_init__(self) -> None:
         if not isfinite(self.total) or self.total <= 0.0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         components = (self.distribution, self.oracle, self.estimation)
         if any(not isfinite(value) or value < 0.0 for value in components):
-            raise ValueError("risk error-budget allocations must be finite and non-negative")
+            raise QFinValidationError(
+                "risk error-budget allocations must be finite and non-negative"
+            )
         if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
-            raise ValueError("risk error-budget allocations must sum to total")
+            raise QFinValidationError("risk error-budget allocations must sum to total")
         if not 0.0 < self.interval_level < 1.0:
-            raise ValueError("interval_level must lie strictly between zero and one")
+            raise QFinValidationError("interval_level must lie strictly between zero and one")
         if not self.target_error_unit.strip():
-            raise ValueError("target_error_unit must not be empty")
+            raise QFinValidationError("target_error_unit must not be empty")
 
     @classmethod
     def allocate(
@@ -80,7 +85,7 @@ class RiskErrorBudget:
         target_error_unit: str = "loss units",
     ) -> RiskErrorBudget:
         if not isfinite(target_error) or target_error <= 0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         return cls(
             total=target_error,
             distribution=0.5 * target_error,
@@ -174,8 +179,12 @@ class QuantumRiskResult:
     backend: str
     algorithm: str
 
+    provenance: dict[str, object] = field(default_factory=dict, kw_only=True, repr=False)
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "provenance": deepcopy(self.provenance),
+            "interval_semantics": interval_semantics(self.problem_kind),
             "problem_category": "empirical_risk",
             "financial_objective": self.problem_kind,
             "representation": "empirical_probability_tree",
@@ -253,7 +262,8 @@ class CompiledRiskModel:
             "backend": self.backend_name,
             "representation": self.representation.encoding_method,
             "algorithm": (
-                self.algorithm_name if self.backend_name == "pennylane"
+                self.algorithm_name
+                if self.backend_name == "pennylane"
                 else "classical_weighted_statistics"
             ),
             "target_error": self.target_error,
@@ -291,7 +301,7 @@ class CompiledRiskModel:
 
         if isinstance(self.problem, TailProbability):
             if engine not in ("auto", "numpy"):
-                raise ValueError("tail probability classical execution uses NumPy")
+                raise QFinValidationError("tail probability classical execution uses NumPy")
             return evaluate_tail_probability(self.problem)
         return aggregate_risk(
             self.problem.distribution,
@@ -308,7 +318,7 @@ class CompiledRiskModel:
         """Build the PennyLane risk runtime without duplicating its simulator."""
 
         if self.backend_name != "pennylane":
-            raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
+            raise QFinValidationError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         return RiskPennyLaneBackend(
             self.representation,
             device_name=resolve_quantum_device(device_name),
@@ -484,7 +494,7 @@ class CompiledRiskModel:
         occupied = self.representation.probabilities > 0
         candidates = np.unique(self.representation.grid[occupied])
         if candidates.size == 0:
-            raise ValueError("risk representation contains no occupied grid points")
+            raise QFinValidationError("risk representation contains no occupied grid points")
         lower_index = 0
         upper_index = candidates.size - 1
         evaluations: list[QuantumThresholdEstimate] = []
@@ -566,17 +576,30 @@ class CompiledRiskModel:
             minimum=0,
         )
         if bootstrap_count == 1:
-            raise ValueError("bootstrap_resamples must be zero or at least two")
+            raise QFinValidationError("bootstrap_resamples must be zero or at least two")
         powers, shot_count = _validated_schedule(schedule, shots)
         resolved_device = resolve_quantum_device(device_name)
         runtime = self.to_pennylane(
             device_name=resolved_device,
             max_structured_rotations=max_structured_rotations,
         )
+        provenance = execution_provenance(
+            device=resolved_device,
+            seed=seed,
+            shots=shot_count,
+            schedule=powers,
+            representation="empirical_probability_tree",
+            qubits=self.representation.qubits,
+            likelihood_grid_size=likelihood_grid_size,
+            settings={
+                "target_error": self.target_error,
+                "max_structured_rotations": max_structured_rotations,
+            },
+        )
         classical_interval: RiskConfidenceInterval | None = None
         if bootstrap_count:
             if isinstance(self.problem, TailProbability):
-                raise ValueError("bootstrap intervals are implemented for VaR/CVaR only")
+                raise QFinValidationError("bootstrap intervals are implemented for VaR/CVaR only")
             classical_interval = bootstrap_risk_interval(
                 self.problem.distribution,
                 confidence=self.problem.confidence,
@@ -620,6 +643,7 @@ class CompiledRiskModel:
                 resources=resources,
                 classical_interval=None,
                 backend=resolved_device,
+                provenance=provenance,
             )
 
         search = self._run_var_search(
@@ -654,6 +678,7 @@ class CompiledRiskModel:
                 resources=resources,
                 classical_interval=classical_interval,
                 backend=resolved_device,
+                provenance=provenance,
             )
 
         excess_objective = tail_excess_objective(self.representation, search.value)
@@ -691,6 +716,7 @@ class CompiledRiskModel:
             resources=resources,
             classical_interval=classical_interval,
             backend=resolved_device,
+            provenance=provenance,
         )
 
     def _build_result(
@@ -708,10 +734,12 @@ class CompiledRiskModel:
         resources: RiskResourceReport,
         classical_interval: RiskConfidenceInterval | None,
         backend: str,
+        provenance: dict[str, object],
     ) -> QuantumRiskResult:
         absolute_error = abs(value - self.classical_value)
         estimation_error = abs(value - self.encoded_value)
         return QuantumRiskResult(
+            provenance=provenance,
             problem_kind=self.problem_kind,
             value=value,
             confidence_interval_95=(min(interval), max(interval)),

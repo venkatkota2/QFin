@@ -1,3 +1,5 @@
+#include "qfin/finite_result.hpp"
+#include "qfin/checked_size.hpp"
 #include "qfin/alm.hpp"
 
 #include "qfin/curves.hpp"
@@ -86,9 +88,9 @@ ALMPathProjectionResult project_alm_paths(
     validate_curve(curve_times, zero_rates);
     validate_cashflows(asset_cashflow_times, asset_cashflow_amounts, "asset");
     validate_cashflows(liability_cashflow_times, liability_cashflow_amounts, "liability");
-    const std::size_t path_size = scenario_count * period_count;
+    const std::size_t path_size = checked_multiply(scenario_count, period_count);
     if (liability_inflation_linkage.size() != liability_cashflow_times.size() ||
-        rate_shocks.size() != path_size * curve_times.size() ||
+        rate_shocks.size() != checked_multiply(path_size, curve_times.size()) ||
         credit_spread_shocks.size() != path_size || equity_returns.size() != path_size ||
         inflation_rates.size() != path_size || scenario_count == 0 || period_count == 0 ||
         !std::isfinite(period_length) || period_length <= 0.0 ||
@@ -119,8 +121,8 @@ ALMPathProjectionResult project_alm_paths(
         }
     }
 
-    const std::size_t output_width = period_count + 1;
-    const std::size_t output_size = scenario_count * output_width;
+    const std::size_t output_width = checked_add(period_count, 1);
+    const std::size_t output_size = checked_allocation(checked_multiply(scenario_count, output_width), 9);
     ALMPathProjectionResult result{
         std::vector<double>(output_size, 0.0),
         std::vector<double>(output_size, 0.0),
@@ -310,6 +312,14 @@ ALMPathProjectionResult project_alm_paths(
                                                       ? std::numeric_limits<double>::infinity()
                                                       : result.asset_values[output_index] /
                                                             liability_value;
+        }
+    }
+    for (const auto* values : {&result.asset_values, &result.bond_values, &result.cash_values, &result.equity_values, &result.liability_values, &result.liability_payments, &result.surplus, &result.transaction_costs}) {
+        require_finite_result(*values);
+    }
+    for (std::size_t i = 0; i < result.funding_ratio.size(); ++i) {
+        if (result.liability_values[i] != 0.0) {
+            require_finite_result(result.funding_ratio[i]);
         }
     }
     return result;

@@ -1,0 +1,352 @@
+{
+  "qfin": "1.1.1",
+  "source_commit": "46ef9f83d8536e85afbbfaa4fe821524b368f274",
+  "working_tree_dirty": true,
+  "scope": "All stored corpus, including QuantLib dated bonds and exact date/schedule assertions. The 26 inline Decimal extensions are separately gated by pytest.",
+  "independent_configurations": 1073,
+  "executed_cases": 1454,
+  "metrics": {
+    "rate_conversions/discount_factor/python": {
+      "comparisons": 144,
+      "max_absolute_error": 2.220446049250313e-16,
+      "max_tolerance_fraction": 0.4656727885388207,
+      "worst_case": "rate_conversions-123"
+    },
+    "rate_conversions/continuous_rate/python": {
+      "comparisons": 144,
+      "max_absolute_error": 1.3877787807814457e-17,
+      "max_tolerance_fraction": 0.0010085183328110044,
+      "worst_case": "rate_conversions-040"
+    },
+    "daycounts/year_fraction/python": {
+      "comparisons": 60,
+      "max_absolute_error": 4.163336342344337e-17,
+      "max_tolerance_fraction": 0.00022634894552852448,
+      "worst_case": "daycounts-004"
+    },
+    "fixed_income/dirty_price/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 0.06640625,
+      "max_tolerance_fraction": 0.035884628891490154,
+      "worst_case": "fixed_income-155",
+      "max_materiality_fraction": 0.07275957614183426
+    },
+    "fixed_income/macaulay_duration/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 2.984279490192421e-13,
+      "max_tolerance_fraction": 0.006316619384705108,
+      "worst_case": "fixed_income-157"
+    },
+    "fixed_income/modified_duration/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 2.984279490192421e-13,
+      "max_tolerance_fraction": 0.006371511778693207,
+      "worst_case": "fixed_income-157"
+    },
+    "fixed_income/convexity/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 1.3869794202037156e-11,
+      "max_tolerance_fraction": 0.011505413157061176,
+      "worst_case": "fixed_income-157"
+    },
+    "fixed_income/dv01/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 0.00034332275390625,
+      "max_tolerance_fraction": 0.0003351765611500799,
+      "worst_case": "fixed_income-155",
+      "max_materiality_fraction": 0.0003552713678800501
+    },
+    "fixed_income/clean_plus_accrued/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 0.0,
+      "max_tolerance_fraction": 0.0,
+      "worst_case": "fixed_income-000",
+      "max_materiality_fraction": 0
+    },
+    "fixed_income/solved_yield/numpy": {
+      "comparisons": 162,
+      "max_absolute_error": 8.287476625163102e-13,
+      "max_tolerance_fraction": 0.004143738312581551,
+      "worst_case": "fixed_income-003"
+    },
+    "fixed_income/dirty_price/native": {
+      "comparisons": 162,
+      "max_absolute_error": 0.0078125,
+      "max_tolerance_fraction": 0.004040742551104508,
+      "worst_case": "fixed_income-155",
+      "max_materiality_fraction": 0.04206412995699793
+    },
+    "fixed_income/macaulay_duration/native": {
+      "comparisons": 162,
+      "max_absolute_error": 2.984279490192421e-13,
+      "max_tolerance_fraction": 0.004110251185008764,
+      "worst_case": "fixed_income-157"
+    },
+    "fixed_income/modified_duration/native": {
+      "comparisons": 162,
+      "max_absolute_error": 2.984279490192421e-13,
+      "max_tolerance_fraction": 0.004110251185008764,
+      "worst_case": "fixed_income-157"
+    },
+    "fixed_income/convexity/native": {
+      "comparisons": 162,
+      "max_absolute_error": 1.3869794202037156e-11,
+      "max_tolerance_fraction": 0.004160000927068926,
+      "worst_case": "fixed_income-157"
+    },
+    "fixed_income/dv01/native": {
+      "comparisons": 162,
+      "max_absolute_error": 1.52587890625e-05,
+      "max_tolerance_fraction": 1.4387121920544617e-05,
+      "worst_case": "fixed_income-137",
+      "max_materiality_fraction": 1.52587890625e-05
+    },
+    "fixed_income/clean_plus_accrued/native": {
+      "comparisons": 162,
+      "max_absolute_error": 0.0,
+      "max_tolerance_fraction": 0.0,
+      "worst_case": "fixed_income-000",
+      "max_materiality_fraction": 0
+    },
+    "fixed_income/solved_yield/native": {
+      "comparisons": 162,
+      "max_absolute_error": 8.287476625163102e-13,
+      "max_tolerance_fraction": 0.004143738312581551,
+      "worst_case": "fixed_income-003"
+    },
+    "curves/discount_factor/python": {
+      "comparisons": 432,
+      "max_absolute_error": 2.220446049250313e-16,
+      "max_tolerance_fraction": 0.028667203154284795,
+      "worst_case": "curves-001"
+    },
+    "curves/node_discount_factors/python": {
+      "comparisons": 432,
+      "max_absolute_error": 0.0,
+      "max_tolerance_fraction": 0.0,
+      "worst_case": "curves-000"
+    },
+    "curves/zero_rate_discount_identity/python": {
+      "comparisons": 400,
+      "max_absolute_error": 2.220446049250313e-16,
+      "max_tolerance_fraction": 0.00021768010519943154,
+      "worst_case": "curves-001"
+    },
+    "bootstrapping/discount_factors/python": {
+      "comparisons": 4,
+      "max_absolute_error": 1.1324274851176597e-14,
+      "max_tolerance_fraction": 6.669367837706126e-05,
+      "worst_case": "bootstrapping-000"
+    },
+    "risk/var/numpy": {
+      "comparisons": 30,
+      "max_absolute_error": 0.0,
+      "max_tolerance_fraction": 0.0,
+      "worst_case": "risk-000"
+    },
+    "risk/cvar/numpy": {
+      "comparisons": 30,
+      "max_absolute_error": 2.842170943040401e-14,
+      "max_tolerance_fraction": 2.786442101020001e-06,
+      "worst_case": "risk-005",
+      "max_materiality_fraction": 2.8421709430404007e-06
+    },
+    "risk/mean/numpy": {
+      "comparisons": 30,
+      "max_absolute_error": 1e-70,
+      "max_tolerance_fraction": 1e-58,
+      "worst_case": "risk-025"
+    },
+    "risk/var/native": {
+      "comparisons": 30,
+      "max_absolute_error": 0.0,
+      "max_tolerance_fraction": 0.0,
+      "worst_case": "risk-000"
+    },
+    "risk/cvar/native": {
+      "comparisons": 30,
+      "max_absolute_error": 2.842170943040401e-14,
+      "max_tolerance_fraction": 2.786442101020001e-06,
+      "worst_case": "risk-005",
+      "max_materiality_fraction": 2.8421709430404007e-06
+    },
+    "risk/mean/native": {
+      "comparisons": 30,
+      "max_absolute_error": 1e-70,
+      "max_tolerance_fraction": 1e-58,
+      "worst_case": "risk-025"
+    },
+    "alm/asset_pv/numpy": {
+      "comparisons": 9,
+      "max_absolute_error": 1.3552527156068805e-20,
+      "max_tolerance_fraction": 1.3550519461725417e-08,
+      "worst_case": "alm-003"
+    },
+    "alm/liability_pv/numpy": {
+      "comparisons": 9,
+      "max_absolute_error": 0.0001220703125,
+      "max_tolerance_fraction": 4.1929746157216266e-05,
+      "worst_case": "alm-002"
+    },
+    "alm/surplus/numpy": {
+      "comparisons": 9,
+      "max_absolute_error": 7.2479248046875e-05,
+      "max_tolerance_fraction": 7.60538399467581e-05,
+      "worst_case": "alm-008"
+    },
+    "alm/deficit/numpy": {
+      "comparisons": 9,
+      "max_absolute_error": 7.2479248046875e-05,
+      "max_tolerance_fraction": 7.60538399467581e-05,
+      "worst_case": "alm-008"
+    },
+    "alm/funding_ratio/numpy": {
+      "comparisons": 9,
+      "max_absolute_error": 2.220446049250313e-16,
+      "max_tolerance_fraction": 6.702398047156148e-05,
+      "worst_case": "alm-000"
+    },
+    "alm/asset_pv/native": {
+      "comparisons": 9,
+      "max_absolute_error": 1.3552527156068805e-20,
+      "max_tolerance_fraction": 1.3550519461725417e-08,
+      "worst_case": "alm-003"
+    },
+    "alm/liability_pv/native": {
+      "comparisons": 9,
+      "max_absolute_error": 0.0001220703125,
+      "max_tolerance_fraction": 4.1929746157216266e-05,
+      "worst_case": "alm-002"
+    },
+    "alm/surplus/native": {
+      "comparisons": 9,
+      "max_absolute_error": 7.2479248046875e-05,
+      "max_tolerance_fraction": 7.60538399467581e-05,
+      "worst_case": "alm-008"
+    },
+    "alm/deficit/native": {
+      "comparisons": 9,
+      "max_absolute_error": 7.2479248046875e-05,
+      "max_tolerance_fraction": 7.60538399467581e-05,
+      "worst_case": "alm-008"
+    },
+    "alm/funding_ratio/native": {
+      "comparisons": 9,
+      "max_absolute_error": 2.220446049250313e-16,
+      "max_tolerance_fraction": 6.702398047156148e-05,
+      "worst_case": "alm-000"
+    },
+    "life/premiums/numpy": {
+      "comparisons": 144,
+      "max_absolute_error": 1.4551915228366852e-11,
+      "max_tolerance_fraction": 0.0001108962378610653,
+      "worst_case": "life-029",
+      "max_materiality_fraction": 0.00014551915228366852
+    },
+    "life/benefits/numpy": {
+      "comparisons": 144,
+      "max_absolute_error": 2.9103830456733704e-11,
+      "max_tolerance_fraction": 7.730556876589723e-05,
+      "worst_case": "life-057",
+      "max_materiality_fraction": 0.00029103830456733704
+    },
+    "life/expenses/numpy": {
+      "comparisons": 144,
+      "max_absolute_error": 1.8189894035458565e-12,
+      "max_tolerance_fraction": 0.0001386107904858536,
+      "worst_case": "life-027",
+      "max_materiality_fraction": 1.8189894035458565e-05
+    },
+    "life/net/numpy": {
+      "comparisons": 144,
+      "max_absolute_error": 4.3655745685100555e-11,
+      "max_tolerance_fraction": 0.00022282138806396277,
+      "worst_case": "life-061",
+      "max_materiality_fraction": 0.00043655745685100555
+    },
+    "life/pv/numpy": {
+      "comparisons": 144,
+      "max_absolute_error": 1.1641532182693481e-10,
+      "max_tolerance_fraction": 9.02988656083095e-05,
+      "worst_case": "life-059",
+      "max_materiality_fraction": 0.0011641532182693481
+    },
+    "life/premiums/native": {
+      "comparisons": 144,
+      "max_absolute_error": 1.4551915228366852e-11,
+      "max_tolerance_fraction": 0.0001108962378610653,
+      "worst_case": "life-029",
+      "max_materiality_fraction": 0.00014551915228366852
+    },
+    "life/benefits/native": {
+      "comparisons": 144,
+      "max_absolute_error": 5.820766091346741e-11,
+      "max_tolerance_fraction": 0.00015461113753179447,
+      "worst_case": "life-057",
+      "max_materiality_fraction": 0.0005820766091346741
+    },
+    "life/expenses/native": {
+      "comparisons": 144,
+      "max_absolute_error": 1.8189894035458565e-12,
+      "max_tolerance_fraction": 0.0001386107904858536,
+      "worst_case": "life-027",
+      "max_materiality_fraction": 1.8189894035458565e-05
+    },
+    "life/net/native": {
+      "comparisons": 144,
+      "max_absolute_error": 5.820766091346741e-11,
+      "max_tolerance_fraction": 0.0002273687396468422,
+      "worst_case": "life-057",
+      "max_materiality_fraction": 0.0005820766091346741
+    },
+    "life/pv/native": {
+      "comparisons": 144,
+      "max_absolute_error": 1.1641532182693481e-10,
+      "max_tolerance_fraction": 0.00023199026551249888,
+      "worst_case": "life-057",
+      "max_materiality_fraction": 0.0011641532182693481
+    },
+    "dated_bonds/dirty_price/numpy": {
+      "comparisons": 36,
+      "max_absolute_error": 0.0068359375,
+      "max_tolerance_fraction": 0.0006301950256906065,
+      "worst_case": "dated-bond-027",
+      "max_materiality_fraction": 0.00341796875
+    },
+    "dated_bonds/clean_price/numpy": {
+      "comparisons": 36,
+      "max_absolute_error": 0.0068359375,
+      "max_tolerance_fraction": 0.0006547792861493059,
+      "worst_case": "dated-bond-027",
+      "max_materiality_fraction": 0.00341796875
+    },
+    "dated_bonds/accrued_interest/numpy": {
+      "comparisons": 36,
+      "max_absolute_error": 1.52587890625e-05,
+      "max_tolerance_fraction": 0.0003814697256088254,
+      "worst_case": "dated-bond-003",
+      "max_materiality_fraction": 8.881784197001252e-06
+    },
+    "dated_bonds/dirty_price/native": {
+      "comparisons": 36,
+      "max_absolute_error": 0.0068359375,
+      "max_tolerance_fraction": 0.0006301950256906065,
+      "worst_case": "dated-bond-027",
+      "max_materiality_fraction": 0.00341796875
+    },
+    "dated_bonds/clean_price/native": {
+      "comparisons": 36,
+      "max_absolute_error": 0.0068359375,
+      "max_tolerance_fraction": 0.0006547792861493059,
+      "worst_case": "dated-bond-027",
+      "max_materiality_fraction": 0.00341796875
+    },
+    "dated_bonds/accrued_interest/native": {
+      "comparisons": 36,
+      "max_absolute_error": 1.52587890625e-05,
+      "max_tolerance_fraction": 0.0003814697256088254,
+      "worst_case": "dated-bond-003",
+      "max_materiality_fraction": 8.881784197001252e-06
+    }
+  }
+}

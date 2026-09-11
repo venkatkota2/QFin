@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin._validation import readonly_float64, require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.distributions import Distribution, EmpiricalDistribution
 
 Objective = Literal["expectation"] | Callable[[NDArray[np.float64]], NDArray[np.float64]]
@@ -35,32 +36,32 @@ class DistributionEncoding:
         grid = readonly_float64(self.grid).reshape(-1)
         probabilities = readonly_float64(self.probabilities).reshape(-1)
         if grid.shape != probabilities.shape or grid.size != 2**qubits:
-            raise ValueError("grid and probabilities must each contain 2**qubits values")
+            raise QFinValidationError("grid and probabilities must each contain 2**qubits values")
         if not np.all(np.isfinite(grid)):
-            raise ValueError("grid values must be finite")
+            raise QFinValidationError("grid values must be finite")
         probability_total = float(np.sum(probabilities, dtype=np.float64))
         if (
             not np.all(np.isfinite(probabilities))
             or np.any(probabilities < 0)
             or not np.isclose(probability_total, 1.0, rtol=0.0, atol=1.0e-12)
         ):
-            raise ValueError("probabilities must be non-negative and sum to one")
+            raise QFinValidationError("probabilities must be non-negative and sum to one")
         if (
             not isfinite(self.lower_bound)
             or not isfinite(self.upper_bound)
             or self.lower_bound > self.upper_bound
         ):
-            raise ValueError("encoding bounds must be finite and ordered")
+            raise QFinValidationError("encoding bounds must be finite and ordered")
         if not isfinite(self.tail_probability) or not 0.0 <= self.tail_probability < 1.0:
-            raise ValueError("tail_probability must lie in [0, 1)")
+            raise QFinValidationError("tail_probability must lie in [0, 1)")
         if self.discretization_error is not None and (
             np.isnan(self.discretization_error) or self.discretization_error < 0.0
         ):
-            raise ValueError("discretization_error must be non-negative or None")
+            raise QFinValidationError("discretization_error must be non-negative or None")
         if not isfinite(self.mean_error) or self.mean_error < 0.0:
-            raise ValueError("mean_error must be finite and non-negative")
+            raise QFinValidationError("mean_error must be finite and non-negative")
         if not self.objective or not self.encoding_method or not self.state_preparation_method:
-            raise ValueError("encoding metadata labels must not be empty")
+            raise QFinValidationError("encoding metadata labels must not be empty")
         object.__setattr__(self, "qubits", qubits)
         object.__setattr__(self, "grid", grid)
         object.__setattr__(self, "probabilities", probabilities)
@@ -92,17 +93,17 @@ class DistributionEncoding:
         }
 
 
-def _objective_values(
-    objective: Objective, grid: NDArray[np.float64]
-) -> NDArray[np.float64]:
+def _objective_values(objective: Objective, grid: NDArray[np.float64]) -> NDArray[np.float64]:
     if objective == "expectation":
         return grid
     if callable(objective):
         values = np.asarray(objective(grid), dtype=np.float64)
         if values.shape != grid.shape or not np.all(np.isfinite(values)):
-            raise ValueError("objective callable must return one finite value per grid point")
+            raise QFinValidationError(
+                "objective callable must return one finite value per grid point"
+            )
         return values
-    raise ValueError("objective must be 'expectation' or a callable")
+    raise QFinValidationError("objective must be 'expectation' or a callable")
 
 
 def _domain_bounds(
@@ -119,12 +120,12 @@ def _domain_bounds(
     else:
         lower, upper = float(bounds[0]), float(bounds[1])
     if not (isfinite(lower) and isfinite(upper)):
-        raise ValueError("distribution bounds must be finite")
+        raise QFinValidationError("distribution bounds must be finite")
     if lower == upper:
         padding = max(1.0, abs(lower)) * 1e-6
         lower, upper = lower - padding, upper + padding
     if lower > upper:
-        raise ValueError("lower bound must be less than upper bound")
+        raise QFinValidationError("lower bound must be less than upper bound")
     return lower, upper
 
 
@@ -172,7 +173,7 @@ def _fixed_encoding(
 
     included_mass = float(np.sum(probabilities))
     if included_mass <= 0:
-        raise ValueError("selected domain contains no probability mass")
+        raise QFinValidationError("selected domain contains no probability mass")
     probabilities = probabilities / included_mass
     mean_error = abs(float(np.dot(grid, probabilities)) - distribution.mean)
     label = "expectation" if objective == "expectation" else "callable"
@@ -207,9 +208,9 @@ def encode(
     """
 
     if not isfinite(target_error) or target_error <= 0:
-        raise ValueError("target_error must be finite and greater than zero")
+        raise QFinValidationError("target_error must be finite and greater than zero")
     if not 0 <= tail_probability < 1:
-        raise ValueError("tail_probability must lie in [0, 1)")
+        raise QFinValidationError("tail_probability must lie in [0, 1)")
     minimum_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
     maximum_qubits = require_integer(max_qubits, "max_qubits", minimum=minimum_qubits)
     selected_qubits = (
@@ -223,7 +224,7 @@ def encode(
         )
     )
     if maximum_qubits < minimum_qubits:
-        raise ValueError("require 1 <= min_qubits <= max_qubits")
+        raise QFinValidationError("require 1 <= min_qubits <= max_qubits")
 
     if selected_qubits is not None:
         encoding = _fixed_encoding(
@@ -292,19 +293,15 @@ def _fixed_quantile_encoding(
     upper_quantile = 1.0 - lower_quantile
     points = 2**qubits
     quantiles = lower_quantile + (
-        (np.arange(points, dtype=np.float64) + 0.5)
-        * (upper_quantile - lower_quantile)
-        / points
+        (np.arange(points, dtype=np.float64) + 0.5) * (upper_quantile - lower_quantile) / points
     )
     grid = np.asarray(distribution.ppf(quantiles), dtype=np.float64)
     if grid.shape != (points,) or not np.all(np.isfinite(grid)):
-        raise ValueError("distribution ppf must return one finite value per quantile")
+        raise QFinValidationError("distribution ppf must return one finite value per quantile")
     probabilities = np.full(points, 1.0 / points, dtype=np.float64)
-    domain = np.asarray(
-        distribution.ppf([lower_quantile, upper_quantile]), dtype=np.float64
-    )
+    domain = np.asarray(distribution.ppf([lower_quantile, upper_quantile]), dtype=np.float64)
     if not np.all(np.isfinite(domain)):
-        raise ValueError("quantile domain bounds must be finite")
+        raise QFinValidationError("quantile domain bounds must be finite")
     label = "expectation" if objective == "expectation" else "callable"
     return DistributionEncoding(
         grid=grid,
@@ -341,9 +338,9 @@ def encode_quantiles(
     """
 
     if not isfinite(target_error) or target_error <= 0:
-        raise ValueError("target_error must be finite and greater than zero")
+        raise QFinValidationError("target_error must be finite and greater than zero")
     if not 0 < tail_probability < 1:
-        raise ValueError("tail_probability must lie strictly between zero and one")
+        raise QFinValidationError("tail_probability must lie strictly between zero and one")
     minimum_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
     maximum_qubits = require_integer(max_qubits, "max_qubits", minimum=minimum_qubits)
     selected_qubits = (
@@ -357,7 +354,7 @@ def encode_quantiles(
         )
     )
     if maximum_qubits < minimum_qubits:
-        raise ValueError("require 1 <= min_qubits <= max_qubits")
+        raise QFinValidationError("require 1 <= min_qubits <= max_qubits")
 
     if selected_qubits is not None:
         encoding = _fixed_quantile_encoding(

@@ -11,6 +11,7 @@ from scipy.optimize import brentq, minimize_scalar
 from scipy.stats import beta
 
 from qfin._validation import require_integer, require_integer_sequence
+from qfin.exceptions import QFinTypeError, QFinValidationError
 
 _THETA_MAX = pi / 2.0
 _WILKS_95_LIKELIHOOD_RATIO = 3.841_458_820_694_124
@@ -25,9 +26,9 @@ def _validated_schedule(
 
     powers = require_integer_sequence(schedule, "schedule", minimum=0)
     if not powers:
-        raise ValueError("schedule must contain unique, non-negative powers")
+        raise QFinValidationError("schedule must contain unique, non-negative powers")
     if len(set(powers)) != len(powers):
-        raise ValueError("schedule must contain unique, non-negative powers")
+        raise QFinValidationError("schedule must contain unique, non-negative powers")
     shot_count = require_integer(shots, "shots", minimum=1)
     return powers, shot_count
 
@@ -45,7 +46,7 @@ class CircuitObservation:
         shots = require_integer(self.shots, "shots", minimum=1)
         successes = require_integer(self.successes, "successes", minimum=0)
         if successes > shots:
-            raise ValueError("successes must lie between zero and shots")
+            raise QFinValidationError("successes must lie between zero and shots")
         object.__setattr__(self, "power", power)
         object.__setattr__(self, "shots", shots)
         object.__setattr__(self, "successes", successes)
@@ -83,6 +84,8 @@ class AmplitudeEstimate:
         likelihood_regions = self.likelihood_ratio_regions_95 or regions
         return {
             "amplitude": self.amplitude,
+            "interval_scope": "fixed_experiment_guarded_likelihood_region",
+            "simultaneous_workflow_coverage": False,
             "confidence_interval_95": [self.lower_95, self.upper_95],
             "confidence_regions_95": [list(region) for region in regions],
             "likelihood_ratio_regions_95": [list(region) for region in likelihood_regions],
@@ -160,14 +163,18 @@ def _coarse_to_fine_maxima(
     # Searching all intervals avoids the missed-mode risk of a uniform grid.
     frequencies = tuple(2 * item.power + 1 for item in observations)
     if sum(frequencies) + 1 > maximum_grid_size:
-        raise ValueError(
+        raise QFinValidationError(
             "grid_size is too small to resolve every Grover likelihood interval; "
             "increase grid_size or reduce the Grover powers"
         )
-    boundaries = np.unique(np.concatenate([
-        np.arange(frequency + 1, dtype=np.float64) * (_THETA_MAX / frequency)
-        for frequency in frequencies
-    ]))
+    boundaries = np.unique(
+        np.concatenate(
+            [
+                np.arange(frequency + 1, dtype=np.float64) * (_THETA_MAX / frequency)
+                for frequency in frequencies
+            ]
+        )
+    )
     # Coincident rational breakpoints can differ by one rounding bit.
     boundaries = boundaries[np.r_[True, np.diff(boundaries) > 4 * np.finfo(float).eps]]
     boundaries[0], boundaries[-1] = 0.0, _THETA_MAX
@@ -185,7 +192,7 @@ def _coarse_to_fine_maxima(
             options={"xatol": 1e-14},
         )
         if not result.success:
-            raise ValueError("MLAE likelihood refinement failed to converge")
+            raise QFinValidationError("MLAE likelihood refinement failed to converge")
         refined_theta = float(result.x)
         candidates.append((refined_theta, _scalar_log_likelihood(refined_theta, observations)))
     maxima = tuple(candidates)
@@ -393,12 +400,12 @@ def maximum_likelihood_amplitude_estimate(
 
     items = tuple(observations)
     if not items:
-        raise ValueError("at least one circuit observation is required")
+        raise QFinValidationError("at least one circuit observation is required")
     resolved_grid_size = require_integer(grid_size, "grid_size", minimum=1_001)
     if any(not isinstance(item, CircuitObservation) for item in items):
-        raise TypeError("observations must contain CircuitObservation objects")
+        raise QFinTypeError("observations must contain CircuitObservation objects")
     if len({item.power for item in items}) != len(items):
-        raise ValueError("each Grover power may appear only once")
+        raise QFinValidationError("each Grover power may appear only once")
 
     theta, log_likelihood, maxima, theta_grid, _ = _coarse_to_fine_maxima(
         items,
@@ -416,9 +423,7 @@ def maximum_likelihood_amplitude_estimate(
     regions = _amplitude_regions(theta_regions)
     likelihood_regions = _amplitude_regions(likelihood_theta_regions)
 
-    fisher_information = sum(
-        4.0 * item.shots * (2 * item.power + 1) ** 2 for item in items
-    )
+    fisher_information = sum(4.0 * item.shots * (2 * item.power + 1) ** 2 for item in items)
     theta_standard_error = 1.0 / sqrt(fisher_information)
     theta_lower = max(0.0, theta - 1.96 * theta_standard_error)
     theta_upper = min(_THETA_MAX, theta + 1.96 * theta_standard_error)
@@ -441,7 +446,7 @@ def maximum_likelihood_amplitude_estimate(
 def direct_sampling_standard_error(amplitude: float, shots: int) -> float:
     """Return the Bernoulli standard error for comparison with MLAE."""
     if not 0 <= amplitude <= 1:
-        raise ValueError("amplitude must lie in [0, 1]")
+        raise QFinValidationError("amplitude must lie in [0, 1]")
     shot_count = require_integer(shots, "shots", minimum=1)
     return sqrt(amplitude * (1 - amplitude) / shot_count)
 
@@ -449,5 +454,5 @@ def direct_sampling_standard_error(amplitude: float, shots: int) -> float:
 def amplitude_to_theta(amplitude: float) -> float:
     """Convert a success amplitude in ``[0, 1]`` to its Grover angle."""
     if not 0 <= amplitude <= 1:
-        raise ValueError("amplitude must lie in [0, 1]")
+        raise QFinValidationError("amplitude must lie in [0, 1]")
     return asin(sqrt(amplitude))

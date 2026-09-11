@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from math import isfinite
 from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._provenance import execution_provenance, interval_semantics
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
 from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends import (
@@ -22,6 +24,7 @@ from qfin.backends.interop import QasmExport, export_openqasm, export_qiskit
 from qfin.backends.noise import NoiseMitigationReport, NoiseModel, analyze_noise
 from qfin.circuits import WalshPayoffApproximation
 from qfin.compiler.risk_models import CompiledRiskModel as CompiledRiskModel
+from qfin.exceptions import QFinTypeError, QFinValidationError
 from qfin.finance import BlackScholes, EuropeanOption, LogNormal
 from qfin.representation import DistributionEncoding
 from qfin.representation.strategies import StatePreparationStrategyReport
@@ -55,13 +58,13 @@ class ErrorBudget:
             self.sampling,
         )
         if not isfinite(self.total) or self.total <= 0.0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         if any(not isfinite(value) or value < 0.0 for value in components):
-            raise ValueError("error-budget allocations must be finite and non-negative")
+            raise QFinValidationError("error-budget allocations must be finite and non-negative")
         if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
-            raise ValueError("error-budget allocations must sum to total")
+            raise QFinValidationError("error-budget allocations must sum to total")
         if not self.target_error_unit.strip():
-            raise ValueError("target_error_unit must not be empty")
+            raise QFinValidationError("target_error_unit must not be empty")
 
     @classmethod
     def allocate(
@@ -71,7 +74,7 @@ class ErrorBudget:
         target_error_unit: str = "currency / price units",
     ) -> ErrorBudget:
         if not isfinite(target_error) or target_error <= 0.0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         return cls(
             total=target_error,
             domain_truncation=0.15 * target_error,
@@ -114,8 +117,12 @@ class PricingResult:
     backend: str
     algorithm: str
 
+    provenance: dict[str, object] = field(default_factory=dict, kw_only=True, repr=False)
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "provenance": deepcopy(self.provenance),
+            "interval_semantics": interval_semantics("pricing"),
             "problem_category": "option_pricing",
             "financial_objective": "european_option_price",
             "representation": self.resources.backend_mode,
@@ -253,12 +260,14 @@ class CompiledPricingModel:
     ) -> PennyLaneRuntime:
         """Build the optional PennyLane runtime adapter."""
         if self.backend_name != "pennylane":
-            raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
+            raise QFinValidationError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         resolved_mode = self._resolve_backend_mode(mode)
         resolved_device = resolve_quantum_device(device_name)
         if resolved_mode == "compressed":
             if self.payoff_approximation is None:
-                raise ValueError("compressed backend requires representation_method='quantile'")
+                raise QFinValidationError(
+                    "compressed backend requires representation_method='quantile'"
+                )
             return CompressedPennyLaneBackend(
                 self.representation,
                 self.normalized_payoff,
@@ -280,7 +289,7 @@ class CompiledPricingModel:
                 device_name=resolved_device,
                 max_dense_dimension=max_dense_dimension,
             )
-        raise ValueError("mode must be 'compressed', 'structured', or 'dense'")
+        raise QFinValidationError("mode must be 'compressed', 'structured', or 'dense'")
 
     def _portable_runtime(
         self,
@@ -291,7 +300,7 @@ class CompiledPricingModel:
     ) -> CompressedPennyLaneBackend | StructuredPennyLaneBackend:
         resolved_mode = self._resolve_backend_mode(mode)
         if resolved_mode == "dense":
-            raise ValueError(
+            raise QFinValidationError(
                 "dense QubitUnitary is a numerical reference and cannot be used for "
                 "portable device analysis or export"
             )
@@ -301,7 +310,7 @@ class CompiledPricingModel:
             max_compressed_terms=max_compressed_terms,
         )
         if not isinstance(runtime, (CompressedPennyLaneBackend, StructuredPennyLaneBackend)):
-            raise TypeError("portable runtime unexpectedly resolved to the dense backend")
+            raise QFinTypeError("portable runtime unexpectedly resolved to the dense backend")
         return runtime
 
     def device_resources(
@@ -481,6 +490,16 @@ class CompiledPricingModel:
             device_name=resolved_device,
         )
         return PricingResult(
+            provenance=execution_provenance(
+                device=resolved_device,
+                seed=seed,
+                shots=shot_count,
+                schedule=powers,
+                representation=resolved_mode,
+                qubits=self.representation.qubits,
+                likelihood_grid_size=likelihood_grid_size,
+                settings={"target_error": self.target_error},
+            ),
             value=value,
             confidence_interval_95=(min(lower, upper), max(lower, upper)),
             classical_value=self.classical_value,

@@ -9,6 +9,7 @@ from numpy.typing import NDArray
 
 from qfin.algorithms import CircuitObservation
 from qfin.backends.structured import StructuredPennyLaneBackend
+from qfin.exceptions import QFinValidationError
 from qfin.representation import DistributionEncoding, QuantumObjectiveEncoding
 
 
@@ -28,7 +29,7 @@ class RiskPennyLaneBackend:
         max_structured_rotations: int = 32_767,
     ) -> None:
         if max_structured_rotations < 1:
-            raise ValueError("max_structured_rotations must be positive")
+            raise QFinValidationError("max_structured_rotations must be positive")
         self.representation = representation
         self.device_name = device_name
         self.max_structured_rotations = max_structured_rotations
@@ -45,7 +46,7 @@ class RiskPennyLaneBackend:
                 self.representation.probabilities,
             )
         ):
-            raise ValueError("objective distribution does not match this runtime")
+            raise QFinValidationError("objective distribution does not match this runtime")
         return StructuredPennyLaneBackend(
             self.representation,
             objective.normalized_values,

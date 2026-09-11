@@ -29,3 +29,11 @@ This is an experimental annual model with simplified products, transitions and
 assumptions. It is not calibrated by default and is not a replacement for
 commercial actuarial platforms such as Prophet, AXIS or PathWise. Published
 speedups describe measured model workloads, not production actuarial equivalence.
+
+## Reliability and memory
+
+Projection horizons and major output groups are checked before allocation.
+Unrepresentable benefits, cashflows or present values raise explicit validation
+errors in both execution paths. Model-point aggregation retains the existing
+annual survival/lapse timing; no product mechanics are added. Independent scalar
+recursion and grouping properties support the [1.1.2 verification](validation-1.1.2-spec.md).

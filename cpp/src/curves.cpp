@@ -52,7 +52,11 @@ double discount_factor(
         throw std::invalid_argument("discount time and shift must be finite and time non-negative");
     }
     const double rate = interpolate_flat_linear(time, curve_times, zero_rates) + parallel_shift;
-    return std::exp(-rate * time);
+    const double value = std::exp(-rate * time);
+    if (!std::isfinite(value) || value <= 0.0) {
+        throw std::invalid_argument("discount factor exceeds the finite positive double range");
+    }
+    return value;
 }
 
 }  // namespace qfin

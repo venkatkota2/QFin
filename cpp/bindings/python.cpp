@@ -1,3 +1,4 @@
+#include "qfin/checked_size.hpp"
 #include "qfin/alm.hpp"
 #include "qfin/fixed_income.hpp"
 #include "qfin/mortality.hpp"
@@ -24,7 +25,7 @@ using InputArray = py::array_t<T, py::array::c_style | py::array::forcecast>;
 template <typename T>
 std::span<const T> as_span(const InputArray<T>& array) {
     if (array.ndim() != 1) {
-        throw py::value_error("native numeric buffers must be one-dimensional");
+        throw std::invalid_argument("native numeric buffers must be one-dimensional");
     }
     const auto buffer = array.request();
     return {static_cast<const T*>(buffer.ptr), static_cast<std::size_t>(buffer.size)};
@@ -47,6 +48,7 @@ py::array_t<T> move_array(std::vector<T>&& values) {
     if (values.size() > static_cast<std::size_t>(std::numeric_limits<py::ssize_t>::max())) {
         throw std::invalid_argument("native output exceeds NumPy's index capacity");
     }
+    qfin::checked_allocation(values.size(), 1, sizeof(T));
     py::array_t<T> output(static_cast<py::ssize_t>(values.size()));
     const auto buffer = output.request();
     auto* destination = static_cast<T*>(buffer.ptr);
@@ -68,6 +70,25 @@ py::dict metrics_to_dict(qfin::BatchBondMetrics&& metrics) {
 }  // namespace
 
 PYBIND11_MODULE(_qfin_native, module) {
+    py::register_local_exception_translator([](std::exception_ptr error) {
+        const auto set_error = [](const char* name, const char* message) {
+            const auto type = py::module_::import("qfin.exceptions").attr(name);
+            PyErr_SetString(type.ptr(), message);
+        };
+        try {
+            if (error) { std::rethrow_exception(error); }
+        } catch (const std::length_error& exception) {
+            set_error("ResourceLimitError", exception.what());
+        } catch (const std::bad_alloc& exception) {
+            set_error("ResourceLimitError", exception.what());
+        } catch (const std::overflow_error& exception) {
+            set_error("NumericalError", exception.what());
+        } catch (const std::invalid_argument& exception) {
+            set_error("QFinValidationError", exception.what());
+        } catch (const std::out_of_range& exception) {
+            set_error("QFinValidationError", exception.what());
+        }
+    });
     module.doc() = "QFin-owned C++20 financial kernels (not a quantum simulator)";
     module.attr("cpp_standard") = "C++20";
     module.attr("compiler") = QFIN_CXX_COMPILER;
@@ -187,10 +208,10 @@ PYBIND11_MODULE(_qfin_native, module) {
            const InputArray<double>& zero_rates,
            const InputArray<double>& scenario_shocks) {
             if (scenario_shocks.ndim() != 2) {
-                throw py::value_error("scenario_shocks must be two-dimensional");
+                throw std::invalid_argument("scenario_shocks must be two-dimensional");
             }
             if (offsets.size() < 1) {
-                throw py::value_error("offsets must contain at least one value");
+                throw std::invalid_argument("offsets must contain at least one value");
             }
             const auto times_span = as_span(cashflow_times);
             const auto amounts_span = as_span(cashflow_amounts);
@@ -199,6 +220,7 @@ PYBIND11_MODULE(_qfin_native, module) {
             const auto curve_times_span = as_span(curve_times);
             const auto rates_span = as_span(zero_rates);
             const auto shocks_span = as_flat_span(scenario_shocks);
+            qfin::checked_allocation(static_cast<std::size_t>(scenario_shocks.shape(0)));
             py::array_t<double> values(scenario_shocks.shape(0));
             const auto output_span = as_mutable_span(values);
             {
@@ -229,10 +251,10 @@ PYBIND11_MODULE(_qfin_native, module) {
            const InputArray<double>& scenario_shocks,
            const bool changes_from_base) {
             if (scenario_shocks.ndim() != 2) {
-                throw py::value_error("scenario_shocks must be two-dimensional");
+                throw std::invalid_argument("scenario_shocks must be two-dimensional");
             }
             if (offsets.size() < 1) {
-                throw py::value_error("offsets must contain at least one value");
+                throw std::invalid_argument("offsets must contain at least one value");
             }
             const auto times_span = as_span(cashflow_times);
             const auto amounts_span = as_span(cashflow_amounts);
@@ -242,6 +264,8 @@ PYBIND11_MODULE(_qfin_native, module) {
             const auto shocks_span = as_flat_span(scenario_shocks);
             const auto scenario_count = static_cast<std::size_t>(scenario_shocks.shape(0));
             const auto instrument_count = offsets.size() - 1;
+            qfin::checked_allocation(qfin::checked_multiply(
+                scenario_count, static_cast<std::size_t>(instrument_count)));
             py::array_t<double> values(
                 py::array::ShapeContainer{
                     scenario_shocks.shape(0),
@@ -284,7 +308,7 @@ PYBIND11_MODULE(_qfin_native, module) {
            const InputArray<double>& scenario_rate_shocks,
            const InputArray<double>& scenario_inflation_rates) {
             if (scenario_rate_shocks.ndim() != 2) {
-                throw py::value_error("scenario_rate_shocks must be two-dimensional");
+                throw std::invalid_argument("scenario_rate_shocks must be two-dimensional");
             }
             const auto times_span = as_span(cashflow_times);
             const auto amounts_span = as_span(cashflow_amounts);
@@ -293,6 +317,7 @@ PYBIND11_MODULE(_qfin_native, module) {
             const auto rates_span = as_span(zero_rates);
             const auto shocks_span = as_flat_span(scenario_rate_shocks);
             const auto inflation_span = as_span(scenario_inflation_rates);
+            qfin::checked_allocation(static_cast<std::size_t>(scenario_rate_shocks.shape(0)));
             py::array_t<double> values(scenario_rate_shocks.shape(0));
             const auto output_span = as_mutable_span(values);
             {
@@ -335,7 +360,7 @@ PYBIND11_MODULE(_qfin_native, module) {
            const bool pay_liabilities) {
             if (rate_shocks.ndim() != 3 || credit_spread_shocks.ndim() != 2 ||
                 equity_returns.ndim() != 2 || inflation_rates.ndim() != 2) {
-                throw py::value_error(
+                throw std::invalid_argument(
                     "ALM rate paths must be three-dimensional and factor paths "
                     "two-dimensional"
                 );
@@ -349,7 +374,7 @@ PYBIND11_MODULE(_qfin_native, module) {
                 equity_returns.shape(1) != rate_shocks.shape(1) ||
                 inflation_rates.shape(0) != rate_shocks.shape(0) ||
                 inflation_rates.shape(1) != rate_shocks.shape(1)) {
-                throw py::value_error("ALM economic factor path dimensions must align");
+                throw std::invalid_argument("ALM economic factor path dimensions must align");
             }
             const auto asset_times_span = as_span(asset_cashflow_times);
             const auto asset_amounts_span = as_span(asset_cashflow_amounts);
@@ -417,7 +442,8 @@ PYBIND11_MODULE(_qfin_native, module) {
             const auto ages_span = as_span(table_ages);
             const auto qx_span = as_span(qx);
             qfin::validate_mortality_table(ages_span, qx_span);
-            std::vector<double> values(static_cast<std::size_t>(query_ages.size()));
+            std::vector<double> values(qfin::checked_allocation(
+                static_cast<std::size_t>(query_ages.size())));
             {
                 py::gil_scoped_release release;
                 for (std::size_t index = 0; index < queries.size(); ++index) {
@@ -641,7 +667,7 @@ PYBIND11_MODULE(_qfin_native, module) {
                 scenario_mortality_multipliers.ndim() != 2 ||
                 scenario_lapse_multipliers.ndim() != 2 ||
                 scenario_inflation_rates.ndim() != 2) {
-                throw py::value_error(
+                throw std::invalid_argument(
                     "life rate paths must be three-dimensional and factor paths "
                     "two-dimensional"
                 );
@@ -665,7 +691,7 @@ PYBIND11_MODULE(_qfin_native, module) {
                     scenario_rate_shocks.shape(0) ||
                 scenario_inflation_rates.shape(1) !=
                     scenario_rate_shocks.shape(1)) {
-                throw py::value_error("life economic factor path dimensions must align");
+                throw std::invalid_argument("life economic factor path dimensions must align");
             }
             const auto attained_span = as_span(attained_ages);
             const auto assured_span = as_span(sums_assured);

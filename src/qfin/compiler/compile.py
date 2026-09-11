@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
-from math import exp, isfinite
+from math import exp
 from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
-from qfin._validation import require_integer
 from qfin.circuits import WalshPayoffApproximation
+from qfin.compiler._config import CompileConfig
 from qfin.compiler.factorized_models import (
     CompiledFactorTailModel,
     compile_factor_tail_problem,
@@ -23,7 +23,7 @@ from qfin.compiler.factorized_risk_models import (
 from qfin.compiler.models import CompiledPricingModel, ErrorBudget
 from qfin.compiler.optimization_models import CompiledOptimizationModel
 from qfin.compiler.risk_models import CompiledRiskModel, RiskErrorBudget, RiskProblem
-from qfin.exceptions import CompilationError, ResourceLimitError
+from qfin.exceptions import CompilationError, QFinValidationError, ResourceLimitError
 from qfin.finance import (
     BlackScholes,
     EuropeanCall,
@@ -105,67 +105,44 @@ def compile(
     ``run`` or ``to_pennylane`` executes a circuit.
     """
 
-    if not isfinite(target_error) or target_error <= 0:
-        raise ValueError("target_error must be finite and greater than zero")
-    min_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
-    max_qubits = require_integer(max_qubits, "max_qubits", minimum=min_qubits)
-    payoff_max_terms = (
-        None
-        if payoff_max_terms is None
-        else require_integer(payoff_max_terms, "payoff_max_terms", minimum=1)
-    )
-    max_state_preparation_parameters = require_integer(
-        max_state_preparation_parameters,
-        "max_state_preparation_parameters",
-        minimum=0,
-    )
-    max_state_preparation_memory_bytes = require_integer(
-        max_state_preparation_memory_bytes,
-        "max_state_preparation_memory_bytes",
-        minimum=1,
-    )
-    max_arithmetic_qubits = require_integer(
-        max_arithmetic_qubits,
-        "max_arithmetic_qubits",
-        minimum=1,
-    )
-    max_affine_output_qubits = require_integer(
-        max_affine_output_qubits,
-        "max_affine_output_qubits",
-        minimum=1,
-    )
-    max_factor_validation_points = require_integer(
-        max_factor_validation_points,
-        "max_factor_validation_points",
-        minimum=1,
-    )
-    factor_validation_chunk_size = require_integer(
-        factor_validation_chunk_size,
-        "factor_validation_chunk_size",
-        minimum=1,
-    )
-    max_integer_monomials = require_integer(
-        max_integer_monomials,
-        "max_integer_monomials",
-        minimum=1,
-    )
-    max_factorized_wires = require_integer(
-        max_factorized_wires,
-        "max_factorized_wires",
-        minimum=1,
-    )
-    if representation_method not in ("auto", "quantile", "probability"):
-        raise ValueError("representation_method must be 'auto', 'quantile', or 'probability'")
-    if not isfinite(payoff_angle_tolerance) or payoff_angle_tolerance <= 0:
-        raise ValueError("payoff_angle_tolerance must be finite and positive")
-    if arithmetic_scale is not None and (
-        not isfinite(arithmetic_scale) or arithmetic_scale <= 0.0
-    ):
-        raise ValueError("arithmetic_scale must be finite and positive")
-    if tail_probability is not None and (
-        not isfinite(tail_probability) or not 0.0 < tail_probability < 1.0
-    ):
-        raise ValueError("tail_probability must lie strictly between zero and one")
+    config = CompileConfig(
+        target_error=target_error,
+        backend=backend,
+        min_qubits=min_qubits,
+        max_qubits=max_qubits,
+        tail_probability=tail_probability,
+        representation_method=representation_method,
+        payoff_angle_tolerance=payoff_angle_tolerance,
+        payoff_max_terms=payoff_max_terms,
+        representation_target=representation_target,
+        max_state_preparation_parameters=max_state_preparation_parameters,
+        max_state_preparation_memory_bytes=max_state_preparation_memory_bytes,
+        arithmetic_scale=arithmetic_scale,
+        max_arithmetic_qubits=max_arithmetic_qubits,
+        max_affine_output_qubits=max_affine_output_qubits,
+        max_factor_validation_points=max_factor_validation_points,
+        factor_validation_chunk_size=factor_validation_chunk_size,
+        max_integer_monomials=max_integer_monomials,
+        max_factorized_wires=max_factorized_wires,
+    ).normalized()
+    target_error = config.target_error
+    backend = config.backend
+    min_qubits = config.min_qubits
+    max_qubits = config.max_qubits
+    tail_probability = config.tail_probability
+    representation_method = config.representation_method
+    payoff_angle_tolerance = config.payoff_angle_tolerance
+    payoff_max_terms = config.payoff_max_terms
+    representation_target = config.representation_target
+    max_state_preparation_parameters = config.max_state_preparation_parameters
+    max_state_preparation_memory_bytes = config.max_state_preparation_memory_bytes
+    arithmetic_scale = config.arithmetic_scale
+    max_arithmetic_qubits = config.max_arithmetic_qubits
+    max_affine_output_qubits = config.max_affine_output_qubits
+    max_factor_validation_points = config.max_factor_validation_points
+    factor_validation_chunk_size = config.factor_validation_chunk_size
+    max_integer_monomials = config.max_integer_monomials
+    max_factorized_wires = config.max_factorized_wires
 
     if isinstance(problem, (FactorVaR, FactorCVaR)):
         if market is not None:
@@ -256,7 +233,7 @@ def compile(
             np.clip(budget.domain_truncation / (100.0 * financial_scale), 1e-10, 1e-4)
         )
     if not 0 < tail_probability < 1:
-        raise ValueError("tail_probability must lie strictly between zero and one")
+        raise QFinValidationError("tail_probability must lie strictly between zero and one")
 
     discount_factor = exp(-market.rate * problem.maturity)
     distribution = GeometricBrownianMotion(market).terminal_distribution(problem.maturity)
@@ -451,7 +428,7 @@ def _compile_risk_problem(
         target_error_unit=target_error_unit,
     )
     if min_qubits < 1 or max_qubits < min_qubits:
-        raise ValueError("require 1 <= min_qubits <= max_qubits")
+        raise QFinValidationError("require 1 <= min_qubits <= max_qubits")
     effective_max_qubits = max_qubits
     if representation_target is not None and representation_target.wires - 2 >= min_qubits:
         effective_max_qubits = min(max_qubits, representation_target.wires - 2)

@@ -6,6 +6,7 @@ from calendar import isleap
 from datetime import date
 from enum import StrEnum
 
+from qfin.exceptions import QFinValidationError
 from qfin.finance.dates import DateLike, as_date, is_month_end
 
 
@@ -42,7 +43,7 @@ class DayCountConvention(StrEnum):
             return aliases[normalized]
         except KeyError as exc:
             choices = ", ".join(item.value for item in cls)
-            raise ValueError(f"day-count convention must be one of: {choices}") from exc
+            raise QFinValidationError(f"day-count convention must be one of: {choices}") from exc
 
 
 def _days_in_year(year: int) -> int:

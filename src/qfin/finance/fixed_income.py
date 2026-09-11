@@ -12,7 +12,11 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin import _native
+from qfin._dispatch import KEY_RATE_CASHFLOW_VISITS, POLICIES
+from qfin._dispatch import resolve_engine as _resolve_engine
+from qfin._memory import check_allocation
 from qfin._validation import require_integer
+from qfin.exceptions import QFinTypeError, QFinValidationError
 from qfin.finance.curves import YieldCurve
 from qfin.finance.dates import (
     BusinessDayConvention,
@@ -33,7 +37,7 @@ Settlement = float | DateLike | None
 # yield solving and key-rate repricing have separate, evidence-based policies.
 # At ~1.8M cash-flow/scenario visits, measured engine differences ranged from
 # noise to 1.4x. The 5k-bond/17-node case (~8.8M visits) gave a stable larger win.
-_AUTO_NATIVE_KEY_RATE_WORKLOAD = 8_000_000
+_AUTO_NATIVE_KEY_RATE_WORKLOAD = KEY_RATE_CASHFLOW_VISITS
 _REDUCEAT_CASHFLOW_THRESHOLD = 4_096
 _SCENARIO_MATRIX_TARGET_ELEMENTS = 8_000_000
 
@@ -47,9 +51,9 @@ class CashFlow:
 
     def __post_init__(self) -> None:
         if not isfinite(self.time) or self.time < 0:
-            raise ValueError("cash-flow time must be finite and non-negative")
+            raise QFinValidationError("cash-flow time must be finite and non-negative")
         if not isfinite(self.amount):
-            raise ValueError("cash-flow amount must be finite")
+            raise QFinValidationError("cash-flow amount must be finite")
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -98,12 +102,12 @@ class FixedRateBond:
         next_to_last_coupon_date: DateLike | None = None,
     ) -> None:
         if coupon_rate is None:
-            raise TypeError("coupon_rate is required")
+            raise QFinTypeError("coupon_rate is required")
         values = (coupon_rate, face_value)
         if not all(isfinite(value) for value in values):
-            raise ValueError("bond inputs must be finite")
+            raise QFinValidationError("bond inputs must be finite")
         if face_value <= 0:
-            raise ValueError("face_value must be positive")
+            raise QFinValidationError("face_value must be positive")
         normalized_frequency = require_integer(
             frequency,
             "frequency",
@@ -113,7 +117,7 @@ class FixedRateBond:
         has_issue = issue_date is not None
         has_maturity_date = maturity_date is not None
         if has_issue != has_maturity_date:
-            raise ValueError("issue_date and maturity_date must be supplied together")
+            raise QFinValidationError("issue_date and maturity_date must be supplied together")
         selected_day_count = DayCountConvention.parse(day_count)
         selected_calendar = calendar or Calendar()
         selected_convention = BusinessDayConvention.parse(business_day_convention)
@@ -127,7 +131,7 @@ class FixedRateBond:
         dated_schedule: Schedule | None = None
         if has_issue:
             if maturity is not None:
-                raise ValueError("use maturity_date instead of maturity for a dated bond")
+                raise QFinValidationError("use maturity_date instead of maturity for a dated bond")
             normalized_issue = as_date(cast(DateLike, issue_date), name="issue date")
             normalized_maturity_date = as_date(cast(DateLike, maturity_date), name="maturity date")
             dated_schedule = Schedule(
@@ -149,9 +153,11 @@ class FixedRateBond:
             )
         else:
             if maturity is None or not isfinite(maturity) or maturity <= 0:
-                raise ValueError("maturity must be finite and positive")
+                raise QFinValidationError("maturity must be finite and positive")
             if first_coupon_date is not None or next_to_last_coupon_date is not None:
-                raise ValueError("dated stub boundaries require issue_date and maturity_date")
+                raise QFinValidationError(
+                    "dated stub boundaries require issue_date and maturity_date"
+                )
             normalized_maturity = float(maturity)
         object.__setattr__(self, "maturity", normalized_maturity)
         object.__setattr__(self, "coupon_rate", float(coupon_rate))
@@ -197,7 +203,7 @@ class FixedRateBond:
         """Return the dated schedule, rejecting floating-time bonds explicitly."""
 
         if self._dated_schedule is None:
-            raise ValueError("floating-time bonds do not have a calendar schedule")
+            raise QFinValidationError("floating-time bonds do not have a calendar schedule")
         return self._dated_schedule
 
     @property
@@ -219,6 +225,8 @@ class FixedRateBond:
                 dtype=np.float64,
             )
 
+        # Integer multiplication avoids float overflow before the allocation guard.
+        check_allocation((int(self.maturity) * self.frequency + self.frequency + 1,), arrays=4)
         periods = floor(self.maturity * self.frequency + 1.0e-12)
         times = np.arange(1, periods + 1, dtype=np.float64) / self.frequency
         if times.size == 0 or times[-1] < self.maturity - 1.0e-12:
@@ -240,7 +248,7 @@ class FixedRateBond:
                 assert self.issue_date is not None
                 settlement_date = self.issue_date
             elif isinstance(settlement, (float, int)):
-                raise TypeError("settlement for a dated bond must be a date")
+                raise QFinTypeError("settlement for a dated bond must be a date")
             else:
                 settlement_date = as_date(settlement, name="settlement")
             schedule = self.schedule
@@ -279,10 +287,10 @@ class FixedRateBond:
 
         numeric_settlement = 0.0 if settlement is None else settlement
         if not isinstance(numeric_settlement, (float, int)):
-            raise TypeError("settlement for a floating-time bond must be numeric")
+            raise QFinTypeError("settlement for a floating-time bond must be numeric")
         numeric_settlement = float(numeric_settlement)
         if not isfinite(numeric_settlement) or numeric_settlement < 0:
-            raise ValueError("settlement must be finite and non-negative")
+            raise QFinValidationError("settlement must be finite and non-negative")
         payment_times = self.payment_schedule()
         previous_times = np.concatenate((np.array([0.0]), payment_times[:-1]))
         accrual_fractions = payment_times - previous_times
@@ -316,7 +324,7 @@ class FixedRateBond:
             if settlement is None:
                 return 0.0
             if isinstance(settlement, (float, int)):
-                raise TypeError("settlement for a dated bond must be a date")
+                raise QFinTypeError("settlement for a dated bond must be a date")
             settlement_date = as_date(settlement, name="settlement")
             dated_schedule = self.schedule
             if (
@@ -338,10 +346,10 @@ class FixedRateBond:
 
         numeric_settlement = 0.0 if settlement is None else settlement
         if not isinstance(numeric_settlement, (float, int)):
-            raise TypeError("settlement for a floating-time bond must be numeric")
+            raise QFinTypeError("settlement for a floating-time bond must be numeric")
         numeric_settlement = float(numeric_settlement)
         if not isfinite(numeric_settlement) or numeric_settlement < 0:
-            raise ValueError("settlement must be finite and non-negative")
+            raise QFinValidationError("settlement must be finite and non-negative")
         if numeric_settlement <= 0 or numeric_settlement >= self.maturity:
             return 0.0
         numeric_schedule = self.payment_schedule()
@@ -420,7 +428,7 @@ def _as_bond_tuple(
 ) -> tuple[FixedRateBond, ...]:
     items = (bonds,) if isinstance(bonds, FixedRateBond) else tuple(bonds)
     if any(not isinstance(item, FixedRateBond) for item in items):
-        raise TypeError("bonds must contain FixedRateBond objects")
+        raise QFinTypeError("bonds must contain FixedRateBond objects")
     return items
 
 
@@ -434,34 +442,36 @@ def _normalize_bond_settlement(
 
     dated_modes = {bond.is_dated for bond in items}
     if len(dated_modes) > 1:
-        raise ValueError("dated and floating-time bonds cannot share a valuation batch")
+        raise QFinValidationError("dated and floating-time bonds cannot share a valuation batch")
     is_dated_batch = bool(dated_modes and True in dated_modes)
     if is_dated_batch:
         if settlement is None:
             if curve is None:
                 return None
             if curve.valuation_date is None:
-                raise ValueError("dated bond pricing requires settlement or curve valuation_date")
+                raise QFinValidationError(
+                    "dated bond pricing requires settlement or curve valuation_date"
+                )
             normalized_date = curve.valuation_date
         else:
             if isinstance(settlement, Real):
-                raise TypeError("settlement for dated bond pricing must be a date")
+                raise QFinTypeError("settlement for dated bond pricing must be a date")
             normalized_date = as_date(cast(DateLike, settlement), name="settlement")
         if (
             curve is not None
             and curve.valuation_date is not None
             and normalized_date != curve.valuation_date
         ):
-            raise ValueError("dated bond settlement must equal the curve valuation_date")
+            raise QFinValidationError("dated bond settlement must equal the curve valuation_date")
         return normalized_date
 
     if settlement is None:
         return 0.0
     if isinstance(settlement, bool) or not isinstance(settlement, Real):
-        raise TypeError("settlement for floating-time bonds must be numeric")
+        raise QFinTypeError("settlement for floating-time bonds must be numeric")
     normalized_time = float(settlement)
     if not isfinite(normalized_time) or normalized_time < 0.0:
-        raise ValueError("settlement must be finite and non-negative")
+        raise QFinValidationError("settlement must be finite and non-negative")
     return normalized_time
 
 
@@ -495,34 +505,6 @@ def flatten_bond_cashflows(
     )
 
 
-def _resolve_engine(
-    engine: Engine,
-    workload: int,
-    *,
-    native_compatible: bool = True,
-    auto_native_threshold: int | None = None,
-) -> Literal["numpy", "native"]:
-    if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
-    if engine == "native":
-        if not native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        return "native"
-    if engine == "numpy":
-        return "numpy"
-    if (
-        native_compatible
-        and auto_native_threshold is not None
-        and workload >= auto_native_threshold
-        and _native.available()
-    ):
-        return "native"
-    return "numpy"
-
-
 def _segment_sum(values: FloatArray, offsets: Int64Array) -> FloatArray:
     counts = np.diff(offsets)
     if values.size < _REDUCEAT_CASHFLOW_THRESHOLD:
@@ -552,8 +534,6 @@ def _numpy_curve_metrics(
     convexities = np.divide(second, prices, out=np.zeros_like(prices), where=prices != 0)
     bump_size = 1.0e-4
     bump_times = bump_size * times
-    down = _segment_sum(present_values * np.exp(bump_times), offsets)
-    up = _segment_sum(present_values * np.exp(-bump_times), offsets)
     effective_duration_numerator = _segment_sum(
         present_values * np.sinh(bump_times) / bump_size,
         offsets,
@@ -574,7 +554,14 @@ def _numpy_curve_metrics(
         out=np.zeros_like(prices),
         where=prices != 0,
     )
-    return prices, durations, convexities, 0.5 * (down - up), duration, convexity
+    return (
+        prices,
+        durations,
+        convexities,
+        effective_duration_numerator * bump_size,
+        duration,
+        convexity,
+    )
 
 
 def _prepare_curve_cashflows(
@@ -612,7 +599,7 @@ def price_bonds(
     """
 
     if not isfinite(parallel_shift) or not isfinite(z_spread):
-        raise ValueError("parallel_shift and z_spread must be finite")
+        raise QFinValidationError("parallel_shift and z_spread must be finite")
     items = _as_bond_tuple(bonds)
     times, amounts, offsets, normalized_settlement = _prepare_curve_cashflows(
         items, curve, settlement
@@ -649,9 +636,19 @@ def price_bonds(
             dv01,
             effective_duration,
             effective_convexity,
-        ) = _numpy_curve_metrics(
-            times, amounts, offsets, curve, total_shift
+        ) = _numpy_curve_metrics(times, amounts, offsets, curve, total_shift)
+    if not all(
+        np.all(np.isfinite(values))
+        for values in (
+            prices,
+            durations,
+            convexities,
+            dv01,
+            effective_duration,
+            effective_convexity,
         )
+    ):
+        raise QFinValidationError("bond analytics exceed the finite double range")
     accrued = np.asarray(
         [bond.accrued_interest(normalized_settlement) for bond in items], dtype=np.float64
     )
@@ -684,7 +681,7 @@ def _broadcast_values(values: ArrayLike, count: int, name: str) -> FloatArray:
     else:
         array = np.ascontiguousarray(array.reshape(-1), dtype=np.float64)
     if array.shape != (count,) or not np.all(np.isfinite(array)):
-        raise ValueError(f"{name} must be finite and scalar or one value per bond")
+        raise QFinValidationError(f"{name} must be finite and scalar or one value per bond")
     return array
 
 
@@ -700,7 +697,7 @@ def _numpy_yield_metrics(
     repeated_frequencies = np.repeat(frequencies.astype(np.float64), counts)
     base = 1.0 + repeated_yields / repeated_frequencies
     if np.any(base <= 0):
-        raise ValueError("yield must be greater than -frequency")
+        raise QFinValidationError("yield must be greater than -frequency")
     present_values = amounts * np.power(base, -repeated_frequencies * times)
     prices = _segment_sum(present_values, offsets)
     first = _segment_sum(times * present_values, offsets)
@@ -714,14 +711,9 @@ def _numpy_yield_metrics(
     flow_periods = repeated_frequencies * times
     flow_delta = bump_size / (repeated_frequencies + repeated_yields)
     log_up_ratio = -flow_periods * np.log1p(flow_delta)
-    up = _segment_sum(present_values * np.exp(log_up_ratio), offsets)
     central = yields - bump_size > -frequencies
     flow_central = np.repeat(central, counts)
-    log_down_ratio = -flow_periods * np.log1p(
-        np.where(flow_central, -flow_delta, 0.0)
-    )
-    down = _segment_sum(present_values * np.exp(log_down_ratio), offsets)
-    dv01 = np.where(central, 0.5 * (down - up), prices - up)
+    log_down_ratio = -flow_periods * np.log1p(np.where(flow_central, -flow_delta, 0.0))
     midpoint = 0.5 * (log_down_ratio + log_up_ratio)
     half_difference = 0.5 * (log_down_ratio - log_up_ratio)
     central_duration_numerator = _segment_sum(
@@ -737,6 +729,7 @@ def _numpy_yield_metrics(
         central_duration_numerator,
         one_sided_duration_numerator,
     )
+    dv01 = duration_numerator * bump_size
     effective_duration = np.divide(
         duration_numerator,
         prices,
@@ -744,8 +737,7 @@ def _numpy_yield_metrics(
         where=prices != 0,
     )
     stable_second_difference = 2.0 * (
-        np.expm1(midpoint) * np.cosh(half_difference)
-        + 2.0 * np.sinh(0.5 * half_difference) ** 2
+        np.expm1(midpoint) * np.cosh(half_difference) + 2.0 * np.sinh(0.5 * half_difference) ** 2
     )
     effective_convexity_numerator = _segment_sum(
         present_values * stable_second_difference / bump_size**2,
@@ -774,7 +766,7 @@ def price_bonds_from_yield(
     yield_array = _broadcast_values(yields, len(items), "yields")
     frequencies = np.asarray([bond.frequency for bond in items], dtype=np.int32)
     if np.any(1.0 + yield_array / frequencies <= 0):
-        raise ValueError("each yield must be greater than its negative coupon frequency")
+        raise QFinValidationError("each yield must be greater than its negative coupon frequency")
     times, amounts, offsets = flatten_bond_cashflows(items, settlement=settlement)
     selected = _resolve_engine(engine, times.size)
     if selected == "native":
@@ -798,9 +790,7 @@ def price_bonds_from_yield(
             dv01,
             effective_duration,
             effective_convexity,
-        ) = _numpy_yield_metrics(
-            times, amounts, offsets, yield_array, frequencies
-        )
+        ) = _numpy_yield_metrics(times, amounts, offsets, yield_array, frequencies)
     modified = macaulay / (1.0 + yield_array / frequencies)
     accrued = np.asarray([bond.accrued_interest(settlement) for bond in items], dtype=np.float64)
     unavailable = np.full(len(items), np.nan, dtype=np.float64)
@@ -847,7 +837,7 @@ def _numpy_solve_yields(
     for index, (bond, target) in enumerate(zip(items, prices, strict=True)):
         times, amounts = bond.cashflows(settlement=settlement)
         if times.size == 0:
-            raise ValueError("cannot solve yield for a matured bond")
+            raise QFinValidationError("cannot solve yield for a matured bond")
         lower = -0.999999 * bond.frequency
         upper = 1.0
         upper_price = _price_one_yield(times, amounts, upper, bond.frequency)
@@ -895,15 +885,15 @@ def yield_from_prices(
     items = _as_bond_tuple(bonds)
     targets = _broadcast_values(prices, len(items), "prices")
     if np.any(targets <= 0):
-        raise ValueError("prices must be positive")
+        raise QFinValidationError("prices must be positive")
     if not isfinite(tolerance) or tolerance <= 0:
-        raise ValueError("tolerance must be finite and positive")
+        raise QFinValidationError("tolerance must be finite and positive")
     iteration_limit = require_integer(max_iterations, "max_iterations", minimum=1)
     times, amounts, offsets = flatten_bond_cashflows(items, settlement=settlement)
     selected = _resolve_engine(
         engine,
         max(times.size, len(items) * 64),
-        auto_native_threshold=1,
+        auto_native_threshold=POLICIES["yield_solve"],
     )
     if selected == "native":
         frequencies = np.asarray([bond.frequency for bond in items], dtype=np.int32)
@@ -945,7 +935,7 @@ def key_rate_risk(
     """
 
     if not isfinite(bump_size) or bump_size <= 0:
-        raise ValueError("bump_size must be finite and positive")
+        raise QFinValidationError("bump_size must be finite and positive")
     from qfin.finance.scenarios import _PreparedScenarioValuation, _segment_sum_rows
 
     items = _as_bond_tuple(bonds)
@@ -967,11 +957,9 @@ def key_rate_risk(
     # cancellation between million-unit prices for tiny key-node exposures.
     if curve.native_compatible:
         with np.errstate(over="ignore", under="ignore", invalid="ignore"):
-            node_discounts = np.exp(
-                -(curve.zero_rates[None, :] + shocks) * curve.times[None, :]
-            )
+            node_discounts = np.exp(-(curve.zero_rates[None, :] + shocks) * curve.times[None, :])
         if not np.all(np.isfinite(node_discounts)) or np.any(node_discounts <= 0):
-            raise ValueError("key-rate shocks imply invalid node discount factors")
+            raise QFinValidationError("key-rate shocks imply invalid node discount factors")
     if selected == "native":
         scenario_prices = np.asarray(
             _native.require().scenario_instrument_present_values(
@@ -1012,9 +1000,7 @@ def key_rate_risk(
                     lower_weight * chunk_shocks[:, prepared.lower]
                     + fraction * chunk_shocks[:, prepared.upper]
                 )
-                discounted = base_present_values[None, :] * np.expm1(
-                    -rate_changes * times[None, :]
-                )
+                discounted = base_present_values[None, :] * np.expm1(-rate_changes * times[None, :])
             else:
                 discounted = (
                     prepared.discount_factors(shocks[start:stop]) - base_discounts[None, :]
@@ -1024,7 +1010,7 @@ def key_rate_risk(
             scenario_prices[start:stop] = _segment_sum_rows(discounted, offsets)
 
     if not np.all(np.isfinite(scenario_prices)):
-        raise ValueError("key-rate shocks produced non-finite cash-flow values")
+        raise QFinValidationError("key-rate shocks produced non-finite cash-flow values")
 
     base_prices = scenario_prices[0]
     up = scenario_prices[1 : node_count + 1].T
@@ -1068,7 +1054,7 @@ def par_yield(
 
     target = bond.face_value if target_clean_price is None else target_clean_price
     if not isfinite(target) or target <= 0:
-        raise ValueError("target_clean_price must be finite and positive")
+        raise QFinValidationError("target_clean_price must be finite and positive")
     normalized_settlement = _normalize_bond_settlement((bond,), settlement, curve=curve)
     time_day_count = curve.day_count if bond.is_dated else None
     times, principal, unit_coupon = bond._cashflow_components(
@@ -1081,7 +1067,7 @@ def par_yield(
     unit_coupon_accrued = bond._unit_coupon_accrued_interest(normalized_settlement)
     coupon_value = unit_coupon_value - unit_coupon_accrued
     if coupon_value == 0.0:
-        raise ValueError("par yield is undefined because no coupon cash flows remain")
+        raise QFinValidationError("par yield is undefined because no coupon cash flows remain")
     return float((target - principal_value) / coupon_value)
 
 

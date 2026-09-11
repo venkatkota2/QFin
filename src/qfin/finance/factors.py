@@ -10,6 +10,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin._validation import readonly_float64, require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.risk import LossDistribution
 
 FloatArray = NDArray[np.float64]
@@ -27,17 +28,17 @@ class FactorScenarios:
         values = readonly_float64(self.values)
         names = tuple(self.factor_names)
         if values.ndim != 2 or values.shape[0] == 0 or values.shape[1] == 0:
-            raise ValueError("values must be a non-empty scenario-by-factor matrix")
+            raise QFinValidationError("values must be a non-empty scenario-by-factor matrix")
         if not np.all(np.isfinite(values)):
-            raise ValueError("factor scenarios must be finite")
+            raise QFinValidationError("factor scenarios must be finite")
         if len(names) != values.shape[1]:
-            raise ValueError("factor_names must contain one name per factor")
+            raise QFinValidationError("factor_names must contain one name per factor")
         if not all(name and isinstance(name, str) for name in names):
-            raise ValueError("factor names must be non-empty strings")
+            raise QFinValidationError("factor names must be non-empty strings")
         if len(set(names)) != len(names):
-            raise ValueError("factor names must be unique")
+            raise QFinValidationError("factor names must be unique")
         if not self.dependence_assumption:
-            raise ValueError("dependence_assumption must be non-empty")
+            raise QFinValidationError("dependence_assumption must be non-empty")
         object.__setattr__(self, "values", values)
         object.__setattr__(self, "factor_names", names)
 
@@ -60,9 +61,9 @@ class FactorScenarios:
 
         weights = np.asarray(exposures, dtype=np.float64).reshape(-1)
         if weights.shape != (self.factor_count,) or not np.all(np.isfinite(weights)):
-            raise ValueError("exposures must contain one finite value per factor")
+            raise QFinValidationError("exposures must contain one finite value per factor")
         if not isfinite(intercept):
-            raise ValueError("intercept must be finite")
+            raise QFinValidationError("intercept must be finite")
         losses = np.asarray(intercept + self.values @ weights, dtype=np.float64)
         scenario_probabilities = (
             None
@@ -89,23 +90,23 @@ class GaussianFactorModel:
         names = tuple(self.factor_names)
         correlation = readonly_float64(self.correlation)
         if not names or not all(name and isinstance(name, str) for name in names):
-            raise ValueError("factor_names must contain non-empty strings")
+            raise QFinValidationError("factor_names must contain non-empty strings")
         if len(set(names)) != len(names):
-            raise ValueError("factor names must be unique")
+            raise QFinValidationError("factor names must be unique")
         factor_count = len(names)
         if correlation.shape != (factor_count, factor_count):
-            raise ValueError("correlation must be square with one row per factor")
+            raise QFinValidationError("correlation must be square with one row per factor")
         if not np.all(np.isfinite(correlation)):
-            raise ValueError("correlation must be finite")
+            raise QFinValidationError("correlation must be finite")
         if not np.allclose(correlation, correlation.T, atol=1e-12, rtol=0.0):
-            raise ValueError("correlation must be symmetric")
+            raise QFinValidationError("correlation must be symmetric")
         if not np.allclose(np.diag(correlation), 1.0, atol=1e-12, rtol=0.0):
-            raise ValueError("correlation diagonal must equal one")
+            raise QFinValidationError("correlation diagonal must equal one")
         if np.any(np.abs(correlation) > 1.0 + 1e-12):
-            raise ValueError("correlations must lie in [-1, 1]")
+            raise QFinValidationError("correlations must lie in [-1, 1]")
         eigenvalues = np.linalg.eigvalsh(correlation)
         if float(np.min(eigenvalues)) < -1e-10:
-            raise ValueError("correlation must be positive semidefinite")
+            raise QFinValidationError("correlation must be positive semidefinite")
 
         means = (
             np.zeros(factor_count, dtype=np.float64)
@@ -120,13 +121,13 @@ class GaussianFactorModel:
             )
         )
         if means.shape != (factor_count,) or not np.all(np.isfinite(means)):
-            raise ValueError("means must contain one finite value per factor")
+            raise QFinValidationError("means must contain one finite value per factor")
         if (
             standard_deviations.shape != (factor_count,)
             or not np.all(np.isfinite(standard_deviations))
             or np.any(standard_deviations <= 0)
         ):
-            raise ValueError(
+            raise QFinValidationError(
                 "standard_deviations must contain one finite positive value per factor"
             )
 

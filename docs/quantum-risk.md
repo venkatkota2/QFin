@@ -168,3 +168,13 @@ See [performance](performance.md) and the preserved
 [earlier quantum-risk benchmark](quantum-risk-performance.md) for measured
 `default.qubit` and `lightning.qubit` timings produced by
 `examples/quantum_risk_benchmark.py`.
+
+## Full-workflow evidence and provenance
+
+The [1.1.2 statistical study](statistical-validation.md) runs actual empirical and
+factorized CDF queries, adaptive selection and tail-excess circuits with independent
+finite references. It includes an ambiguous schedule without power zero. Result
+`to_dict()` exposes `interval_semantics` and `provenance`; a field named
+`confidence_interval_95` is not a claim of simultaneous coverage of the complete
+adaptive workflow. CVaR intervals condition on the selected VaR and exclude
+deterministic encoding/model/scenario-design error.

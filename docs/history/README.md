@@ -23,3 +23,7 @@ links. Consult the [current index](../README.md) for current contracts.
 
 Pre-hardening snapshots of architecture and quantum-risk documentation are also
 retained here; their old relative links are interpreted relative to `docs/`.
+
+The [1.1.2 evidence archive](hardening-1.1.2/README.md) retains measured inputs,
+results and provenance. The frozen [1.1.1 validation](validation-1.1.1.md) and
+[1.1.1 performance](performance-1.1.1.md) pages preserve the prior milestone.

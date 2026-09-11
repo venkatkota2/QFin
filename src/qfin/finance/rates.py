@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from math import exp, expm1, isfinite, log, log1p
 
+from qfin.exceptions import QFinValidationError
+
 
 class Compounding(StrEnum):
     """Supported interest-rate compounding conventions."""
@@ -37,7 +39,7 @@ class Compounding(StrEnum):
             return aliases[normalized]
         except KeyError as exc:
             choices = ", ".join(item.value for item in cls)
-            raise ValueError(f"compounding must be one of: {choices}") from exc
+            raise QFinValidationError(f"compounding must be one of: {choices}") from exc
 
 
 def compounding_frequency(compounding: Compounding | str) -> int | None:
@@ -50,6 +52,35 @@ def compounding_frequency(compounding: Compounding | str) -> int | None:
     }.get(selected)
 
 
+def _finite_result(value: float, *, positive: bool = False) -> float:
+    if not isfinite(value) or (positive and value <= 0):
+        raise QFinValidationError("rate conversion exceeds the finite double range")
+    return value
+
+
+def _exp_result(value: float, *, subtract_one: bool = False) -> float:
+    try:
+        return _finite_result(
+            expm1(value) if subtract_one else exp(value), positive=not subtract_one
+        )
+    except OverflowError as exc:
+        raise QFinValidationError("rate conversion exceeds the finite double range") from exc
+
+
+def _periodic_quote(log_growth: float, frequency: int) -> float:
+    result = _finite_result(frequency * _exp_result(log_growth, subtract_one=True))
+    if result <= -frequency:
+        raise QFinValidationError("periodic quote rounds to its invalid lower boundary")
+    return result
+
+
+def _simple_quote(log_growth: float, time: float) -> float:
+    result = _finite_result(_exp_result(log_growth, subtract_one=True) / time)
+    if 1.0 + result * time <= 0.0:
+        raise QFinValidationError("simple quote rounds to its invalid lower boundary")
+    return result
+
+
 def discount_factor(
     rate: float,
     time: float,
@@ -58,23 +89,23 @@ def discount_factor(
     """Convert a rate quote into a discount factor at ``time`` years."""
 
     if not (isfinite(rate) and isfinite(time)) or time < 0:
-        raise ValueError("rate and time must be finite, with time non-negative")
+        raise QFinValidationError("rate and time must be finite, with time non-negative")
     selected = Compounding.parse(compounding)
     if time == 0:
         return 1.0
     if selected is Compounding.CONTINUOUS:
-        return exp(-rate * time)
+        return _exp_result(-rate * time)
     if selected is Compounding.SIMPLE:
         base = 1.0 + rate * time
         if base <= 0:
-            raise ValueError("simple rate requires 1 + rate * time > 0")
-        return 1.0 / base
+            raise QFinValidationError("simple rate requires 1 + rate * time > 0")
+        return _finite_result(1.0 / base, positive=True)
     frequency = compounding_frequency(selected)
     assert frequency is not None
     base = 1.0 + rate / frequency
     if base <= 0:
-        raise ValueError("periodic rate must be greater than its negative frequency")
-    return float(base ** (-frequency * time))
+        raise QFinValidationError("periodic rate must be greater than its negative frequency")
+    return _exp_result(-time * (frequency * log1p(rate / frequency)))
 
 
 def rate_from_discount_factor(
@@ -85,15 +116,15 @@ def rate_from_discount_factor(
     """Return the rate quote implied by a positive discount factor."""
 
     if not (isfinite(value) and value > 0 and isfinite(time) and time > 0):
-        raise ValueError("discount factor and time must be finite and positive")
+        raise QFinValidationError("discount factor and time must be finite and positive")
     selected = Compounding.parse(compounding)
     if selected is Compounding.CONTINUOUS:
-        return -log(value) / time
+        return _finite_result(-log(value) / time)
     if selected is Compounding.SIMPLE:
-        return (1.0 / value - 1.0) / time
+        return _simple_quote(-log(value), time)
     frequency = compounding_frequency(selected)
     assert frequency is not None
-    return frequency * expm1(-log(value) / (frequency * time))
+    return _periodic_quote((-log(value) / time) / frequency, frequency)
 
 
 def convert_rate(
@@ -107,12 +138,18 @@ def convert_rate(
 
     source = Compounding.parse(from_compounding)
     target = Compounding.parse(to_compounding)
+    if not (isfinite(rate) and isfinite(time) and time > 0):
+        raise QFinValidationError("rate and time must be finite, with time positive")
+    continuous = continuous_rate(rate, source, time=time)
     if source is target:
-        if not (isfinite(rate) and isfinite(time) and time > 0):
-            raise ValueError("rate and time must be finite, with time positive")
-        continuous_rate(rate, source, time=time)
         return rate
-    return rate_from_discount_factor(discount_factor(rate, time, source), time, target)
+    if target is Compounding.CONTINUOUS:
+        return continuous
+    if target is Compounding.SIMPLE:
+        return _simple_quote(continuous * time, time)
+    frequency = compounding_frequency(target)
+    assert frequency is not None
+    return _periodic_quote(continuous / frequency, frequency)
 
 
 def continuous_rate(
@@ -125,7 +162,7 @@ def continuous_rate(
 
     selected = Compounding.parse(compounding)
     if not (isfinite(rate) and isfinite(time)) or time < 0:
-        raise ValueError("rate and time must be finite, with time non-negative")
+        raise QFinValidationError("rate and time must be finite, with time non-negative")
     if selected is Compounding.CONTINUOUS:
         return rate
     if selected is Compounding.SIMPLE:
@@ -133,13 +170,13 @@ def continuous_rate(
             return rate
         base = 1.0 + rate * time
         if base <= 0:
-            raise ValueError("simple rate requires 1 + rate * time > 0")
-        return log(base) / time
+            raise QFinValidationError("simple rate requires 1 + rate * time > 0")
+        return _finite_result(log1p(rate * time) / time)
     frequency = compounding_frequency(selected)
     assert frequency is not None
     base = 1.0 + rate / frequency
     if base <= 0:
-        raise ValueError("periodic rate must be greater than its negative frequency")
+        raise QFinValidationError("periodic rate must be greater than its negative frequency")
     return frequency * log1p(rate / frequency)
 
 
@@ -156,7 +193,7 @@ class RateQuote:
         compounding: Compounding | str = Compounding.CONTINUOUS,
     ) -> None:
         if not isfinite(rate):
-            raise ValueError("rate must be finite")
+            raise QFinValidationError("rate must be finite")
         object.__setattr__(self, "rate", rate)
         object.__setattr__(self, "compounding", Compounding.parse(compounding))
 

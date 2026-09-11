@@ -50,12 +50,19 @@ from qfin.compiler import (
     problem_capabilities,
 )
 from qfin.exceptions import (
+    BackendError,
     BackendUnavailableError,
+    CalibrationError,
     CompilationError,
     NativeBackendUnavailableError,
+    NumericalError,
     OptimizationError,
+    PricingError,
     QFinError,
+    QFinTypeError,
+    QFinValidationError,
     ResourceLimitError,
+    ScenarioError,
 )
 from qfin.finance import (
     ALMFactorAttribution,
@@ -247,6 +254,7 @@ def __dir__() -> list[str]:
 
     return sorted({*globals(), *_DEPRECATED_TOP_LEVEL_EXPORTS})
 
+
 __all__ = [
     "GOLDEN_BOND_CASES",
     "ALMFactorAttribution",
@@ -259,6 +267,7 @@ __all__ = [
     "AffineOutputPlan",
     "AffineTransformValidation",
     "AssetPortfolio",
+    "BackendError",
     "BackendUnavailableError",
     "BlackScholes",
     "BlockEncodingFeasibility",
@@ -269,6 +278,7 @@ __all__ = [
     "BusinessDayConvention",
     "CVaR",
     "Calendar",
+    "CalibrationError",
     "CashFlow",
     "CompilationError",
     "CompiledFactorRiskModel",
@@ -336,18 +346,22 @@ __all__ = [
     "NoiseMitigationReport",
     "NoiseModel",
     "Normal",
+    "NumericalError",
     "OptimizationError",
     "OptimizationMethod",
     "OptimizationResourceReport",
     "PayoffRotation",
     "PolicyModelPointSet",
     "PortfolioOptimizationResult",
+    "PricingError",
     "PricingResult",
     "ProbabilityTreePreparation",
     "ProblemCapabilities",
     "ProjectionAssumptions",
     "ProviderCapabilityReport",
     "QFinError",
+    "QFinTypeError",
+    "QFinValidationError",
     "QasmExport",
     "QuantumObjectiveEncoding",
     "QuantumRiskResult",
@@ -363,6 +377,7 @@ __all__ = [
     "RiskErrorBudget",
     "RiskResourceReport",
     "RiskSummary",
+    "ScenarioError",
     "Schedule",
     "SimpleSwap",
     "SparseExposureObjective",

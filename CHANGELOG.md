@@ -1,6 +1,34 @@
 # Changelog
 
-## Unreleased — 1.1.1 hardening
+## 1.1.2 — 2026-09-11 (repository milestone; unpublished)
+
+- Corrected forward/backward coupon schedule month drift after February, near-zero
+  and extreme rate-conversion precision, weighted VaR atom selection, CVaR tail
+  cancellation, and tiny-maturity DV01/CS01 cancellation in Python and C++.
+- Rejected unrepresentable discount factors and financial outputs; checked native
+  dimension arithmetic and allocations; removed signed integer overflow in yield
+  convexity and long policy-duration arithmetic. Kept strict floating-point flags.
+- Added QuantLib/70-digit Decimal references, generated financial properties,
+  malformed native buffers, GCC and Clang ASan/UBSan, branch-coverage gates and a
+  limited numerical mutation campaign.
+- Recorded real empirical and factorized adaptive VaR/CVaR experiments with exact
+  discrete references and Monte Carlo uncertainty. Public result metadata separates
+  local/conditional intervals from unestablished simultaneous workflow coverage.
+- Preserved the 1.x signatures, defaults, positional field order, enum values and
+  existing serialization keys; added optional keyword-only provenance and a
+  compatible common exception hierarchy. Compiler validation now uses an internal
+  typed configuration; classical engine policy is centralized and deterministic.
+- Added fresh-process peak RSS/timing dispersion and before/after public API
+  measurements. Revalidated the liability crossover and kept automatic standalone
+  liability valuation on NumPy; retained explicit engine overrides and modelling scope.
+- Added nine portable CPython/platform wheel builds, installed artifact tests,
+  checked SHA-256 collection and a manual release-candidate attestation workflow.
+  Recorded the legacy SciPy 1.11.0 minimum-test licensing/yank warning for
+  maintainer review before any publication; dependency support is unchanged.
+  No tag, GitHub Release, PyPI publication, license grant or branch-protection
+  administration is performed by this milestone.
+
+## 1.1.1 hardening (repository milestone)
 
 - Corrected scenario interpolation to match shifted curves across supported
   methodologies, centralized dated ALM settlement, rejected unbounded singular

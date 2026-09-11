@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 from qfin import _native
+from qfin._dispatch import POLICIES, resolve_engine
+from qfin._memory import check_allocation
 from qfin._validation import require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.alm import ALMModel, ALMPathResult, RebalancingStrategy
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import Engine, _prepare_curve_cashflows
@@ -43,8 +46,7 @@ def _scenario_present_value(
     return cast(
         FloatArray,
         np.sum(
-            scaled_amounts
-            * discounts,
+            scaled_amounts * discounts,
             axis=1,
             dtype=np.float64,
         ),
@@ -156,12 +158,8 @@ def _numpy_path_chunk(
             end_rate_shocks,
             end_spreads,
         )
-        start_short_rates = -np.log(
-            short_prepared.discount_factors(start_rate_shocks)[:, 0]
-        ) / dt
-        end_short_rates = -np.log(
-            short_prepared.discount_factors(end_rate_shocks)[:, 0]
-        ) / dt
+        start_short_rates = -np.log(short_prepared.discount_factors(start_rate_shocks)[:, 0]) / dt
+        end_short_rates = -np.log(short_prepared.discount_factors(end_rate_shocks)[:, 0]) / dt
         average_short_rate = 0.5 * (start_short_rates + end_short_rates)
         cash_growth = np.exp(average_short_rate * dt)
         received = (asset_times > period_start + 1.0e-12) & (asset_times <= period_end + 1.0e-12)
@@ -169,8 +167,7 @@ def _numpy_path_chunk(
             received_wealth = np.sum(
                 asset_amounts[received][None, :]
                 * np.exp(
-                    average_short_rate[:, None]
-                    * (period_end - asset_times[received])[None, :]
+                    average_short_rate[:, None] * (period_end - asset_times[received])[None, :]
                 ),
                 axis=1,
                 dtype=np.float64,
@@ -289,25 +286,17 @@ def project_alm_paths(
         "scenario_chunk_size",
         minimum=1,
     )
-    if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     asset_times, asset_amounts = _weighted_asset_cashflows(model)
     liability_times, liability_amounts = model.liabilities.buffers()
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        if not model.curve.native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        selected = "native"
-    else:
-        # Current 30-period public-API measurements are non-monotonic: native is
-        # faster for small/medium paths but NumPy wins at 10,000 scenarios. Keep
-        # the conservative deterministic default until a stable policy emerges.
-        selected = "numpy"
+    selected = resolve_engine(
+        engine,
+        scenarios.scenario_count * scenarios.period_count,
+        native_compatible=model.curve.native_compatible,
+        auto_native_threshold=POLICIES["alm_paths"],
+    )
 
     shape = (scenarios.scenario_count, scenarios.period_count + 1)
+    check_allocation(shape, arrays=9)
     period_shape = (scenarios.scenario_count, scenarios.period_count)
     output = {
         "asset_values": np.empty(shape, dtype=np.float64),
@@ -384,6 +373,13 @@ def project_alm_paths(
         for name, values in chunk.items():
             output[name][start:stop] = values
 
+    if any(
+        not np.all(np.isfinite(value)) for key, value in output.items() if key != "funding_ratio"
+    ):
+        raise QFinValidationError("ALM path projection exceeds the finite double range")
+    valid_funding = np.isfinite(output["funding_ratio"]) | (output["liability_values"] == 0)
+    if not np.all(valid_funding):
+        raise QFinValidationError("funding ratio exceeds the finite double range")
     times = np.arange(scenarios.period_count + 1, dtype=np.float64) * scenarios.period_length
     initial_surplus = float(output["surplus"][0, 0])
     return ALMPathResult(

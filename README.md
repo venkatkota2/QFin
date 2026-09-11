@@ -7,7 +7,7 @@ finance core and a compiler for existing PennyLane quantum workflows. Financial
 users work with curves, bonds, portfolios, policies and loss distributions.
 Results report their methodology, execution engine, accuracy metadata and limits.
 
-The current hardening milestone improves numerical correctness, settlement
+The 1.1.2 hardening milestone improves numerical correctness, settlement
 consistency, reproducibility, API ownership, testing and packaging. It adds no
 financial products, stochastic models, quantum algorithms or backends.
 
@@ -130,4 +130,4 @@ The repository currently has no license grant. Reuse requiring an explicit grant
 is blocked until the maintainer chooses and authorizes licensing terms. The
 hardening work does not invent or add a license.
 
-The [hardening report](docs/hardening-report.md) records numerical repairs, measured performance, API compatibility, verification and remaining limitations.
+The [hardening report](docs/hardening-1.1.2.md) records numerical repairs, measured performance, API compatibility, verification and remaining limitations.

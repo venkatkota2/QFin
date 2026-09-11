@@ -1,3 +1,6 @@
+> Historical 1.1.1 report. Current findings and verification are in
+> [the 1.1.2 report](hardening-1.1.2.md). The measurements below retain their original milestone.
+
 # QFin numerical integrity and release hardening
 
 This report accompanies [PR #14](https://github.com/venkatkota2/QFin/pull/14),

@@ -28,3 +28,13 @@ nonzero expected return makes the objective unbounded and raises
 `OptimizationError`. A pseudoinverse must not turn such a direction into a finite
 portfolio. Well-posed singular cases, duplicated assets and return-neutral null
 spaces retain a constrained/KKT solution. This is not a quantum optimizer.
+
+## 1.1.2 tail boundary precision
+
+Weights are normalized without unnecessary max-scaling when their sum is finite,
+which preserves exact CDF atoms such as 9:1 weights at confidence 0.90. Overflowing
+weight sums still use scaling. Expected shortfall uses the equivalent stable form
+`VaR + E[max(loss - VaR, 0)] / (1 - confidence)` instead of subtracting nearly equal
+cumulative probabilities. The fractional VaR-atom definition is unchanged.
+Empirical bootstrap uncertainty and adaptive quantum uncertainty have different
+[semantics](statistical-validation.md) and [seed contracts](reproducibility.md).

@@ -7,7 +7,7 @@ from importlib.util import find_spec
 from typing import Literal
 
 from qfin._validation import require_integer
-from qfin.exceptions import BackendUnavailableError
+from qfin.exceptions import BackendUnavailableError, QFinTypeError, QFinValidationError
 
 Topology = Literal["all_to_all", "linear", "custom"]
 
@@ -80,47 +80,47 @@ class DeviceTarget:
 
     def __post_init__(self) -> None:
         if not self.name.strip():
-            raise ValueError("target name must not be empty")
+            raise QFinValidationError("target name must not be empty")
         wire_count = require_integer(self.wires, "wires", minimum=2)
         object.__setattr__(self, "wires", wire_count)
         if self.topology not in ("all_to_all", "linear", "custom"):
-            raise ValueError("topology must be 'all_to_all', 'linear', or 'custom'")
+            raise QFinValidationError("topology must be 'all_to_all', 'linear', or 'custom'")
         if not self.basis_gates or len(set(self.basis_gates)) != len(self.basis_gates):
-            raise ValueError("basis_gates must be non-empty and unique")
+            raise QFinValidationError("basis_gates must be non-empty and unique")
         unsupported = set(self.basis_gates) - _SUPPORTED_BASIS_GATES
         if unsupported:
-            raise ValueError(
+            raise QFinValidationError(
                 "QFin's portable decomposer does not support basis gates: "
                 + ", ".join(sorted(unsupported))
             )
         if set(self.basis_gates) != _SUPPORTED_BASIS_GATES:
-            raise ValueError("portable targets currently require RX, RY, RZ, and CNOT")
+            raise QFinValidationError("portable targets currently require RX, RY, RZ, and CNOT")
 
         normalized: list[tuple[int, int]] = []
         for position, (left_value, right_value) in enumerate(self.coupling_map):
             left = require_integer(left_value, f"coupling_map[{position}][0]", minimum=0)
             right = require_integer(right_value, f"coupling_map[{position}][1]", minimum=0)
             if left == right:
-                raise ValueError("coupling edges cannot be self-loops")
+                raise QFinValidationError("coupling edges cannot be self-loops")
             if not 0 <= left < self.wires or not 0 <= right < self.wires:
-                raise ValueError("coupling edge references an unavailable wire")
+                raise QFinValidationError("coupling edge references an unavailable wire")
             normalized.append((min(left, right), max(left, right)))
         if len(set(normalized)) != len(normalized):
-            raise ValueError("coupling_map edges must be unique")
+            raise QFinValidationError("coupling_map edges must be unique")
         normalized_tuple = tuple(sorted(normalized))
         if not normalized_tuple:
-            raise ValueError("coupling_map must contain at least one edge")
+            raise QFinValidationError("coupling_map must contain at least one edge")
         object.__setattr__(self, "coupling_map", normalized_tuple)
         if not self._is_connected():
-            raise ValueError("coupling_map must connect every target wire")
+            raise QFinValidationError("coupling_map must connect every target wire")
 
         complete_edges = self.wires * (self.wires - 1) // 2
         if self.topology == "all_to_all" and len(normalized_tuple) != complete_edges:
-            raise ValueError("all_to_all target must contain every undirected edge")
+            raise QFinValidationError("all_to_all target must contain every undirected edge")
         if self.topology == "linear":
             expected = tuple((wire, wire + 1) for wire in range(self.wires - 1))
             if normalized_tuple != expected:
-                raise ValueError("linear target must contain nearest-neighbour edges only")
+                raise QFinValidationError("linear target must contain nearest-neighbour edges only")
 
     def _is_connected(self) -> bool:
         adjacency = {wire: set[int]() for wire in range(self.wires)}
@@ -147,9 +147,7 @@ class DeviceTarget:
             name=f"research-all-to-all-{wire_count}q",
             wires=wire_count,
             coupling_map=tuple(
-                (left, right)
-                for left in range(wire_count)
-                for right in range(left + 1, wire_count)
+                (left, right) for left in range(wire_count) for right in range(left + 1, wire_count)
             ),
             topology="all_to_all",
         )
@@ -206,9 +204,9 @@ def resolve_device_target(
     if target == "linear":
         return DeviceTarget.linear(wires)
     if not isinstance(target, DeviceTarget):
-        raise TypeError("target must be a DeviceTarget, 'all_to_all', or 'linear'")
+        raise QFinTypeError("target must be a DeviceTarget, 'all_to_all', or 'linear'")
     if target.wires != wires:
-        raise ValueError(
+        raise QFinValidationError(
             f"target has {target.wires} wires but the compiled circuit requires {wires}"
         )
     return target

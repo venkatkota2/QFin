@@ -13,7 +13,7 @@ from qfin.algorithms import CircuitObservation
 from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends.compressed import CompressedPennyLaneBackend
 from qfin.backends.structured import StructuredPennyLaneBackend
-from qfin.exceptions import BackendUnavailableError, ResourceLimitError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError, ResourceLimitError
 from qfin.representation import DistributionEncoding
 
 __all__ = [
@@ -42,9 +42,9 @@ class DensePennyLaneBackend:
     ) -> None:
         payoff = readonly_float64(np.asarray(normalized_payoff).reshape(-1))
         if payoff.shape != representation.probabilities.shape:
-            raise ValueError("normalized_payoff must match the representation grid")
+            raise QFinValidationError("normalized_payoff must match the representation grid")
         if np.any((payoff < 0) | (payoff > 1)) or not np.all(np.isfinite(payoff)):
-            raise ValueError("normalized_payoff values must lie in [0, 1]")
+            raise QFinValidationError("normalized_payoff values must lie in [0, 1]")
         self.representation = representation
         self.normalized_payoff = payoff
         self.device_name = device_name
@@ -115,9 +115,7 @@ class DensePennyLaneBackend:
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
         resolved_power = require_integer(power, "power", minimum=0)
-        resolved_shots = (
-            None if shots is None else require_integer(shots, "shots", minimum=1)
-        )
+        resolved_shots = None if shots is None else require_integer(shots, "shots", minimum=1)
         qml = self._qml()
         device = qml.device(
             self.device_name,
@@ -181,5 +179,7 @@ class DensePennyLaneBackend:
         qml = self._qml()
         circuit = self._make_circuit(power, shots=None, seed=None)
         return str(qml.draw(circuit)())
+
+
 # Backward-compatible constructor; compiled models select the v0.3 default.
 PennyLaneBackend = StructuredPennyLaneBackend

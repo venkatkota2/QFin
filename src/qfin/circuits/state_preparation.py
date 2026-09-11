@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin._validation import readonly_float64, require_integer
-from qfin.exceptions import BackendUnavailableError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError
 
 if TYPE_CHECKING:
     from qfin.representation.factorized import FactorizedDistributionEncoding
@@ -40,12 +40,12 @@ def probability_tree_angles(
 
     values = np.asarray(probabilities, dtype=np.float64).reshape(-1)
     if values.size < 2 or values.size & (values.size - 1):
-        raise ValueError("probabilities must contain a power-of-two number of values")
+        raise QFinValidationError("probabilities must contain a power-of-two number of values")
     if np.any(values < 0) or not np.all(np.isfinite(values)):
-        raise ValueError("probabilities must be finite and non-negative")
+        raise QFinValidationError("probabilities must be finite and non-negative")
     total = float(np.sum(values))
     if total <= 0:
-        raise ValueError("probabilities must have positive total mass")
+        raise QFinValidationError("probabilities must have positive total mass")
     values = values / total
     qubits = int(log2(values.size))
     levels: list[NDArray[np.float64]] = []
@@ -74,14 +74,12 @@ class ProbabilityTreePreparation:
     levels: tuple[NDArray[np.float64], ...]
 
     def __post_init__(self) -> None:
-        levels = tuple(
-            readonly_float64(np.asarray(level).reshape(-1)) for level in self.levels
-        )
+        levels = tuple(readonly_float64(np.asarray(level).reshape(-1)) for level in self.levels)
         if not levels or any(
             level.shape != (2**position,) or not np.all(np.isfinite(level))
             for position, level in enumerate(levels)
         ):
-            raise ValueError("levels must contain finite binary-tree rotation arrays")
+            raise QFinValidationError("levels must contain finite binary-tree rotation arrays")
         object.__setattr__(self, "levels", levels)
 
     @classmethod
@@ -104,7 +102,7 @@ class ProbabilityTreePreparation:
         """Queue the probability-tree circuit on the active PennyLane tape."""
         wire_tuple = tuple(wires)
         if len(wire_tuple) != self.qubits:
-            raise ValueError("one data wire is required per probability-tree level")
+            raise QFinValidationError("one data wire is required per probability-tree level")
         qml = _qml()
         qml.RY(float(self.levels[0][0]), wires=wire_tuple[0])
         for level in range(1, self.qubits):
@@ -141,7 +139,7 @@ class UniformQuantilePreparation:
         """Prepare the uniform superposition labeling midpoint quantiles."""
         wire_tuple = tuple(wires)
         if len(wire_tuple) != self.qubits:
-            raise ValueError("one data wire is required per quantile bit")
+            raise QFinValidationError("one data wire is required per quantile bit")
         qml = _qml()
         for wire in wire_tuple:
             qml.Hadamard(wires=wire)
@@ -158,7 +156,7 @@ class FactorizedPreparation:
 
     def __post_init__(self) -> None:
         if not self.loaders:
-            raise ValueError("at least one marginal loader is required")
+            raise QFinValidationError("at least one marginal loader is required")
 
     @classmethod
     def from_encoding(
@@ -203,7 +201,7 @@ class FactorizedPreparation:
 
         wire_tuple = tuple(wires)
         if len(wire_tuple) != self.total_qubits:
-            raise ValueError("wires must contain one entry per factor qubit")
+            raise QFinValidationError("wires must contain one entry per factor qubit")
         start = 0
         for loader in self.loaders:
             end = start + loader.qubits

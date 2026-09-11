@@ -21,7 +21,12 @@ the version source. The hardening milestone changes no modelling scope.
 | Tests, packaging and CI | [Validation](validation.md) |
 | Stable names and deprecations | [Public API](public-api.md) |
 | Explicit boundaries | [Limitations](limitations.md) |
-| Hardening findings and A–J evidence | [Hardening report](hardening-report.md) |
+| 1.1.2 findings and A–L evidence | [Hardening report](hardening-1.1.2.md) |
+| Seeds, versions and execution provenance | [Reproducibility](reproducibility.md) |
+| Conditional intervals and empirical coverage | [Statistical validation](statistical-validation.md) |
+| Chunking, allocation guards and peak RSS | [Memory](memory.md) |
+| Compatible failure categories | [Exceptions](exceptions.md) |
+| Exact tested wheels, sdist and provenance | [Release engineering](release-engineering.md) |
 | Required repository administration | [Repository settings](repository-settings.md) |
 
 [Historical documents](history/README.md) retain earlier designs and benchmark

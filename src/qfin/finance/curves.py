@@ -13,6 +13,7 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import PchipInterpolator
 
 from qfin._validation import require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.dates import DateLike, ValuationDate, as_date
 from qfin.finance.daycount import DayCountConvention, year_fraction
 from qfin.finance.rates import (
@@ -52,7 +53,7 @@ class CurveInterpolation(StrEnum):
             return aliases[normalized] if normalized in aliases else cls(normalized)
         except ValueError as exc:
             choices = ", ".join(item.value for item in cls)
-            raise ValueError(f"curve interpolation must be one of: {choices}") from exc
+            raise QFinValidationError(f"curve interpolation must be one of: {choices}") from exc
 
 
 class CurveExtrapolation(StrEnum):
@@ -72,7 +73,7 @@ class CurveExtrapolation(StrEnum):
             return aliases[normalized] if normalized in aliases else cls(normalized)
         except ValueError as exc:
             choices = ", ".join(item.value for item in cls)
-            raise ValueError(f"curve extrapolation must be one of: {choices}") from exc
+            raise QFinValidationError(f"curve extrapolation must be one of: {choices}") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,15 +93,15 @@ class CurveMarketQuote:
 
     def __post_init__(self) -> None:
         if not isfinite(self.time) or self.time < 0:
-            raise ValueError("market-quote time must be finite and non-negative")
+            raise QFinValidationError("market-quote time must be finite and non-negative")
         if not isfinite(self.value):
-            raise ValueError("market-quote value must be finite")
+            raise QFinValidationError("market-quote value must be finite")
         if self.quote_type not in ("zero_rate", "discount_factor"):
-            raise ValueError("quote_type must be 'zero_rate' or 'discount_factor'")
+            raise QFinValidationError("quote_type must be 'zero_rate' or 'discount_factor'")
         if self.quote_type == "discount_factor" and self.value <= 0:
-            raise ValueError("discount-factor market quotes must be positive")
+            raise QFinValidationError("discount-factor market quotes must be positive")
         if not self.instrument.strip():
-            raise ValueError("market-quote instrument must not be empty")
+            raise QFinValidationError("market-quote instrument must not be empty")
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,13 +175,13 @@ class YieldCurve:
         node_times = np.array(times, dtype=np.float64, order="C", copy=True).reshape(-1)
         quoted_rates = np.array(zero_rates, dtype=np.float64, order="C", copy=True).reshape(-1)
         if node_times.size == 0 or node_times.shape != quoted_rates.shape:
-            raise ValueError("times and zero_rates must have equal non-zero length")
+            raise QFinValidationError("times and zero_rates must have equal non-zero length")
         if not np.all(np.isfinite(node_times)) or np.any(node_times < 0):
-            raise ValueError("curve times must be finite and non-negative")
+            raise QFinValidationError("curve times must be finite and non-negative")
         if not np.all(np.isfinite(quoted_rates)):
-            raise ValueError("zero rates must be finite")
+            raise QFinValidationError("zero rates must be finite")
         if np.any(np.diff(node_times) <= 0):
-            raise ValueError("curve times must be strictly increasing")
+            raise QFinValidationError("curve times must be strictly increasing")
         selected_compounding = Compounding.parse(compounding)
         canonical_rates = np.asarray(
             [
@@ -191,7 +192,9 @@ class YieldCurve:
         )
         node_discounts = np.exp(-canonical_rates * node_times)
         if not np.all(np.isfinite(node_discounts)) or np.any(node_discounts <= 0):
-            raise ValueError("zero rates imply non-finite or non-positive discount factors")
+            raise QFinValidationError(
+                "zero rates imply non-finite or non-positive discount factors"
+            )
         selected_interpolation = CurveInterpolation.parse(interpolation)
         selected_extrapolation = CurveExtrapolation.parse(extrapolation)
         selected_day_count = DayCountConvention.parse(day_count)
@@ -239,19 +242,19 @@ class YieldCurve:
         node_times = np.asarray(times, dtype=np.float64).reshape(-1)
         discounts = np.asarray(discount_factors, dtype=np.float64).reshape(-1)
         if node_times.size == 0 or node_times.shape != discounts.shape:
-            raise ValueError("times and discount_factors must have equal non-zero length")
+            raise QFinValidationError("times and discount_factors must have equal non-zero length")
         if not np.all(np.isfinite(node_times)) or np.any(node_times < 0):
-            raise ValueError("curve times must be finite and non-negative")
+            raise QFinValidationError("curve times must be finite and non-negative")
         if np.any(np.diff(node_times) <= 0):
-            raise ValueError("curve times must be strictly increasing")
+            raise QFinValidationError("curve times must be strictly increasing")
         if not np.all(np.isfinite(discounts)) or np.any(discounts <= 0):
-            raise ValueError("discount factors must be finite and positive")
+            raise QFinValidationError("discount factors must be finite and positive")
         zero_nodes = np.empty_like(discounts)
         positive = node_times > 0
         zero_nodes[positive] = -np.log(discounts[positive]) / node_times[positive]
         if np.any(~positive):
             if not np.isclose(discounts[~positive][0], 1.0, rtol=0.0, atol=1.0e-14):
-                raise ValueError("discount factor at time zero must equal one")
+                raise QFinValidationError("discount factor at time zero must equal one")
             zero_nodes[~positive] = zero_nodes[positive][0] if np.any(positive) else 0.0
         curve = cls(
             node_times,
@@ -286,13 +289,15 @@ class YieldCurve:
         node_times = np.asarray(times, dtype=np.float64).reshape(-1)
         forwards = np.asarray(forward_rates, dtype=np.float64).reshape(-1)
         if node_times.size < 2 or forwards.shape != (node_times.size - 1,):
-            raise ValueError("forward_rates must contain one value per adjacent time interval")
+            raise QFinValidationError(
+                "forward_rates must contain one value per adjacent time interval"
+            )
         if node_times[0] != 0.0:
-            raise ValueError("forward-rate curve times must start at zero")
+            raise QFinValidationError("forward-rate curve times must start at zero")
         if not np.all(np.isfinite(node_times)) or np.any(np.diff(node_times) <= 0):
-            raise ValueError("curve times must be finite and strictly increasing")
+            raise QFinValidationError("curve times must be finite and strictly increasing")
         if not np.all(np.isfinite(forwards)):
-            raise ValueError("forward rates must be finite")
+            raise QFinValidationError("forward rates must be finite")
         selected_compounding = Compounding.parse(compounding)
         discounts = np.ones(node_times.size, dtype=np.float64)
         for position, forward in enumerate(forwards):
@@ -328,10 +333,10 @@ class YieldCurve:
 
         items = tuple(quotes)
         if not items or any(not isinstance(item, CurveMarketQuote) for item in items):
-            raise ValueError("quotes must contain CurveMarketQuote objects")
+            raise QFinValidationError("quotes must contain CurveMarketQuote objects")
         quote_types = {item.quote_type for item in items}
         if len(quote_types) != 1:
-            raise ValueError("direct market-node quote types must be homogeneous")
+            raise QFinValidationError("direct market-node quote types must be homogeneous")
         times = [item.time for item in items]
         values = [item.value for item in items]
         if items[0].quote_type == "discount_factor":
@@ -389,11 +394,11 @@ class YieldCurve:
     def _validate_query(self, time: float | ArrayLike) -> FloatArray:
         query = np.asarray(time, dtype=np.float64)
         if not np.all(np.isfinite(query)) or np.any(query < 0):
-            raise ValueError("query times must be finite and non-negative")
+            raise QFinValidationError("query times must be finite and non-negative")
         if self.extrapolation is CurveExtrapolation.ERROR and (
             np.any(query < self.times[0]) or np.any(query > self.times[-1])
         ):
-            raise ValueError("query time is outside the curve domain")
+            raise QFinValidationError("query time is outside the curve domain")
         return query
 
     def _flat_forward_log_discount(self, query: FloatArray, *, left: bool) -> FloatArray:
@@ -503,9 +508,7 @@ class YieldCurve:
                 flat_result[position] = float(flat_canonical[position])
             else:
                 one_year_discount = float(np.exp(-flat_canonical[position]))
-                flat_result[position] = rate_from_discount_factor(
-                    one_year_discount, 1.0, selected
-                )
+                flat_result[position] = rate_from_discount_factor(one_year_discount, 1.0, selected)
         if query.ndim == 0:
             return float(result)
         return result
@@ -529,7 +532,7 @@ class YieldCurve:
         """Return the continuously compounded forward rate on ``[start, end]``."""
 
         if not (isfinite(start) and isfinite(end)) or start < 0 or end <= start:
-            raise ValueError("require finite times with 0 <= start < end")
+            raise QFinValidationError("require finite times with 0 <= start < end")
         start_discount = self.discount(start)
         end_discount = self.discount(end)
         return -float(np.log(end_discount / start_discount)) / (end - start)
@@ -538,7 +541,7 @@ class YieldCurve:
         """Convert a date to curve time using the curve's day-count metadata."""
 
         if self.valuation_date is None:
-            raise ValueError("curve has no valuation_date")
+            raise QFinValidationError("curve has no valuation_date")
         return year_fraction(self.valuation_date, value, self.day_count)
 
     def discount_date(self, value: DateLike) -> float:
@@ -551,9 +554,9 @@ class YieldCurve:
 
         shifts = np.asarray(shift, dtype=np.float64)
         if not np.all(np.isfinite(shifts)):
-            raise ValueError("curve shifts must be finite")
+            raise QFinValidationError("curve shifts must be finite")
         if shifts.ndim > 1 or (shifts.ndim == 1 and shifts.shape != self.zero_rates.shape):
-            raise ValueError("shift must be scalar or have one value per curve node")
+            raise QFinValidationError("shift must be scalar or have one value per curve node")
         node_shifts = (
             np.full(self.zero_rates.shape, float(shifts), dtype=np.float64)
             if shifts.ndim == 0
@@ -609,12 +612,9 @@ class YieldCurve:
             return np.asarray(rates + query * derivatives, dtype=np.float64)
         if self.interpolation is CurveInterpolation.LINEAR_DISCOUNT:
             slope = (
-                self._node_discount_factors[upper]
-                - self._node_discount_factors[lower]
+                self._node_discount_factors[upper] - self._node_discount_factors[lower]
             ) / width
-            discounts = self._node_discount_factors[lower] + slope * (
-                query - self.times[lower]
-            )
+            discounts = self._node_discount_factors[lower] + slope * (query - self.times[lower])
             return np.asarray(-slope / discounts, dtype=np.float64)
         log_discounts = np.log(self._node_discount_factors)
         return np.asarray(
@@ -641,7 +641,7 @@ class YieldCurve:
             minimum=3,
         )
         if not isfinite(extreme_forward_rate) or extreme_forward_rate <= 0.0:
-            raise ValueError("extreme_forward_rate must be finite and positive")
+            raise QFinValidationError("extreme_forward_rate must be finite and positive")
 
         node_discounts = self._node_discount_factors
         node_forwards = (
@@ -649,9 +649,7 @@ class YieldCurve:
             if self.times.size > 1
             else np.empty(0, dtype=np.float64)
         )
-        node_increasing = tuple(
-            int(item) for item in np.flatnonzero(np.diff(node_discounts) > 0.0)
-        )
+        node_increasing = tuple(int(item) for item in np.flatnonzero(np.diff(node_discounts) > 0.0))
         node_negative = tuple(int(item) for item in np.flatnonzero(node_forwards < 0.0))
 
         nonfinite_intervals: list[int] = []
@@ -676,9 +674,13 @@ class YieldCurve:
                 nonfinite_intervals.append(interval)
             if np.any(discounts <= 0.0):
                 nonpositive_intervals.append(interval)
-            increase_tolerance = 64.0 * np.finfo(np.float64).eps * max(
-                1.0,
-                float(np.max(np.abs(discounts))),
+            increase_tolerance = (
+                64.0
+                * np.finfo(np.float64).eps
+                * max(
+                    1.0,
+                    float(np.max(np.abs(discounts))),
+                )
             )
             if np.any(np.diff(discounts) > increase_tolerance):
                 increasing_intervals.append(interval)
@@ -725,9 +727,13 @@ class YieldCurve:
                 with np.errstate(divide="ignore", invalid="ignore"):
                     forwards = -np.diff(np.log(discounts)) / np.diff(samples)
                 extrapolation_forwards.append(forwards)
-                increase_tolerance = 64.0 * np.finfo(np.float64).eps * max(
-                    1.0,
-                    float(np.nanmax(np.abs(discounts))),
+                increase_tolerance = (
+                    64.0
+                    * np.finfo(np.float64).eps
+                    * max(
+                        1.0,
+                        float(np.nanmax(np.abs(discounts))),
+                    )
                 )
                 if (
                     not np.all(np.isfinite(discounts))
@@ -792,12 +798,8 @@ class YieldCurve:
             node_count=int(self.times.size),
             minimum_discount_factor=float(np.min(all_discounts)),
             maximum_discount_factor=float(np.max(all_discounts)),
-            minimum_forward_rate=(
-                None if all_forwards.size == 0 else float(np.min(all_forwards))
-            ),
-            maximum_forward_rate=(
-                None if all_forwards.size == 0 else float(np.max(all_forwards))
-            ),
+            minimum_forward_rate=(None if all_forwards.size == 0 else float(np.min(all_forwards))),
+            maximum_forward_rate=(None if all_forwards.size == 0 else float(np.max(all_forwards))),
             increasing_discount_intervals=tuple(increasing_intervals),
             negative_forward_intervals=tuple(negative_intervals),
             warnings=warnings,
@@ -833,9 +835,7 @@ class YieldCurve:
             "node_count": int(self.times.size),
             "native_compatible": self.native_compatible,
             "applied_node_shock": (
-                None
-                if self._applied_node_shock is None
-                else list(self._applied_node_shock)
+                None if self._applied_node_shock is None else list(self._applied_node_shock)
             ),
             "originating_quote_metadata": [
                 {

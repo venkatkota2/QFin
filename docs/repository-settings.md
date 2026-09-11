@@ -1,54 +1,60 @@
 # Main protection and repository settings
 
-On 2026-09-09, main was at
-`3dba3b3803f54891d12ad2c138b4dcc276de9d42` and GitHub reported `protected=false`.
-The connected GitHub App excludes repository administration, so protection could
-not be applied by this hardening task. CI itself is configured and exercised;
-repository enforcement requires a maintainer with administration rights.
+Audit on 2026-09-11: GitHub reported `main` at
+`f9d4be69432ee813fccdde609420cdee9eb15580`, **`protected=false`**, with no required
+status-check enforcement. Protection was not applied by this task. The connected
+GitHub tools expose no repository-administration mutation; writing these
+instructions does not enforce them. Recheck live settings after any owner change.
 
-In **Settings → Rules → Rulesets**, create an active branch ruleset targeting
-`refs/heads/main` (or configure equivalent **Branches → Branch protection**):
+An administrator should create an active ruleset in **Settings → Rules →
+Rulesets**, targeting `refs/heads/main`, or use equivalent branch protection:
 
-1. Require a pull request before merging. Prefer at least one independent review
-   when another maintainer is available; do not set an impossible approval rule
-   for a single-maintainer repository without an agreed review process.
-2. Require status checks and require the branch to be up to date. Add the exact
-   checks below from the CI workflow; select the GitHub Actions integration as the
-   source where supported.
-3. Block force pushes and branch deletion. Apply enforcement to administrators
-   and leave ordinary bypass actors empty. Any exceptional emergency bypass should
-   have an explicit maintainer process.
-4. Require conversation resolution. Keep build/test permissions separate from
-   any future release publishing permissions.
+1. Require a pull request before merging and require conversation resolution.
+   Prefer at least one independent approval when an additional maintainer is
+   available; agree a workable review policy for a single-maintainer repository.
+2. Require all exact check names below, from the GitHub Actions integration, and
+   require the branch to be up to date before merging.
+3. Block force pushes and branch deletion. Apply enforcement to administrators;
+   leave normal bypass actors empty. Define any emergency bypass separately.
+4. Keep ordinary CI permissions read-only. Any future publisher must use a
+   separate protected environment with owner-approved trusted publishing.
 
-Required checks observed on PR #14:
+## Exact checks observed on PR #15
+
+All 20 passed at the verified implementation checkpoint in
+[run 34576612885](https://github.com/venkatkota2/QFin/actions/runs/34576612885).
+The PR timeline records checks and head SHA for the final merge as well.
 
 - `Ruff and strict mypy`
-- `native parity and strict C++ warnings`
-- `native ASan and UBSan`
 - `minimum dependencies / Python 3.11`
-- `sdist clean install`
+- `native ASan and UBSan / clang`
+- `native ASan and UBSan / gcc`
+- `native parity and strict C++ warnings`
+- `portable binary wheels / cibuildwheel / macos-latest`
+- `portable binary wheels / cibuildwheel / ubuntu-latest`
+- `portable binary wheels / cibuildwheel / windows-latest`
 - `representative examples`
+- `sdist clean install`
+- `tests / macos-latest / Python 3.12`
 - `tests / ubuntu-latest / Python 3.11`
 - `tests / ubuntu-latest / Python 3.12`
 - `tests / ubuntu-latest / Python 3.13`
-- `tests / macos-latest / Python 3.12`
 - `tests / windows-latest / Python 3.12`
+- `wheel / macos-latest / Python 3.12`
 - `wheel / ubuntu-latest / Python 3.11`
 - `wheel / ubuntu-latest / Python 3.12`
 - `wheel / ubuntu-latest / Python 3.13`
-- `wheel / macos-latest / Python 3.12`
 - `wheel / windows-latest / Python 3.12`
 
-The performance evidence workflow is scheduled/manual and should not become a
-noisy timing gate. Correctness remains strictly gated. CI has explicit
-`contents: read`, checkout credential persistence disabled, and immutable SHA
-pins for [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1),
-[setup-python v7.0.0](https://github.com/actions/setup-python/releases/tag/v7.0.0)
-and [upload-artifact v7.0.1](https://github.com/actions/upload-artifact/releases/tag/v7.0.1).
-These use Node 24 and were checked against the official action metadata.
+Performance and large statistical/mutation studies are manual/weekly evidence
+workflows, not noisy per-PR timing gates. Ordinary CI uses `contents: read`,
+SHA-pinned actions, and `persist-credentials: false`. Only the separate
+release-candidate attestation job requests `id-token: write` and
+`attestations: write`; no publication job exists.
 
-No PyPI upload workflow exists or is added. Do not infer a package publication
-from a merge. Before any future publication, resolve licensing and use a separate
-least-privilege release workflow with trusted publishing and provenance as
-appropriate. Wheel checksums accompany the CI artifacts.
+The owner must separately choose licensing and obtain appropriate legal review;
+this repository currently has no license grant or declared license metadata.
+No PyPI publication, GitHub Release or tag was created by the hardening task.
+The manual release-candidate workflow and its attestation step are configured,
+but were not dispatched during this task. The tested wheel/sdist bytes and their
+SHA-256 collection were actually validated; see [release engineering](release-engineering.md).

@@ -1,139 +1,159 @@
-# Performance and dispatch
+# Performance and automatic engine policy — 1.1.2
 
-Measurements are end-to-end public API calls unless explicitly labelled a private
-kernel investigation. They include schedule generation, buffer conversion,
-allocation and the Python/C++ boundary. Model inputs are constructed before timing.
-Each JSON row records the workload, references, absolute times, numerical
-difference, repetition count and environment. A native comparison is not
-necessarily a before/after release comparison.
+Correctness and explicit failure take precedence over timing. These measurements
+include public API validation, buffer preparation, allocation and the Python/C++
+boundary; model construction is outside timed calls. They do not establish a
+universal C++ speedup. [The 1.1.1 report](history/performance-1.1.1.md) is historical.
 
-The main runner was Linux x86_64 on AMD EPYC 9V74, Python 3.12.14, QFin 1.1.1,
-NumPy 2.5.2, SciPy 1.18.1, GCC 13.3.0, PennyLane 0.45.1 and Lightning 0.45.0.
-OMP/OpenBLAS/MKL thread counts were set to one; QFin native kernels are single
-threaded. Compiler settings are recorded in the JSON reports. Earlier records
-retain their own Python patch version and environment; they are not relabelled.
+## Environment and comparison design
 
-## Before/after execution changes
+The before/after runs used the untouched starting main
+`f9d4be69432ee813fccdde609420cdee9eb15580` (1.1.1) and the hardened 1.1.2
+implementation. Raw records retain their actual capture time and version. These
+runs were on Linux 6.18.35 x86_64/glibc 2.39, Intel Xeon Platinum 8573C, Python
+3.12.14, NumPy 2.5.2, SciPy 1.18.1, GCC 13.3.0, PennyLane 0.45.1 and Lightning
+0.45.0. OpenBLAS/MKL/OMP thread counts were one. Earlier AMD-host baseline records
+are not used to calculate these comparisons.
 
-These compare the previous execution architecture against the same financial
-calculation using the hardened implementation. They do not compare different
-products or omit object conversion costs.
+The initial 33-row matrix uses three timed repetitions per row and compares
+NumPy/native or explicitly labelled alternatives. Shared-host variation produced
+some transient twofold differences, including between auto and NumPy paths that
+execute the same code. A targeted recheck used baseline/current/current/baseline
+process order, one warm-up and five measurements per block (ten samples per
+version/workload), under the same single-thread settings. The large slowdowns did
+not reproduce. Absolute times and dispersion from that recheck follow.
 
-| Calculation | Before (s) | After (s) | Repetitions | Maximum difference |
-| --- | ---: | ---: | ---: | ---: |
-| Floating par yield; two derived bonds → one schedule | 0.000190362 | 0.000025087 | 5 | 0 |
-| Dated par yield; two derived bonds → one schedule | 0.000616231 | 0.000073578 | 5 | 0 |
-| Key rate; 1 bond, 5 nodes; repeated repricing → prepared native | 0.001510993 | 0.000062082 | 3 | 6.70e-15 |
-| Key rate; 100 bonds, 5 nodes | 0.018422321 | 0.002370113 | 3 | 4.26e-14 |
-| Key rate; 1,000 bonds, 17 nodes | 0.532763344 | 0.031016821 | 3 | 5.68e-14 |
-| Key rate; 10,000 bonds, 33 nodes | 8.273657942 | 0.436920111 | 3 | 5.68e-14 |
-| 10,000-bond public pricing; repeat/bincount → current reduction | 0.137317111 | 0.119005335 | 5 | 1.42e-14 |
-| 31 MLAE fits; dense search → all-mode refinement plus regions | 0.5170875 | 0.052362911 | 5 | 5.66e-6 amplitude |
+| Public workload | Baseline median s | 1.1.2 median s | 1.1.2 min–max s | 1.1.2 std. dev. s | Current/baseline |
+| --- | ---: | ---: | --- | ---: | ---: |
+| 1000 dated bonds / NumPy | 0.060757 | 0.062591 | 0.057960–0.070164 | 0.003554 | 1.030 |
+| 10000 bonds / NumPy | 0.113968 | 0.118733 | 0.112344–0.158867 | 0.013202 | 1.042 |
+| 10000 bonds / native | 0.111590 | 0.112467 | 0.107865–0.122644 | 0.004502 | 1.008 |
+| 2000 rate scenarios, chunk 16 / NumPy | 0.030021 | 0.031503 | 0.028812–0.032642 | 0.001330 | 1.049 |
+| 2000 rate scenarios, chunk 16 / native | 0.021805 | 0.021237 | 0.020524–0.027862 | 0.002055 | 0.974 |
+| 1000 × 20 ALM paths, chunk 256 / NumPy | 0.267860 | 0.293570 | 0.266208–0.329030 | 0.015656 | 1.096 |
+| 1000 × 20 ALM paths, chunk 256 / native | 0.245973 | 0.233005 | 0.227681–0.281877 | 0.019517 | 0.947 |
 
-The key-rate gains largely come from eliminating repeated schedule/curve/buffer
-work. Comparing the already-prepared engines gives a much smaller difference:
-5,000 bonds/17 nodes measured **0.251386 s NumPy versus 0.126740 s native**;
-10,000 bonds/33 nodes measured **0.936767 s versus 0.436920 s**. Small and medium
-cases were less stable across repeated runs.
+The NumPy ALM-path median increased about 10% in this sample. Additional finite
+output and dimensional preflights are retained for correctness; variable run
+ranges overlap, so this does not isolate the cost of each check. Native ALM paths
+were faster in this workload but do not have sufficient portable crossover
+evidence to change their conservative automatic policy. No broad twofold
+regression remained reproducible in the targeted recheck. Small percentage
+differences are observations, not statistically established improvements.
 
-See [final scenario/key-rate rows](scenario-final-performance.md),
-[par-yield and reduction alternatives](hardening-performance.md), and
-[MLAE timing/coverage](mlae-validation.md), each with accompanying JSON.
+## Current NumPy/native comparisons
 
-## Current public API matrix
+These are same-version comparisons, distinct from incremental release changes.
+Each uses three timed repetitions. Numerical differences are in the result's
+units (price/surplus/DV01 currency, yield rate, or life cashflow currency).
 
-The [complete current matrix](native-performance-current.md) includes:
+| Workload | NumPy s | Native s | Maximum absolute difference |
+| --- | ---: | ---: | ---: |
+| Yield solving: 1,000 bonds | 0.141319 | 0.029139 | 0 |
+| Life projection: 10,000 policies | 9.217386 | 0.020258 | 1.86e-09 |
+| ALM scenarios: 1,000 bonds x 1,000 scenarios x 9 nodes | 0.944476 | 0.754109 | 6.4e-10 |
+| Risk aggregation: 10,000 weighted losses | 0.000951 | 0.000715 | 4.12e-17 |
+| Key rate: 5,000 bonds x 33 nodes | 0.313704 | 0.195996 | 5.68e-14 |
+| Key rate: 10,000 bonds x 33 nodes | 0.835912 | 0.390722 | 5.68e-14 |
 
-- Pricing at 1, 100, 1,000, 10,000 and 100,000 bonds; annual/semiannual/quarterly
-  coupons and mixed maturities. Ordinary native pricing has no stable broad win.
-- Yield inversion at 100 through 100,000 bonds: the largest case measured
-  **12.506504 s NumPy/Python versus 2.943251 s native**.
-- ALM base valuation at 100 through 10,000 assets. At 10,000, NumPy measured
-  **0.098413 s versus 0.103154 s native**; NumPy won this run.
-- Scenarios at 100×1,000, 1,000×1,000, 1,000×10,000 and 10,000×1,000 assets/scenarios.
-  The 1,000×10,000 case measured **11.435073 s versus 7.792020 s**, with maximum
-  surplus difference `7.28e-10`. Largest scenario rows use one timed run per engine;
-  their speedups have less replication evidence than the smaller median rows.
-- Life at 1,000, 10,000 and 100,000 model points. The largest Python/NumPy reference
-  was one timed run: **87.413358 s versus 0.178059 s native**. This compares an
-  existing Python policy/year loop to its existing native counterpart, not the
-  incremental hardening speedup, and does not establish production actuarial equivalence.
-- Weighted risk from 1,000 to 1,000,000 losses. The million-loss case measured
-  **0.149734 s versus 0.109280 s**; near-equal middle cases varied between runs.
-- Eight dated/floating curve configurations spanning all four interpolation modes,
-  positive and negative rates, and flat-forward extrapolation. Auto and NumPy
-  follow the same methodology; timing fluctuations there are not different kernels.
-- A representative existing five-data-qubit circuit: **0.003596 s default.qubit
-  versus 0.002110 s lightning.qubit**, with probability difference `1.11e-16`.
+The full large key-rate sweep preserves the native advantage at the conservative
+8-million cashflow-visit threshold. Its 1000-bond/17-node recheck measured
+0.03391 s NumPy versus 0.02463 s native; this smaller result is less portable and
+does not justify lowering the threshold. The life comparison is the existing
+Python policy/year loop versus the existing native loop, not a new 1.1.2 speedup.
 
-## Automatic engine policy
+The liability crossover was revalidated at 2048, 4096, 8192, 32768, 65536 and
+262144 standalone cashflows. At 4096 the paired medians were 0.000517 s NumPy and
+0.000534 s native. At 65536, seven further repetitions gave 0.005798 s versus
+0.007319 s; at 262144, 0.031757 s versus 0.034497 s. This does not support the old
+4096-flow native crossover, so **automatic standalone-liability valuation now
+uses NumPy**. Explicit native execution remains available. This changes engine
+selection and its report metadata, preserving financial semantics and tolerances.
 
-| Work | Current automatic choice when the extension is available |
+## Static dispatch decisions
+
+| Work | Auto choice with compatible native extension |
 | --- | --- |
-| Ordinary curve/YTM bond pricing | NumPy; inconsistent broad native crossover |
-| Batch yield inversion | Native for nonempty work |
-| Key-rate risk | Native from 8,000,000 cash-flow/scenario visits; otherwise NumPy |
-| ALM base | Pricing policy above; standalone liability batch native from 4,096 cash flows; combined engine reported |
-| Rate and indexed scenarios | Native for nonempty compatible work |
-| Life projection/scenarios | Native for nonempty compatible work; mixed analytics labelled |
-| Weighted risk | Native; middle-size near-ties are not portable gains |
-| Multi-period ALM paths | NumPy by default; explicit native remains supported |
-| Standalone mortality interpolation | NumPy |
+| Ordinary bond pricing and standalone ALM liabilities | NumPy; no stable broad native crossover |
+| Yield inversion | Native for nonempty batches |
+| Key-rate risk | Native at 8,000,000 cashflow/scenario visits; NumPy below |
+| Rate/indexed scenarios | Native for nonempty compatible work |
+| Life projection and life scenarios | Native for nonempty compatible work |
+| Weighted risk | Native; intermediate near-ties are not portable gains |
+| Multi-period ALM paths and standalone mortality | NumPy |
 
-All native curve choices require linear-zero interpolation with flat-zero
-extrapolation. Other supported curves use NumPy; an explicit unsupported native
-request fails. The key-rate threshold is deliberately conservative: repeat runs
-at roughly 1.8 million visits ranged from near parity to a modest win, while
-roughly 8.8 million visits supported the larger crossover. Constants are policies
-for the measured workload, not promises on every CPU or cash-flow shape.
+Policies live in `_dispatch.py`, with deterministic internal decision reasons.
+There is no runtime calibration, threading framework or hardware-specific tuning.
+All existing `engine` overrides remain. Native curves require linear-zero
+interpolation and flat-zero extrapolation; unsupported explicit requests fail,
+and auto falls back to the supported NumPy semantics.
 
-## Numerical and memory tradeoffs
+## Peak resident memory
 
-Prefix-sum differencing was rejected: it loses a one-unit segment after a
-trillion-scale prefix and accumulates larger errors in public pricing. `reduceat`
-keeps empty-segment handling and avoids a repeated index array for large buffers.
-At 10,000 bonds, overall traced peak allocation remained about **27.54 MB** in both
-implementations because other valuation arrays dominate. There is no claimed
-large end-to-end peak-memory reduction from this change alone.
+Seventeen fresh-process measurements cover bonds, rate scenarios, ALM paths,
+life scenarios, streamed factor validation and MLAE. There is one warm-up and
+three timed runs per worker; both chunks 16 and 256 are recorded where applicable.
+The selected table shows chunk 256. Peak RSS includes interpreter, imported
+packages, input arrays, warm-up and all timed calls; it is not pure kernel memory.
+The last column subtracts the pre-call high-water mark and is only a diagnostic,
+not a count of allocations or peak simultaneous live memory.
 
-For 30,000 weighted mixed-sign terms near 1e12 with one-unit adjustments, naive
-and Kahan reductions missed about **0.203451** currency units and NumPy pairwise
-missed **0.193929** against `math.fsum`. Neumaier and QFin's selective fsum path
-matched that reference. The Python selective path cost **0.001641 s** versus
-**0.000007 s** for pairwise reduction in this stress case; it is deliberately
-reserved for severe cancellation. These are reduction microbenchmarks, not
-public-API speedup claims. The native compensated implementation remains separately
-covered by parity tests.
+| Workload / engine | Baseline peak MiB | 1.1.2 peak MiB | Increase over pre-call high-water MiB |
+| --- | ---: | ---: | ---: |
+| bonds / numpy | 127.5 | 131.7 | 33.2 |
+| bonds / native | 109.8 | 113.9 | 15.1 |
+| rate_scenarios / numpy | 103.1 | 107.5 | 8.6 |
+| rate_scenarios / native | 95.1 | 98.9 | 0.2 |
+| alm_paths / numpy | 107.0 | 110.4 | 10.5 |
+| alm_paths / native | 98.0 | 102.3 | 2.4 |
+| life_scenarios / numpy | 95.9 | 100.1 | 0.1 |
+| life_scenarios / native | 95.8 | 100.1 | 0.0 |
+| factor_validation / numpy | 94.8 | 98.3 | 0.0 |
+| mlae / numpy | 94.5 | 98.6 | 0.4 |
 
-The [native output investigation](native-output-performance.md) compared an
-installed audited-main extension with current code on one million tiny scenarios:
-**0.011196 s before versus 0.012009 s after**. Current code also performs stronger
-validation, so this is not evidence that removing a copy alone made compute slower
-or faster. NumPy-owned output removes one scenario-length vector and transfer
-(8 MB for one million doubles), with straightforward lifetime and exception safety.
-Small outputs retain simple copies; capsule ownership transfer was not introduced.
+Most fresh-process peaks rose roughly 4 MiB alongside their import/pre-call floor;
+there is no claimed reduction in total RSS. NumPy rate-scenario peak was 99.5 MiB
+at chunk 16 and 107.5 MiB at chunk 256; ALM paths were 101.9 and 110.4 MiB. These
+observations support bounded working blocks but not a hard process-memory cap.
+Linux peak RSS was measured; the Windows/macOS reporting code is present but this
+campaign does not claim measured RSS on those platforms. See [memory](memory.md)
+for complexity, aggregate output sizes, 512 MiB guards and simulator limitations.
 
-NumPy scenario intermediates are bounded to 2,097,152 elements per matrix (16 MiB),
-with several matrices potentially live simultaneously. A public chunk size is an
-upper bound, not a reservation. Key-rate matrices have a separate 8-million-element
-chunk target. Life and multi-period scenarios retain aggregate outputs and chunked
-execution; no new scenario×instrument×period or scenario×policy×year cube is used.
+## Retained implementation alternatives and floating-point policy
 
-## Reproducing and comparing
+The current par-yield comparison measured 0.00002196 s for one floating schedule
+versus 0.00021286 s for two derived bonds; dated values were 0.00006972 s versus
+0.00083999 s. Five repetitions gave zero result difference. These measure an
+existing implementation choice, not an incremental 1.1.2 optimization. The MLAE
+31-threshold comparison was 0.05317 s versus 0.52241 s for the dense search, with
+5.66e-6 maximum amplitude difference. Its interval study is documented separately.
+Prefix-sum cashflow reductions remain rejected because of cancellation; no
+numerical tolerance was loosened to obtain a speedup.
+
+The effective current native flags include `-O3 -DNDEBUG -std=c++20 -fPIC
+-fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off
+-Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects`.
+CMake build type owns optimization; sanitizer builds append `-O1 -g` and disable
+IPO. MSVC uses `/fp:strict`. Actual baseline and final compile commands are archived;
+the baseline benchmark's missing inline flags are not silently filled in.
+
+## Reproduction and raw records
 
 ```bash
-OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-  python examples/native_benchmark.py --full --repeats 3 \
-  --output native-performance.md --json-output native-performance.json
-python examples/hardening_benchmark.py --repeats 5 \
-  --output hardening-performance.md --json-output hardening-performance.json
-python examples/mlae_benchmark.py --repeats 5 --coverage-repetitions 200 \
-  --output mlae-validation.md --json-output mlae-validation.json
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONHASHSEED=0
+export QFIN_COMPILE_COMMANDS=build/verification/compile_commands.json
+python examples/native_benchmark.py --repeats 3 --output native.md --json-output native.json
+python examples/native_benchmark.py --full --section key-rate --repeats 3 --output key-rate.md --json-output key-rate.json
+python tools/memory_benchmark.py --repeats 3 --output memory.json
+python examples/hardening_benchmark.py --repeats 5 --output alternatives.md --json-output alternatives.json
 ```
 
-Use identical environment/thread settings when comparing releases. Compare rows
-by benchmark, problem size and engine, and retain absolute times and numerical
-differences. Scheduled/manual CI uploads the machine-readable evidence; ordinary
-CI gates correctness and coverage, not minor noisy timing movement. Investigate
-large changes before adjusting dispatch. No OpenMP, TBB or new threading framework
-was added.
+Evidence: [before](history/hardening-1.1.2/baseline-native.json),
+[after](history/hardening-1.1.2/current-native.json),
+[alternating recheck](history/hardening-1.1.2/paired-benchmark.json),
+[large liability crossover](history/hardening-1.1.2/large-liability-dispatch.json),
+[key-rate sweep](history/hardening-1.1.2/current-key-rate.json),
+[baseline RSS](history/hardening-1.1.2/baseline-memory.json),
+[current RSS](history/hardening-1.1.2/current-memory.json),
+[implementation alternatives](history/hardening-1.1.2/implementation-alternatives.json),
+and [effective compiler commands](history/hardening-1.1.2/compile-commands.json).

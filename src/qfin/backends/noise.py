@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin._validation import require_integer
-from qfin.exceptions import BackendUnavailableError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError
 from qfin.resources.device import CircuitRuntime
 
 
@@ -29,15 +29,15 @@ class NoiseModel:
             ("readout_bit_flip_probability", self.readout_bit_flip_probability),
         ):
             if not isfinite(value) or not 0.0 <= value <= 1.0:
-                raise ValueError(f"{name} must be finite and lie in [0, 1]")
+                raise QFinValidationError(f"{name} must be finite and lie in [0, 1]")
         if not self.label.strip():
-            raise ValueError("noise model label must not be empty")
+            raise QFinValidationError("noise model label must not be empty")
 
     def scaled(self, factor: float) -> NoiseModel:
         """Scale explicit channel probabilities for sensitivity experiments."""
 
         if not isfinite(factor) or factor < 0:
-            raise ValueError("noise scale factor must be finite and non-negative")
+            raise QFinValidationError("noise scale factor must be finite and non-negative")
         return NoiseModel(
             depolarizing_probability=min(1.0, factor * self.depolarizing_probability),
             readout_bit_flip_probability=min(1.0, factor * self.readout_bit_flip_probability),
@@ -169,15 +169,13 @@ def analyze_noise(
     """Run deterministic or shot-based folding and polynomial ZNE."""
 
     resolved_power = require_integer(power, "power", minimum=0)
-    resolved_shots = (
-        None if shots is None else require_integer(shots, "shots", minimum=1)
-    )
+    resolved_shots = None if shots is None else require_integer(shots, "shots", minimum=1)
     if len(scale_factors) < 2:
-        raise ValueError("at least two scale factors are required")
+        raise QFinValidationError("at least two scale factors are required")
     if any(not isfinite(factor) or factor < 1 for factor in scale_factors):
-        raise ValueError("scale factors must be finite and at least one")
+        raise QFinValidationError("scale factors must be finite and at least one")
     if any(right <= left for left, right in pairwise(scale_factors)):
-        raise ValueError("scale factors must be strictly increasing")
+        raise QFinValidationError("scale factors must be strictly increasing")
     resolved_order = require_integer(
         extrapolation_order,
         "extrapolation_order",

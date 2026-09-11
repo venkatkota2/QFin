@@ -16,7 +16,7 @@ from qfin.circuits import (
     ProbabilityTreePreparation,
     apply_zero_reflection,
 )
-from qfin.exceptions import BackendUnavailableError, ResourceLimitError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError, ResourceLimitError
 from qfin.representation import DistributionEncoding
 
 
@@ -38,7 +38,7 @@ class StructuredPennyLaneBackend:
     ) -> None:
         payoff = readonly_float64(np.asarray(normalized_payoff).reshape(-1))
         if payoff.shape != representation.probabilities.shape:
-            raise ValueError("normalized_payoff must match the representation grid")
+            raise QFinValidationError("normalized_payoff must match the representation grid")
         self.representation = representation
         self.normalized_payoff = payoff
         self.device_name = device_name
@@ -111,9 +111,7 @@ class StructuredPennyLaneBackend:
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
         resolved_power = require_integer(power, "power", minimum=0)
-        resolved_shots = (
-            None if shots is None else require_integer(shots, "shots", minimum=1)
-        )
+        resolved_shots = None if shots is None else require_integer(shots, "shots", minimum=1)
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 

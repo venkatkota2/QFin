@@ -7,12 +7,14 @@ from typing import Literal, TypeAlias
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from qfin.exceptions import QFinValidationError
+
 
 def _validate_option(strike: float, maturity: float) -> None:
     if not isfinite(strike) or strike <= 0:
-        raise ValueError("strike must be finite and greater than zero")
+        raise QFinValidationError("strike must be finite and greater than zero")
     if not isfinite(maturity) or maturity <= 0:
-        raise ValueError("maturity must be finite and greater than zero")
+        raise QFinValidationError("maturity must be finite and greater than zero")
 
 
 @dataclass(frozen=True, slots=True)

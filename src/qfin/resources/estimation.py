@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from qfin._validation import require_integer, require_integer_sequence
+from qfin.exceptions import QFinValidationError
 
 BackendMode = Literal["compressed", "structured", "dense"]
 
@@ -80,13 +81,13 @@ def estimate_resources(
 
     powers = require_integer_sequence(schedule, "schedule", minimum=0)
     if not powers:
-        raise ValueError("schedule must contain non-negative Grover powers")
+        raise QFinValidationError("schedule must contain non-negative Grover powers")
     if len(set(powers)) != len(powers):
-        raise ValueError("schedule powers must be unique")
+        raise QFinValidationError("schedule powers must be unique")
     shot_count = require_integer(shots, "shots", minimum=1)
     qubit_count = require_integer(data_qubits, "data_qubits", minimum=1)
     if backend_mode not in ("compressed", "structured", "dense"):
-        raise ValueError("backend_mode must be 'compressed', 'structured', or 'dense'")
+        raise QFinValidationError("backend_mode must be 'compressed', 'structured', or 'dense'")
 
     max_power = max(powers)
     oracle_queries = shot_count * sum(2 * power + 1 for power in powers)

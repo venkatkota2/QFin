@@ -1,0 +1,102 @@
+{
+  "baseline": [
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/bindings/python.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/bindings/python.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/bindings/python.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/bindings/python.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/alm.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/alm.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/alm.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/alm.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/curves.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/curves.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/curves.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/curves.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/fixed_income.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/fixed_income.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/fixed_income.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/fixed_income.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/mortality.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/mortality.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/mortality.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/mortality.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/projections.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/projections.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/projections.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/projections.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/risk.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/risk.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/risk.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/risk.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/f1de0043729d/QFin/build/verified",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/f1de0043729d/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/f1de0043729d/qfin-baseline-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -O3 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/scenarios.cpp.o -c /workspace/scratch/f1de0043729d/QFin/cpp/src/scenarios.cpp",
+      "file": "/workspace/scratch/f1de0043729d/QFin/cpp/src/scenarios.cpp",
+      "output": "/workspace/scratch/f1de0043729d/QFin/build/verified/CMakeFiles/_qfin_native.dir/src/scenarios.cpp.o"
+    }
+  ],
+  "final": [
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/bindings/python.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/bindings/python.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/bindings/python.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/bindings/python.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/alm.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/alm.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/alm.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/alm.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/curves.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/curves.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/curves.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/curves.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/fixed_income.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/fixed_income.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/fixed_income.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/fixed_income.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/mortality.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/mortality.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/mortality.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/mortality.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/projections.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/projections.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/projections.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/projections.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/risk.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/risk.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/risk.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/risk.cpp.o"
+    },
+    {
+      "directory": "/workspace/scratch/4218929e5c40/QFin/build/final-verification",
+      "command": "/usr/bin/g++ -DQFIN_CXX_COMPILER=\"\\\"GNU 13.3.0\\\"\" -D_qfin_native_EXPORTS -I/workspace/scratch/4218929e5c40/QFin/cpp/include -isystem /opt/codex/runtimes/codex-primary-runtime/dependencies/python/include/python3.12 -isystem /workspace/scratch/4218929e5c40/qfin-final-venv/lib/python3.12/site-packages/pybind11/include -O3 -DNDEBUG -std=c++20 -fPIC -fvisibility=hidden -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off -Werror -Wshadow -Wconversion -Wsign-conversion -flto=auto -fno-fat-lto-objects -o CMakeFiles/_qfin_native.dir/src/scenarios.cpp.o -c /workspace/scratch/4218929e5c40/QFin/cpp/src/scenarios.cpp",
+      "file": "/workspace/scratch/4218929e5c40/QFin/cpp/src/scenarios.cpp",
+      "output": "/workspace/scratch/4218929e5c40/QFin/build/final-verification/CMakeFiles/_qfin_native.dir/src/scenarios.cpp.o"
+    }
+  ]
+}

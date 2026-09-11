@@ -1,0 +1,637 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "date_utc": "2026-09-11T07:50:21.429368+00:00",
+    "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "architecture": "x86_64",
+    "python": "3.12.14",
+    "qfin": "1.1.2",
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "compiler": "GNU 13.3.0",
+    "compiler_configuration": "not supplied to benchmark process",
+    "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+    "pennylane": "0.45.1",
+    "pennylane_lightning": "0.45.0",
+    "thread_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    },
+    "native_threads": 1
+  },
+  "benchmarks": [
+    {
+      "benchmark": "Par yield",
+      "problem_size": "floating",
+      "reference": "Two derived bonds and full repricing",
+      "qfin_engine": "One schedule",
+      "reference_seconds": 0.00021285799994075205,
+      "qfin_seconds": 2.1955000192974694e-05,
+      "speedup": 9.695194628550437,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Par yield",
+      "problem_size": "dated",
+      "reference": "Two derived bonds and full repricing",
+      "qfin_engine": "One schedule",
+      "reference_seconds": 0.0008399910000207456,
+      "qfin_seconds": 6.971500010877207e-05,
+      "speedup": 12.048927758877698,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "1 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "reduceat",
+      "reference_seconds": 8.753800011618296e-05,
+      "qfin_seconds": 9.740700011207082e-05,
+      "speedup": 0.898682846360804,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "1 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "current dispatch",
+      "reference_seconds": 8.753800011618296e-05,
+      "qfin_seconds": 8.948799995778245e-05,
+      "speedup": 0.9782093706137198,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "1 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "prefix differences",
+      "reference_seconds": 8.753800011618296e-05,
+      "qfin_seconds": 8.405600010519265e-05,
+      "speedup": 1.0414247645216608,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "100 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "reduceat",
+      "reference_seconds": 0.0012261430001672124,
+      "qfin_seconds": 0.001132749999896987,
+      "speedup": 1.08244802496466,
+      "max_difference": 1.4210854715202004e-14,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "100 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "current dispatch",
+      "reference_seconds": 0.0012261430001672124,
+      "qfin_seconds": 0.0010978770001202065,
+      "speedup": 1.1168309382863126,
+      "max_difference": 0.0,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "100 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "prefix differences",
+      "reference_seconds": 0.0012261430001672124,
+      "qfin_seconds": 0.0010915899999872636,
+      "speedup": 1.123263313314998,
+      "max_difference": 5.9685589803848416e-12,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "1,000 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "reduceat",
+      "reference_seconds": 0.011455698999952801,
+      "qfin_seconds": 0.012151708999908806,
+      "speedup": 0.9427232827941133,
+      "max_difference": 1.4210854715202004e-14,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "1,000 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "current dispatch",
+      "reference_seconds": 0.011455698999952801,
+      "qfin_seconds": 0.01138874899993425,
+      "speedup": 1.0058786087935503,
+      "max_difference": 1.4210854715202004e-14,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "1,000 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "prefix differences",
+      "reference_seconds": 0.011455698999952801,
+      "qfin_seconds": 0.014581569000029049,
+      "speedup": 0.7856286933134548,
+      "max_difference": 9.498535291641019e-11,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "10,000 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "reduceat",
+      "reference_seconds": 0.14260309399992366,
+      "qfin_seconds": 0.1682734400001209,
+      "speedup": 0.8474486169642768,
+      "max_difference": 1.4210854715202004e-14,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "10,000 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "current dispatch",
+      "reference_seconds": 0.14260309399992366,
+      "qfin_seconds": 0.11450183400006608,
+      "speedup": 1.2454219204894252,
+      "max_difference": 1.4210854715202004e-14,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    },
+    {
+      "benchmark": "Public bond reduction alternatives",
+      "problem_size": "10,000 bonds",
+      "reference": "repeat + bincount",
+      "qfin_engine": "prefix differences",
+      "reference_seconds": 0.14260309399992366,
+      "qfin_seconds": 0.16549645500003862,
+      "speedup": 0.8616685716917041,
+      "max_difference": 7.524363354605157e-10,
+      "reference_repetitions": 5,
+      "qfin_repetitions": 5,
+      "environment": {
+        "date_utc": "2026-09-11T07:50:21.429368+00:00",
+        "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "architecture": "x86_64",
+        "python": "3.12.14",
+        "qfin": "1.1.2",
+        "numpy": "2.5.2",
+        "scipy": "1.18.1",
+        "compiler": "GNU 13.3.0",
+        "compiler_configuration": "not supplied to benchmark process",
+        "compiler_flags": "not captured; set QFIN_COMPILE_COMMANDS to the build's compile_commands.json",
+        "pennylane": "0.45.1",
+        "pennylane_lightning": "0.45.0",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1"
+        },
+        "native_threads": 1
+      }
+    }
+  ],
+  "allocation_measurements": [
+    {
+      "problem": "1 bonds",
+      "method": "reduceat",
+      "reference_peak_bytes": 3681,
+      "current_peak_bytes": 3561,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "1 bonds",
+      "method": "current dispatch",
+      "reference_peak_bytes": 3681,
+      "current_peak_bytes": 3681,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "1 bonds",
+      "method": "prefix differences",
+      "reference_peak_bytes": 3681,
+      "current_peak_bytes": 3676,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "100 bonds",
+      "method": "reduceat",
+      "reference_peak_bytes": 258320,
+      "current_peak_bytes": 258216,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "100 bonds",
+      "method": "current dispatch",
+      "reference_peak_bytes": 258320,
+      "current_peak_bytes": 258336,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "100 bonds",
+      "method": "prefix differences",
+      "reference_peak_bytes": 258320,
+      "current_peak_bytes": 258579,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "1,000 bonds",
+      "method": "reduceat",
+      "reference_peak_bytes": 2724320,
+      "current_peak_bytes": 2724216,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "1,000 bonds",
+      "method": "current dispatch",
+      "reference_peak_bytes": 2724320,
+      "current_peak_bytes": 2724232,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "1,000 bonds",
+      "method": "prefix differences",
+      "reference_peak_bytes": 2724320,
+      "current_peak_bytes": 2724630,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "10,000 bonds",
+      "method": "reduceat",
+      "reference_peak_bytes": 27384320,
+      "current_peak_bytes": 27384216,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "10,000 bonds",
+      "method": "current dispatch",
+      "reference_peak_bytes": 27384320,
+      "current_peak_bytes": 27384232,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    },
+    {
+      "problem": "10,000 bonds",
+      "method": "prefix differences",
+      "reference_peak_bytes": 27384320,
+      "current_peak_bytes": 27384579,
+      "scope": "tracemalloc peak including tracked NumPy buffers; not RSS"
+    }
+  ],
+  "summation_microbenchmarks": [
+    {
+      "method": "naive Python",
+      "seconds": 0.001443024000082005,
+      "value": 3333.1298828125,
+      "reference": 3333.333333333333,
+      "absolute_error": 0.20345052083303017,
+      "scope": "reduction microbenchmark; 30,000 mixed-sign values"
+    },
+    {
+      "method": "NumPy pairwise",
+      "seconds": 7.373000016741571e-06,
+      "value": 3333.139404296875,
+      "reference": 3333.333333333333,
+      "absolute_error": 0.19392903645803017,
+      "scope": "reduction microbenchmark; 30,000 mixed-sign values"
+    },
+    {
+      "method": "Kahan Python",
+      "seconds": 0.0023837369999455404,
+      "value": 3333.1298828125,
+      "reference": 3333.333333333333,
+      "absolute_error": 0.20345052083303017,
+      "scope": "reduction microbenchmark; 30,000 mixed-sign values"
+    },
+    {
+      "method": "Neumaier Python",
+      "seconds": 0.0033500440001716925,
+      "value": 3333.333333333333,
+      "reference": 3333.333333333333,
+      "absolute_error": 0.0,
+      "scope": "reduction microbenchmark; 30,000 mixed-sign values"
+    },
+    {
+      "method": "QFin selective fsum",
+      "seconds": 0.002009933000181263,
+      "value": 3333.333333333333,
+      "reference": 3333.333333333333,
+      "absolute_error": 0.0,
+      "scope": "reduction microbenchmark; 30,000 mixed-sign values"
+    }
+  ],
+  "segmentation_cancellation": {
+    "prefix": [
+      1e+16,
+      0.0
+    ],
+    "reduceat": [
+      1e+16,
+      1.0
+    ],
+    "repeat_bincount": [
+      1e+16,
+      1.0
+    ]
+  },
+  "notes": [
+    "Public timings include schedule generation, input conversion and analytics.",
+    "Candidate patching is outside the timed calls.",
+    "Python Kahan/Neumaier costs are not claims about equivalent compiled loops.",
+    "Prefix differences are rejected because they lose small later segments.",
+    "Native outputs keep NumPy ownership; sanitizer CI tests their lifetime."
+  ]
+}

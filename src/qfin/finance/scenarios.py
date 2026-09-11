@@ -11,7 +11,10 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import PchipInterpolator
 
 from qfin import _native
+from qfin._dispatch import POLICIES, resolve_engine
+from qfin._memory import check_allocation
 from qfin._validation import require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.curves import CurveExtrapolation, CurveInterpolation, YieldCurve
 from qfin.finance.fixed_income import Engine
 
@@ -38,6 +41,7 @@ def _scenario_path(
 ) -> FloatArray:
     """Normalize one economic factor to a scenario-by-period buffer."""
 
+    check_allocation((scenario_count, period_count))
     if values is None:
         result = np.full((scenario_count, period_count), default, dtype=np.float64)
     else:
@@ -51,11 +55,11 @@ def _scenario_path(
         elif scenario_count == 1 and array.shape == (period_count,):
             result = np.array(array[None, :], dtype=np.float64, order="C", copy=True)
         else:
-            raise ValueError(
+            raise QFinValidationError(
                 f"{name} must be scalar or have shape ({scenario_count}, {period_count})"
             )
     if not np.all(np.isfinite(result)):
-        raise ValueError(f"{name} must be finite")
+        raise QFinValidationError(f"{name} must be finite")
     return result
 
 
@@ -107,14 +111,16 @@ class EconomicScenarioSet:
         if rates.ndim == 2:
             rates = rates[:, None, :]
         if rates.ndim != 3 or min(rates.shape) == 0:
-            raise ValueError("rate_shocks must have shape scenario-by-period-by-curve-node")
+            raise QFinValidationError(
+                "rate_shocks must have shape scenario-by-period-by-curve-node"
+            )
         if not np.all(np.isfinite(rates)):
-            raise ValueError("rate shocks must be finite")
+            raise QFinValidationError("rate shocks must be finite")
         rates = np.array(rates, dtype=np.float64, order="C", copy=True)
         if not isfinite(period_length) or period_length <= 0:
-            raise ValueError("period_length must be finite and positive")
+            raise QFinValidationError("period_length must be finite and positive")
         if not dependence_assumption:
-            raise ValueError("dependence_assumption must be non-empty")
+            raise QFinValidationError("dependence_assumption must be non-empty")
 
         scenario_count, period_count, _ = rates.shape
         spreads = _scenario_path(
@@ -153,11 +159,11 @@ class EconomicScenarioSet:
             name="lapse_multipliers",
         )
         if np.any(equities <= -1.0):
-            raise ValueError("equity returns must be greater than -1")
+            raise QFinValidationError("equity returns must be greater than -1")
         if np.any(inflation <= -1.0):
-            raise ValueError("inflation rates must be greater than -1")
+            raise QFinValidationError("inflation rates must be greater than -1")
         if np.any(mortality < 0.0) or np.any(lapse < 0.0):
-            raise ValueError("mortality and lapse multipliers must be non-negative")
+            raise QFinValidationError("mortality and lapse multipliers must be non-negative")
 
         if probabilities is None:
             scenario_probabilities = np.full(scenario_count, 1.0 / scenario_count, dtype=np.float64)
@@ -169,7 +175,7 @@ class EconomicScenarioSet:
                 or np.any(scenario_probabilities < 0.0)
                 or float(np.max(scenario_probabilities, initial=0.0)) <= 0.0
             ):
-                raise ValueError(
+                raise QFinValidationError(
                     "probabilities must be finite, non-negative, and have one "
                     "positive-total value per scenario"
                 )
@@ -186,7 +192,7 @@ class EconomicScenarioSet:
             or not all(isinstance(label, str) and label for label in scenario_labels)
             or len(set(scenario_labels)) != len(scenario_labels)
         ):
-            raise ValueError("labels must be unique and contain one value per scenario")
+            raise QFinValidationError("labels must be unique and contain one value per scenario")
 
         buffers = (rates, spreads, equities, inflation, mortality, lapse)
         for buffer in buffers:
@@ -219,14 +225,14 @@ class EconomicScenarioSet:
         """Validate that the rate-path nodes align with ``curve``."""
 
         if self.curve_node_count != curve.times.size:
-            raise ValueError("rate shocks must contain one value per curve node")
+            raise QFinValidationError("rate shocks must contain one value per curve node")
 
     def rate_scenarios(self, period: int = 0) -> RateScenarioSet:
         """Return one path period as the existing one-period rate interface."""
 
         period_index = require_integer(period, "period")
         if not 0 <= period_index < self.period_count:
-            raise ValueError("period is outside the scenario horizon")
+            raise QFinValidationError("period is outside the scenario horizon")
         return RateScenarioSet(self.rate_shocks[:, period_index, :], self.labels)
 
     @classmethod
@@ -292,12 +298,12 @@ class RateScenarioSet:
     def __post_init__(self) -> None:
         shocks = np.array(self.shocks, dtype=np.float64, order="C", copy=True)
         if shocks.ndim != 2 or shocks.shape[0] == 0 or shocks.shape[1] == 0:
-            raise ValueError("shocks must be a non-empty scenario-by-curve-node matrix")
+            raise QFinValidationError("shocks must be a non-empty scenario-by-curve-node matrix")
         if not np.all(np.isfinite(shocks)):
-            raise ValueError("scenario shocks must be finite")
+            raise QFinValidationError("scenario shocks must be finite")
         labels = self.labels or tuple(f"scenario_{index}" for index in range(shocks.shape[0]))
         if len(labels) != shocks.shape[0] or len(set(labels)) != len(labels):
-            raise ValueError("labels must be unique with one label per scenario")
+            raise QFinValidationError("labels must be unique with one label per scenario")
         shocks.setflags(write=False)
         object.__setattr__(self, "shocks", shocks)
         object.__setattr__(self, "labels", tuple(labels))
@@ -308,7 +314,7 @@ class RateScenarioSet:
 
         values = np.asarray(shifts, dtype=np.float64).reshape(-1)
         if values.size == 0 or not np.all(np.isfinite(values)):
-            raise ValueError("parallel shifts must contain finite values")
+            raise QFinValidationError("parallel shifts must contain finite values")
         matrix = np.repeat(values[:, None], curve.times.size, axis=1)
         labels = tuple(
             f"parallel_{index}_{shift:+.4f}bp" for index, shift in enumerate(10_000 * values)
@@ -327,7 +333,7 @@ class RateScenarioSet:
         """Construct one linear short-to-long zero-rate twist."""
 
         if not (isfinite(short_shift) and isfinite(long_shift)):
-            raise ValueError("steepener shifts must be finite")
+            raise QFinValidationError("steepener shifts must be finite")
         if curve.times.size == 1:
             shock = np.array([long_shift], dtype=np.float64)
         else:
@@ -348,9 +354,9 @@ class RateScenarioSet:
         """Construct a triangular key-rate shock at the curve nodes."""
 
         if not all(isfinite(value) for value in (key_time, shift, width)):
-            raise ValueError("key-rate inputs must be finite")
+            raise QFinValidationError("key-rate inputs must be finite")
         if key_time < 0 or width <= 0:
-            raise ValueError("key_time must be non-negative and width positive")
+            raise QFinValidationError("key_time must be non-negative and width positive")
         weights = np.maximum(1.0 - np.abs(curve.times - key_time) / width, 0.0)
         name = label or f"key_{key_time:g}y_{shift * 10_000:+.1f}bp"
         return cls((shift * weights)[None, :], (name,))
@@ -372,13 +378,11 @@ class _PreparedScenarioValuation:
     def build(cls, times: FloatArray, curve: YieldCurve) -> _PreparedScenarioValuation:
         query = np.ascontiguousarray(times, dtype=np.float64).reshape(-1)
         if not np.all(np.isfinite(query)) or np.any(query < 0.0):
-            raise ValueError("cash-flow times must be finite and non-negative")
+            raise QFinValidationError("cash-flow times must be finite and non-negative")
         before = query < curve.times[0]
         after = query > curve.times[-1]
-        if curve.extrapolation is CurveExtrapolation.ERROR and (
-            np.any(before) or np.any(after)
-        ):
-            raise ValueError("cash-flow time is outside the curve domain")
+        if curve.extrapolation is CurveExtrapolation.ERROR and (np.any(before) or np.any(after)):
+            raise QFinValidationError("cash-flow time is outside the curve domain")
         if curve.times.size == 1:
             lower = np.zeros(query.size, dtype=np.int64)
             upper = np.zeros(query.size, dtype=np.int64)
@@ -400,13 +404,13 @@ class _PreparedScenarioValuation:
         """Reproduce ``curve.shifted(shock).discount(times)`` for a shock batch."""
 
         if shocks.ndim != 2 or shocks.shape[1] != self.curve.times.size:
-            raise ValueError("scenario shocks must contain one value per curve node")
+            raise QFinValidationError("scenario shocks must contain one value per curve node")
         node_rates = self.curve.zero_rates[None, :] + shocks
         node_log_discounts = -node_rates * self.curve.times[None, :]
         with np.errstate(over="ignore", under="ignore", invalid="ignore"):
             node_discounts = np.exp(node_log_discounts)
         if not np.all(np.isfinite(node_discounts)) or np.any(node_discounts <= 0.0):
-            raise ValueError(
+            raise QFinValidationError(
                 "scenario shocks imply non-finite or non-positive node discount factors"
             )
 
@@ -453,12 +457,12 @@ class _PreparedScenarioValuation:
             if self.curve.times.size == 1:
                 left_log = right_log = -node_rates[:, :1] * self.times[None, :]
             else:
-                left_slope = (
-                    node_log_discounts[:, 1] - node_log_discounts[:, 0]
-                ) / (self.curve.times[1] - self.curve.times[0])
-                right_slope = (
-                    node_log_discounts[:, -1] - node_log_discounts[:, -2]
-                ) / (self.curve.times[-1] - self.curve.times[-2])
+                left_slope = (node_log_discounts[:, 1] - node_log_discounts[:, 0]) / (
+                    self.curve.times[1] - self.curve.times[0]
+                )
+                right_slope = (node_log_discounts[:, -1] - node_log_discounts[:, -2]) / (
+                    self.curve.times[-1] - self.curve.times[-2]
+                )
                 left_log = node_log_discounts[:, :1] + left_slope[:, None] * (
                     self.times[None, :] - self.curve.times[0]
                 )
@@ -471,7 +475,7 @@ class _PreparedScenarioValuation:
 
         result = np.where(self.times[None, :] == 0.0, 1.0, result)
         if not np.all(np.isfinite(result)) or np.any(result <= 0.0):
-            raise ValueError(
+            raise QFinValidationError(
                 "scenario interpolation produced non-finite or non-positive discount factors"
             )
         return np.asarray(result, dtype=np.float64)
@@ -501,19 +505,19 @@ def _validate_flat_portfolio(
     scenarios: RateScenarioSet,
 ) -> None:
     if times.ndim != 1 or amounts.shape != times.shape:
-        raise ValueError("cash-flow times and amounts must be one-dimensional and aligned")
+        raise QFinValidationError("cash-flow times and amounts must be one-dimensional and aligned")
     if offsets.ndim != 1 or offsets.size != weights.size + 1:
-        raise ValueError("offsets must delimit one cash-flow stream per position weight")
+        raise QFinValidationError("offsets must delimit one cash-flow stream per position weight")
     if offsets.size == 0 or offsets[0] != 0 or offsets[-1] != times.size:
-        raise ValueError("invalid cash-flow offsets")
+        raise QFinValidationError("invalid cash-flow offsets")
     if np.any(np.diff(offsets) < 0):
-        raise ValueError("cash-flow offsets must be non-decreasing")
+        raise QFinValidationError("cash-flow offsets must be non-decreasing")
     if not np.all(np.isfinite(times)) or np.any(times < 0):
-        raise ValueError("cash-flow times must be finite and non-negative")
+        raise QFinValidationError("cash-flow times must be finite and non-negative")
     if not np.all(np.isfinite(amounts)) or not np.all(np.isfinite(weights)):
-        raise ValueError("cash-flow amounts and position weights must be finite")
+        raise QFinValidationError("cash-flow amounts and position weights must be finite")
     if scenarios.shocks.shape[1] != curve.times.size:
-        raise ValueError("each scenario must have one shock per curve node")
+        raise QFinValidationError("each scenario must have one shock per curve node")
 
 
 def _weighted_cashflow_amounts(
@@ -563,30 +567,19 @@ def scenario_portfolio_values(
     weights = np.ascontiguousarray(position_weights, dtype=np.float64).reshape(-1)
     _validate_flat_portfolio(times, amounts, stream_offsets, weights, curve, scenarios)
     normalized_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
-    if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
     workload = times.size * scenarios.shocks.shape[0]
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        if not curve.native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        selected = "native"
-    elif engine == "numpy":
-        selected = "numpy"
-    else:
-        selected = (
-            "native"
-            if curve.native_compatible and _native.available() and workload > 0
-            else "numpy"
-        )
+    selected = resolve_engine(
+        engine,
+        workload,
+        native_compatible=curve.native_compatible,
+        auto_native_threshold=POLICIES["rate_scenarios"],
+    )
 
     prepared = _PreparedScenarioValuation.build(times, curve)
     weighted_amounts = _weighted_cashflow_amounts(amounts, stream_offsets, weights)
     if selected == "numpy":
         normalized_chunk_size = _bounded_numpy_chunk_size(normalized_chunk_size, times, curve)
+    check_allocation((scenarios.shocks.shape[0],))
     values = np.empty(scenarios.shocks.shape[0], dtype=np.float64)
     for start in range(0, scenarios.shocks.shape[0], normalized_chunk_size):
         stop = min(start + normalized_chunk_size, scenarios.shocks.shape[0])
@@ -606,11 +599,9 @@ def scenario_portfolio_values(
             )
             values[start:stop] = np.asarray(raw, dtype=np.float64)
         else:
-            values[start:stop] = _numpy_scenario_values(
-                prepared, weighted_amounts, shock_chunk
-            )
+            values[start:stop] = _numpy_scenario_values(prepared, weighted_amounts, shock_chunk)
     if not np.all(np.isfinite(values)):
-        raise ValueError("scenario valuation produced non-finite cash-flow values")
+        raise QFinValidationError("scenario valuation produced non-finite cash-flow values")
     return values, selected
 
 
@@ -631,7 +622,7 @@ def scenario_indexed_cashflow_values(
     amounts = np.ascontiguousarray(cashflow_amounts, dtype=np.float64).reshape(-1)
     linkages = np.ascontiguousarray(inflation_linkage, dtype=np.float64).reshape(-1)
     if times.shape != amounts.shape or times.shape != linkages.shape:
-        raise ValueError("cash-flow times, amounts, and inflation linkage must align")
+        raise QFinValidationError("cash-flow times, amounts, and inflation linkage must align")
     if (
         not np.all(np.isfinite(times))
         or np.any(times < 0.0)
@@ -639,35 +630,24 @@ def scenario_indexed_cashflow_values(
         or not np.all(np.isfinite(linkages))
         or np.any(linkages < 0.0)
     ):
-        raise ValueError("indexed cash-flow inputs must be finite and non-negative in time/linkage")
+        raise QFinValidationError(
+            "indexed cash-flow inputs must be finite and non-negative in time/linkage"
+        )
     scenarios.validate_curve(curve)
     period_index = require_integer(period, "period")
     normalized_chunk_size = require_integer(chunk_size, "chunk_size", minimum=1)
-    if (
-        not 0 <= period_index < scenarios.period_count
-    ):
-        raise ValueError("period must be in range")
-    if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
+    if not 0 <= period_index < scenarios.period_count:
+        raise QFinValidationError("period must be in range")
     workload = times.size * scenarios.scenario_count
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        if not curve.native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        selected = "native"
-    elif engine == "numpy":
-        selected = "numpy"
-    else:
-        selected = (
-            "native"
-            if curve.native_compatible and _native.available() and workload > 0
-            else "numpy"
-        )
+    selected = resolve_engine(
+        engine,
+        workload,
+        native_compatible=curve.native_compatible,
+        auto_native_threshold=POLICIES["rate_scenarios"],
+    )
 
     prepared = _PreparedScenarioValuation.build(times, curve)
+    check_allocation((scenarios.scenario_count,))
     values = np.empty(scenarios.scenario_count, dtype=np.float64)
     if selected == "numpy":
         normalized_chunk_size = _bounded_numpy_chunk_size(normalized_chunk_size, times, curve)
@@ -693,14 +673,12 @@ def scenario_indexed_cashflow_values(
         discounts = prepared.discount_factors(rate_shocks)
         scale = np.power(1.0 + inflation[:, None], times[None, :] * linkages[None, :])
         values[start:stop] = np.sum(
-            amounts[None, :]
-            * scale
-            * discounts,
+            amounts[None, :] * scale * discounts,
             axis=1,
             dtype=np.float64,
         )
     if not np.all(np.isfinite(values)):
-        raise ValueError("scenario valuation produced non-finite cash-flow values")
+        raise QFinValidationError("scenario valuation produced non-finite cash-flow values")
     return values, selected
 
 

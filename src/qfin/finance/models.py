@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from math import isfinite
 
+from qfin.exceptions import QFinValidationError
+
 
 @dataclass(frozen=True, slots=True)
 class BlackScholes:
@@ -19,8 +21,8 @@ class BlackScholes:
     def __post_init__(self) -> None:
         values = (self.spot, self.rate, self.volatility, self.dividend_yield)
         if not all(isfinite(value) for value in values):
-            raise ValueError("Black-Scholes parameters must be finite")
+            raise QFinValidationError("Black-Scholes parameters must be finite")
         if self.spot <= 0:
-            raise ValueError("spot must be greater than zero")
+            raise QFinValidationError("spot must be greater than zero")
         if self.volatility <= 0:
-            raise ValueError("volatility must be greater than zero")
+            raise QFinValidationError("volatility must be greater than zero")

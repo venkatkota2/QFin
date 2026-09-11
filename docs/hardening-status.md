@@ -1,12 +1,11 @@
-# QFin hardening record
+# QFin 1.1.2 hardening record
 
-The current engineering record is the [hardening report](hardening-report.md), with
-[validation statistics](validation.md), [structured validation evidence](hardening-validation.json)
-and [measured performance](performance.md).
+The current engineering record is [hardening-1.1.2.md](hardening-1.1.2.md), linked to
+[PR #15](https://github.com/venkatkota2/QFin/pull/15). The audited starting main is
+`f9d4be69432ee813fccdde609420cdee9eb15580`; the branch is
+`hardening/1.1.2-verification`. No modelling scope is added.
 
-[PR #14](https://github.com/venkatkota2/QFin/pull/14) retains the exact final tested
-head, CI checks and merge status. Branch: `hardening/qfin-1.1.1`. Audited main:
-`3dba3b3803f54891d12ad2c138b4dcc276de9d42`. No modelling scope was added.
-
-Main ruleset enforcement still requires [maintainer administration](repository-settings.md);
-no license grant was added. These limitations are explicit in the report.
+The [1.1.1 report](hardening-report.md) and its historical benchmarks remain
+unchanged evidence for that earlier milestone. Repository protection and licensing
+remain explicit owner decisions; see [repository settings](repository-settings.md)
+and [release engineering](release-engineering.md).

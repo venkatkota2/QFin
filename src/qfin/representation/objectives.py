@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin._validation import readonly_float64
+from qfin.exceptions import QFinValidationError
 from qfin.representation.encoding import DistributionEncoding
 
 FloatArray = NDArray[np.float64]
@@ -31,21 +32,19 @@ class QuantumObjectiveEncoding:
     inclusive: bool | None = None
 
     def __post_init__(self) -> None:
-        values = readonly_float64(
-            np.asarray(self.normalized_values, dtype=np.float64).reshape(-1)
-        )
+        values = readonly_float64(np.asarray(self.normalized_values, dtype=np.float64).reshape(-1))
         if values.shape != self.distribution.probabilities.shape:
-            raise ValueError("normalized_values must match the distribution grid")
+            raise QFinValidationError("normalized_values must match the distribution grid")
         if not np.all(np.isfinite(values)) or np.any((values < 0) | (values > 1)):
-            raise ValueError("normalized_values must be finite and lie in [0, 1]")
+            raise QFinValidationError("normalized_values must be finite and lie in [0, 1]")
         if not isfinite(self.financial_scale) or self.financial_scale < 0:
-            raise ValueError("financial_scale must be finite and non-negative")
+            raise QFinValidationError("financial_scale must be finite and non-negative")
         if not isfinite(self.financial_offset):
-            raise ValueError("financial_offset must be finite")
+            raise QFinValidationError("financial_offset must be finite")
         if not self.label:
-            raise ValueError("label must be non-empty")
+            raise QFinValidationError("label must be non-empty")
         if self.threshold is not None and not isfinite(self.threshold):
-            raise ValueError("threshold must be finite")
+            raise QFinValidationError("threshold must be finite")
         object.__setattr__(self, "normalized_values", values)
 
     @property
@@ -58,7 +57,7 @@ class QuantumObjectiveEncoding:
 
     def value_from_amplitude(self, amplitude: float) -> float:
         if not isfinite(amplitude) or not 0 <= amplitude <= 1:
-            raise ValueError("amplitude must be finite and lie in [0, 1]")
+            raise QFinValidationError("amplitude must be finite and lie in [0, 1]")
         return self.financial_offset + self.financial_scale * amplitude
 
     def to_dict(self) -> dict[str, object]:
@@ -83,7 +82,7 @@ def cdf_objective(
     """Encode ``P(loss <= threshold)`` as an objective-qubit amplitude."""
 
     if not isfinite(threshold):
-        raise ValueError("threshold must be finite")
+        raise QFinValidationError("threshold must be finite")
     values = np.asarray(distribution.grid <= threshold, dtype=np.float64)
     return QuantumObjectiveEncoding(
         distribution=distribution,
@@ -105,7 +104,7 @@ def tail_probability_objective(
     """Encode a strict or inclusive upper-tail probability."""
 
     if not isfinite(threshold):
-        raise ValueError("threshold must be finite")
+        raise QFinValidationError("threshold must be finite")
     mask = distribution.grid >= threshold if inclusive else distribution.grid > threshold
     return QuantumObjectiveEncoding(
         distribution=distribution,
@@ -125,7 +124,7 @@ def tail_excess_objective(
     """Encode ``E[max(loss-threshold, 0)]`` with an explicit financial scale."""
 
     if not isfinite(threshold):
-        raise ValueError("threshold must be finite")
+        raise QFinValidationError("threshold must be finite")
     excess = np.maximum(distribution.grid - threshold, 0.0)
     scale = float(np.max(excess, initial=0.0))
     normalized = np.zeros_like(excess) if scale == 0.0 else excess / scale
