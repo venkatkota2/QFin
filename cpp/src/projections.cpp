@@ -1,3 +1,4 @@
+#include "qfin/checked_size.hpp"
 #include "qfin/projections.hpp"
 
 #include "qfin/curves.hpp"
@@ -78,7 +79,7 @@ PolicyProjectionResult project_term_life_policies(
         }
     }
 
-    const auto output_size = static_cast<std::size_t>(maximum_term) + 1;
+    const auto output_size = checked_allocation(checked_add(static_cast<std::size_t>(maximum_term), 1), 9);
     PolicyProjectionResult result{
         std::vector<double>(output_size, 0.0),
         std::vector<double>(output_size, 0.0),
@@ -170,7 +171,7 @@ LifeModelPointProjectionResult project_life_model_points(
     const std::span<const double> curve_times,
     const std::span<const double> zero_rates
 ) {
-    const std::size_t point_count = attained_ages.size();
+    const std::size_t point_count = checked_allocation(attained_ages.size());
     if (sums_assured.size() != point_count || annual_premiums.size() != point_count ||
         remaining_terms.size() != point_count || policy_durations.size() != point_count ||
         original_terms.size() != point_count || product_codes.size() != point_count ||
@@ -227,7 +228,7 @@ LifeModelPointProjectionResult project_life_model_points(
         expense_inflation_rates, horizon, false, true, "expense inflation rates"
     );
 
-    const std::size_t output_size = horizon + 1;
+    const std::size_t output_size = checked_allocation(checked_add(horizon, 1), 9);
     LifeModelPointProjectionResult result{
         std::vector<double>(output_size, 0.0),
         std::vector<double>(output_size, 0.0),
@@ -406,7 +407,7 @@ LifeScenarioProjectionResult project_life_scenarios(
     const std::size_t scenario_count,
     const std::size_t period_count
 ) {
-    const std::size_t point_count = attained_ages.size();
+    const std::size_t point_count = checked_allocation(attained_ages.size());
     const bool misaligned = sums_assured.size() != point_count ||
                             annual_premiums.size() != point_count ||
                             remaining_terms.size() != point_count ||
@@ -421,9 +422,10 @@ LifeScenarioProjectionResult project_life_scenarios(
                             bonus_rates.size() != point_count ||
                             disability_benefits.size() != point_count ||
                             benefit_inflation_linkage.size() != point_count;
-    const std::size_t scenario_periods = scenario_count * period_count;
+    checked_allocation(scenario_count, 5);
+    const std::size_t scenario_periods = checked_multiply(scenario_count, period_count);
     if (misaligned || scenario_count == 0 || period_count == 0 ||
-        scenario_rate_shocks.size() != scenario_periods * curve_times.size() ||
+        scenario_rate_shocks.size() != checked_multiply(scenario_periods, curve_times.size()) ||
         scenario_mortality_multipliers.size() != scenario_periods ||
         scenario_lapse_multipliers.size() != scenario_periods ||
         scenario_inflation_rates.size() != scenario_periods ||

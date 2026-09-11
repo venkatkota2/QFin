@@ -10,8 +10,10 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin import _native
+from qfin._dispatch import POLICIES, resolve_engine
 from qfin._numerics import stable_sum, stable_weighted_sum
 from qfin._validation import require_integer
+from qfin.exceptions import QFinTypeError, QFinValidationError
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import (
     CashFlow,
@@ -56,18 +58,18 @@ class AssetPortfolio:
     ) -> None:
         items = tuple(bonds)
         if any(not isinstance(item, FixedRateBond) for item in items):
-            raise TypeError("bonds must contain FixedRateBond objects")
+            raise QFinTypeError("bonds must contain FixedRateBond objects")
         if quantities is None:
             weights = np.ones(len(items), dtype=np.float64)
         else:
             weights = np.array(quantities, dtype=np.float64, order="C", copy=True).reshape(-1)
         if weights.shape != (len(items),) or not np.all(np.isfinite(weights)):
-            raise ValueError("quantities must be finite with one value per bond")
+            raise QFinValidationError("quantities must be finite with one value per bond")
         normalized_settlement = _normalize_bond_settlement(items, settlement)
         if not isfinite(equity_value) or equity_value < 0:
-            raise ValueError("equity_value must be finite and non-negative")
+            raise QFinValidationError("equity_value must be finite and non-negative")
         if not isfinite(cash_value) or cash_value < 0:
-            raise ValueError("cash_value must be finite and non-negative")
+            raise QFinValidationError("cash_value must be finite and non-negative")
         weights.setflags(write=False)
         object.__setattr__(self, "bonds", items)
         object.__setattr__(self, "quantities", weights)
@@ -90,7 +92,7 @@ class LiabilityPortfolio:
     ) -> None:
         items = tuple(cashflows)
         if any(not isinstance(item, CashFlow) for item in items):
-            raise TypeError("cashflows must contain CashFlow objects")
+            raise QFinTypeError("cashflows must contain CashFlow objects")
         if inflation_linkage is None:
             linkage = np.zeros(len(items), dtype=np.float64)
         else:
@@ -102,7 +104,7 @@ class LiabilityPortfolio:
             or not np.all(np.isfinite(linkage))
             or np.any(linkage < 0.0)
         ):
-            raise ValueError(
+            raise QFinValidationError(
                 "inflation_linkage must contain one finite non-negative value per cash flow"
             )
         linkage.setflags(write=False)
@@ -120,7 +122,7 @@ class LiabilityPortfolio:
         time_array = np.asarray(times, dtype=np.float64).reshape(-1)
         amount_array = np.asarray(amounts, dtype=np.float64).reshape(-1)
         if time_array.shape != amount_array.shape:
-            raise ValueError("times and amounts must have the same shape")
+            raise QFinValidationError("times and amounts must have the same shape")
         return cls(
             [
                 CashFlow(time=float(time), amount=float(amount))
@@ -198,7 +200,7 @@ class ALMFactorAttribution:
             or np.any(weights < 0.0)
             or float(np.max(weights, initial=0.0)) <= 0.0
         ):
-            raise ValueError("probabilities must be non-negative and align to scenarios")
+            raise QFinValidationError("probabilities must be non-negative and align to scenarios")
         weights = weights / np.max(weights)
         weights = weights / np.sum(weights)
         result = {
@@ -245,7 +247,7 @@ class RebalancingStrategy:
         if self.target_equity_weight is not None and (
             not isfinite(self.target_equity_weight) or not 0.0 <= self.target_equity_weight <= 1.0
         ):
-            raise ValueError("target_equity_weight must lie in [0, 1]")
+            raise QFinValidationError("target_equity_weight must lie in [0, 1]")
         frequency = require_integer(
             self.rebalance_frequency,
             "rebalance_frequency",
@@ -254,7 +256,7 @@ class RebalancingStrategy:
         if not isfinite(self.transaction_cost_rate) or not (
             0.0 <= self.transaction_cost_rate < 1.0
         ):
-            raise ValueError("transaction_cost_rate must lie in [0, 1)")
+            raise QFinValidationError("transaction_cost_rate must lie in [0, 1)")
         object.__setattr__(self, "rebalance_frequency", frequency)
 
 
@@ -286,7 +288,7 @@ class ALMPathResult:
         if index < 0:
             index += self.surplus.shape[1]
         if not 0 <= index < self.surplus.shape[1]:
-            raise ValueError("period is outside the projected horizon")
+            raise QFinValidationError("period is outside the projected horizon")
         return LossDistribution(self.initial_surplus - self.surplus[:, index], self.probabilities)
 
 
@@ -331,23 +333,14 @@ def _liability_metrics(
     if times.size == 0:
         return 0.0, 0.0, 0.0, "numpy"
     if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        if not curve.native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        selected = "native"
-    elif engine == "numpy":
-        selected = "numpy"
-    else:
-        selected = (
-            "native"
-            if curve.native_compatible and _native.available() and times.size >= 4_096
-            else "numpy"
-        )
+        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
+    selected = resolve_engine(
+        engine,
+        times.size,
+        native_compatible=curve.native_compatible,
+        auto_native_threshold=POLICIES["alm_base"],
+    )
+
     if selected == "native":
         raw = cast(
             dict[str, object],
@@ -457,11 +450,11 @@ class ALMModel:
 
     def __post_init__(self) -> None:
         if not isinstance(self.assets, AssetPortfolio):
-            raise TypeError("assets must be an AssetPortfolio")
+            raise QFinTypeError("assets must be an AssetPortfolio")
         if not isinstance(self.liabilities, LiabilityPortfolio):
-            raise TypeError("liabilities must be a LiabilityPortfolio")
+            raise QFinTypeError("liabilities must be a LiabilityPortfolio")
         if not isinstance(self.curve, YieldCurve):
-            raise TypeError("curve must be a YieldCurve")
+            raise QFinTypeError("curve must be a YieldCurve")
         _normalize_bond_settlement(
             self.assets.bonds,
             self.assets.settlement,
@@ -481,8 +474,7 @@ class ALMModel:
         asset_duration = (
             0.0
             if asset_pv == 0.0
-            else stable_weighted_sum(market_values, asset_analytics.macaulay_duration)
-            / asset_pv
+            else stable_weighted_sum(market_values, asset_analytics.macaulay_duration) / asset_pv
         )
         asset_convexity = (
             0.0
@@ -679,7 +671,7 @@ class ALMModel:
 
         bumps = (rate_bump, credit_spread_bump, equity_bump, inflation_bump)
         if any(not isfinite(value) or value <= 0.0 for value in bumps):
-            raise ValueError("sensitivity bumps must be finite and positive")
+            raise QFinValidationError("sensitivity bumps must be finite and positive")
         scenarios = EconomicScenarioSet(
             np.full((1, 1, self.curve.times.size), rate_bump, dtype=np.float64),
             credit_spread_shocks=credit_spread_bump,

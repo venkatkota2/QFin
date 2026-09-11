@@ -86,8 +86,15 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: python -m pip install -e . pytest
+      - run: python -m pip install -e . pytest "hypothesis>=6.100,<7"
       - run: python -m pytest tests/native tests/finance/test_metamorphic_properties.py tests/finance/test_numerical_reductions.py
+      - name: Archive property-test dependency wheels for reproducible offline verification
+        run: python -m pip download --only-binary=:all: --dest verification-tools "hypothesis>=6.100,<7"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qfin-verification-tools
+          path: verification-tools/*.whl
+          if-no-files-found: error
 
   minimum-dependencies:
     name: minimum dependencies / Python 3.11
@@ -99,7 +106,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - run: python -m pip install numpy==1.26.0 scipy==1.11.0 pytest
+      - run: python -m pip install numpy==1.26.0 scipy==1.11.0 pytest "hypothesis>=6.100,<7"
       - run: python -m pip install -e . --no-deps
       - run: python -m pytest
 
@@ -113,7 +120,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: python -m pip install -e . pytest
+      - run: python -m pip install -e . pytest "hypothesis>=6.100,<7"
         env:
           CMAKE_ARGS: -DCMAKE_CXX_COMPILER=g++ -DQFIN_STRICT_WARNINGS=ON -DQFIN_ENABLE_SANITIZERS=ON
       - name: Exercise native ownership, malformed buffers, and parity

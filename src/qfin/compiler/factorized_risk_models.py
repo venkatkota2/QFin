@@ -17,7 +17,7 @@ from qfin.backends.factorized import (
     FactorizedTailPennyLaneBackend,
 )
 from qfin.circuits import FactorizedPreparation
-from qfin.exceptions import CompilationError, ResourceLimitError
+from qfin.exceptions import CompilationError, QFinValidationError, ResourceLimitError
 from qfin.finance.exposures import (
     FactorCVaR,
     FactorRiskProblem,
@@ -57,21 +57,23 @@ class StructuredRiskErrorBudget:
 
     def __post_init__(self) -> None:
         if not isfinite(self.total) or self.total <= 0.0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         components = (self.loss_quantization, self.estimation)
         if any(not isfinite(value) or value < 0.0 for value in components):
-            raise ValueError("risk error-budget allocations must be finite and non-negative")
+            raise QFinValidationError(
+                "risk error-budget allocations must be finite and non-negative"
+            )
         if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
-            raise ValueError("risk error-budget allocations must sum to total")
+            raise QFinValidationError("risk error-budget allocations must sum to total")
         if not 0.0 < self.interval_level < 1.0:
-            raise ValueError("interval_level must lie strictly between zero and one")
+            raise QFinValidationError("interval_level must lie strictly between zero and one")
         if not self.target_error_unit.strip():
-            raise ValueError("target_error_unit must not be empty")
+            raise QFinValidationError("target_error_unit must not be empty")
 
     @classmethod
     def allocate(cls, target_error: float) -> StructuredRiskErrorBudget:
         if not isfinite(target_error) or target_error <= 0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         return cls(
             total=target_error,
             loss_quantization=0.4 * target_error,
@@ -250,7 +252,8 @@ class CompiledFactorRiskModel:
             "backend": self.backend_name,
             "representation": "factorized_reversible_loss_oracle",
             "algorithm": (
-                self.algorithm_name if self.backend_name == "pennylane"
+                self.algorithm_name
+                if self.backend_name == "pennylane"
                 else "classical_streamed_factor_reference"
             ),
             "target_error": self.target_error,
@@ -354,7 +357,7 @@ class CompiledFactorRiskModel:
         default_thresholds = max(1, ceil(log2(max(candidates, 1))) + 1)
         thresholds = default_thresholds if threshold_evaluations is None else threshold_evaluations
         if thresholds < 1:
-            raise ValueError("threshold_evaluations must be positive")
+            raise QFinValidationError("threshold_evaluations must be positive")
         excess_bits = self.oracle.loss_qubits if isinstance(self.problem, FactorCVaR) else 0
         objectives = thresholds + excess_bits
         circuit_executions = objectives * len(powers)
@@ -391,7 +394,7 @@ class CompiledFactorRiskModel:
         max_total_wires: int,
     ) -> FactorizedTailPennyLaneBackend:
         if self.backend_name != "pennylane":
-            raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
+            raise QFinValidationError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         return FactorizedTailPennyLaneBackend(
             self.problem.model.encoding,
             self.oracle,
@@ -435,7 +438,7 @@ class CompiledFactorRiskModel:
         """Build one positive-tail-excess bit objective for inspection/testing."""
 
         if self.backend_name != "pennylane":
-            raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
+            raise QFinValidationError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         probabilities = self.validation.excess_bit_probabilities(threshold_code)
         return FactorizedExcessPennyLaneBackend(
             self.problem.model.encoding,
@@ -476,7 +479,7 @@ class CompiledFactorRiskModel:
     ) -> FactorQuantumVaRSearch:
         candidates = self.validation.occupied_codes
         if not candidates:
-            raise ValueError("structured loss register has no occupied codes")
+            raise QFinValidationError("structured loss register has no occupied codes")
         lower_index = 0
         upper_index = len(candidates) - 1
         evaluations: list[FactorQuantumObjectiveEstimate] = []
@@ -746,7 +749,7 @@ def compile_factor_risk_problem(
         )
     budget = StructuredRiskErrorBudget.allocate(target_error)
     if arithmetic_scale is not None and (not isfinite(arithmetic_scale) or arithmetic_scale <= 0):
-        raise ValueError("arithmetic_scale must be finite and positive")
+        raise QFinValidationError("arithmetic_scale must be finite and positive")
     exact_summary = evaluate_factor_risk(
         problem,
         chunk_size=validation_chunk_size,

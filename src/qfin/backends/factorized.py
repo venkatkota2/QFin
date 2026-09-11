@@ -12,7 +12,7 @@ from qfin._validation import require_integer
 from qfin.algorithms import CircuitObservation
 from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.circuits import FactorizedPreparation, apply_zero_reflection
-from qfin.exceptions import BackendUnavailableError, ResourceLimitError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError, ResourceLimitError
 from qfin.representation.arithmetic import (
     IntegerPolynomialPlan,
     StructuredLossOraclePlan,
@@ -43,9 +43,11 @@ class FactorizedTailPennyLaneBackend:
         )
         wire_limit = require_integer(max_total_wires, "max_total_wires", minimum=1)
         if oracle.input_qubits != representation.qubits_per_factor:
-            raise ValueError("oracle input registers do not match the factorized representation")
+            raise QFinValidationError(
+                "oracle input registers do not match the factorized representation"
+            )
         if not 0 <= encoded_probability <= 1:
-            raise ValueError("encoded_probability must lie in [0, 1]")
+            raise QFinValidationError("encoded_probability must lie in [0, 1]")
         if oracle.integer_monomials > monomial_limit:
             raise ResourceLimitError(
                 f"structured arithmetic requires {oracle.integer_monomials} integer monomials, "
@@ -99,7 +101,7 @@ class FactorizedTailPennyLaneBackend:
             else require_integer(threshold_code, "threshold_code", minimum=0)
         )
         if not 0 <= self._threshold_code <= 2**oracle.loss_qubits:
-            raise ValueError("threshold_code must fit the loss-register comparison range")
+            raise QFinValidationError("threshold_code must fit the loss-register comparison range")
 
     @staticmethod
     def _qml() -> Any:
@@ -186,9 +188,7 @@ class FactorizedTailPennyLaneBackend:
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
         resolved_power = require_integer(power, "power", minimum=0)
-        resolved_shots = (
-            None if shots is None else require_integer(shots, "shots", minimum=1)
-        )
+        resolved_shots = None if shots is None else require_integer(shots, "shots", minimum=1)
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 
@@ -292,13 +292,15 @@ class FactorizedExcessPennyLaneBackend:
         )
         wire_limit = require_integer(max_total_wires, "max_total_wires", minimum=1)
         if oracle.input_qubits != representation.qubits_per_factor:
-            raise ValueError("oracle input registers do not match the factorized representation")
+            raise QFinValidationError(
+                "oracle input registers do not match the factorized representation"
+            )
         if resolved_threshold >= 2**oracle.loss_qubits:
-            raise ValueError("threshold_code must fit the loss register")
+            raise QFinValidationError("threshold_code must fit the loss register")
         if resolved_bit >= oracle.loss_qubits:
-            raise ValueError("bit_index must identify an excess-register wire")
+            raise QFinValidationError("bit_index must identify an excess-register wire")
         if not 0 <= encoded_probability <= 1:
-            raise ValueError("encoded_probability must lie in [0, 1]")
+            raise QFinValidationError("encoded_probability must lie in [0, 1]")
         if oracle.integer_monomials > monomial_limit:
             raise ResourceLimitError(
                 f"structured arithmetic requires {oracle.integer_monomials} integer monomials, "
@@ -410,9 +412,7 @@ class FactorizedExcessPennyLaneBackend:
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
         resolved_power = require_integer(power, "power", minimum=0)
-        resolved_shots = (
-            None if shots is None else require_integer(shots, "shots", minimum=1)
-        )
+        resolved_shots = None if shots is None else require_integer(shots, "shots", minimum=1)
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 

@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 from qfin._validation import require_integer
 from qfin.backends.devices import DeviceTarget
-from qfin.exceptions import BackendUnavailableError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError
 from qfin.resources.device import (
     CircuitRuntime,
     TranspiledCircuitResources,
@@ -169,7 +169,9 @@ def inspect_qiskit_backend(
             minimum=1,
         )
     except ValueError as exc:
-        raise ValueError("backend must expose a positive integer num_qubits value") from exc
+        raise QFinValidationError(
+            "backend must expose a positive integer num_qubits value"
+        ) from exc
 
     names_value = _backend_value(backend, "operation_names", ())
     operation_names = tuple(sorted({str(name).lower() for name in names_value}))

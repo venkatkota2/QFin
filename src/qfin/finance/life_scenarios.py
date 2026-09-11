@@ -10,7 +10,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin import _native
+from qfin._dispatch import POLICIES, resolve_engine
 from qfin._validation import require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import Engine
 from qfin.finance.life import (
@@ -248,18 +250,18 @@ def project_liability_scenarios(
     model_points = _as_model_points(policies)
     scenarios.validate_curve(assumptions.curve)
     if not isclose(scenarios.period_length, 1.0, abs_tol=1.0e-12):
-        raise ValueError("the annual life engine requires period_length=1")
+        raise QFinValidationError("the annual life engine requires period_length=1")
     maximum_term = max((policy.remaining_term for policy in model_points.policies), default=0)
     _validate_horizon(assumptions, maximum_term)
     if maximum_term > scenarios.period_count:
-        raise ValueError("economic scenarios must cover the full policy horizon")
+        raise QFinValidationError("economic scenarios must cover the full policy horizon")
     mismatched = [
         policy.mortality_category
         for policy in model_points.policies
         if policy.mortality_category != assumptions.mortality.category
     ]
     if mismatched:
-        raise ValueError("all policies must match the supplied mortality-table category")
+        raise QFinValidationError("all policies must match the supplied mortality-table category")
     scenario_chunk = require_integer(
         scenario_chunk_size,
         "scenario_chunk_size",
@@ -271,24 +273,15 @@ def project_liability_scenarios(
         minimum=1,
     )
     if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
+        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     workload = scenarios.scenario_count * model_points.model_point_count * maximum_term
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        if not assumptions.curve.native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        selected = "native"
-    elif engine == "numpy":
-        selected = "numpy"
-    else:
-        selected = (
-            "native"
-            if assumptions.curve.native_compatible and _native.available() and workload > 0
-            else "numpy"
-        )
+    selected = resolve_engine(
+        engine,
+        workload,
+        native_compatible=assumptions.curve.native_compatible,
+        auto_native_threshold=POLICIES["life_scenarios"],
+    )
+
     output = {
         name: np.zeros(scenarios.scenario_count, dtype=np.float64)
         for name in (
@@ -392,7 +385,7 @@ def life_sensitivities(
         expense_relative_bump,
     )
     if any(not np.isfinite(value) or value <= 0.0 for value in bumps):
-        raise ValueError("sensitivity bumps must be finite and positive")
+        raise QFinValidationError("sensitivity bumps must be finite and positive")
     model_points = _as_model_points(policies)
     base = project_liabilities(model_points, assumptions, engine=engine)
     mortality = project_liabilities(

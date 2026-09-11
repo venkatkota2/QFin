@@ -10,8 +10,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin import _native
-from qfin._numerics import stable_weighted_sum
+from qfin._dispatch import POLICIES, resolve_engine
+from qfin._numerics import normalize_weights, stable_weighted_sum
 from qfin._validation import readonly_float64, require_integer
+from qfin.exceptions import QFinValidationError
 from qfin.finance.distributions import EmpiricalDistribution
 from qfin.finance.fixed_income import Engine
 
@@ -28,7 +30,7 @@ class LossDistribution:
     def __post_init__(self) -> None:
         losses = readonly_float64(np.asarray(self.losses, dtype=np.float64).reshape(-1))
         if losses.size == 0 or not np.all(np.isfinite(losses)):
-            raise ValueError("losses must contain at least one finite value")
+            raise QFinValidationError("losses must contain at least one finite value")
         if self.probabilities is None:
             probabilities = np.full(losses.size, 1.0 / losses.size, dtype=np.float64)
         else:
@@ -36,14 +38,13 @@ class LossDistribution:
                 np.asarray(self.probabilities, dtype=np.float64).reshape(-1)
             )
             if probabilities.shape != losses.shape:
-                raise ValueError("probabilities must have the same shape as losses")
+                raise QFinValidationError("probabilities must have the same shape as losses")
             if not np.all(np.isfinite(probabilities)) or np.any(probabilities < 0):
-                raise ValueError("probabilities must be finite and non-negative")
+                raise QFinValidationError("probabilities must be finite and non-negative")
             scale = float(np.max(probabilities, initial=0.0))
             if scale <= 0:
-                raise ValueError("probabilities must have positive total mass")
-            scaled = probabilities / scale
-            probabilities = readonly_float64(scaled / float(np.sum(scaled)))
+                raise QFinValidationError("probabilities must have positive total mass")
+            probabilities = readonly_float64(normalize_weights(probabilities))
         if self.probabilities is None:
             probabilities.setflags(write=False)
         object.__setattr__(self, "losses", losses)
@@ -87,7 +88,7 @@ class CVaR:
 
     def __post_init__(self) -> None:
         if not isfinite(self.confidence) or not 0 < self.confidence < 1:
-            raise ValueError("confidence must lie strictly between zero and one")
+            raise QFinValidationError("confidence must lie strictly between zero and one")
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,7 +100,7 @@ class VaR:
 
     def __post_init__(self) -> None:
         if not isfinite(self.confidence) or not 0 < self.confidence < 1:
-            raise ValueError("confidence must lie strictly between zero and one")
+            raise QFinValidationError("confidence must lie strictly between zero and one")
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +113,7 @@ class TailProbability:
 
     def __post_init__(self) -> None:
         if not isfinite(self.threshold):
-            raise ValueError("threshold must be finite")
+            raise QFinValidationError("threshold must be finite")
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,9 +188,9 @@ def bootstrap_risk_interval(
     """
 
     if not isfinite(confidence) or not 0 < confidence < 1:
-        raise ValueError("confidence must lie strictly between zero and one")
+        raise QFinValidationError("confidence must lie strictly between zero and one")
     if not isfinite(interval_level) or not 0 < interval_level < 1:
-        raise ValueError("interval_level must lie strictly between zero and one")
+        raise QFinValidationError("interval_level must lie strictly between zero and one")
     resample_count = require_integer(resamples, "resamples", minimum=2)
     resolved_sample_size = (
         distribution.losses.size
@@ -233,16 +234,17 @@ def _numpy_risk(distribution: LossDistribution, confidence: float) -> dict[str, 
     probabilities = distribution.probabilities[order]
     cumulative = np.cumsum(probabilities)
     index = min(int(np.searchsorted(cumulative, confidence, side="left")), losses.size - 1)
-    previous = np.concatenate((np.array([0.0]), cumulative[:-1]))
-    overlap = np.maximum(cumulative - np.maximum(previous, confidence), 0.0)
     with np.errstate(over="ignore", invalid="ignore"):
         mean = stable_weighted_sum(losses, probabilities)
         variance = stable_weighted_sum((losses - mean) ** 2, probabilities)
     if not (isfinite(mean) and isfinite(variance)):
-        raise ValueError("weighted loss moments exceed the finite double range")
-    expected_shortfall = stable_weighted_sum(losses, overlap) / (1.0 - confidence)
+        raise QFinValidationError("weighted loss moments exceed the finite double range")
+    # Tail excess avoids subtracting two nearly equal cumulative probabilities.
+    var = float(losses[index])
+    excess = np.maximum(losses - var, 0.0)
+    expected_shortfall = var + stable_weighted_sum(excess, probabilities) / (1.0 - confidence)
     if not isfinite(expected_shortfall):
-        raise ValueError("expected shortfall exceeds the finite double range")
+        raise QFinValidationError("expected shortfall exceeds the finite double range")
     return {
         "mean": mean,
         "standard_deviation": float(np.sqrt(max(0.0, variance))),
@@ -262,19 +264,12 @@ def aggregate_risk(
     """Compute weighted VaR and coherent discrete expected shortfall."""
 
     if not isfinite(confidence) or not 0 < confidence < 1:
-        raise ValueError("confidence must lie strictly between zero and one")
+        raise QFinValidationError("confidence must lie strictly between zero and one")
     if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        _native.require()
-        selected = "native"
-    elif engine == "numpy":
-        selected = "numpy"
-    else:
-        # Current end-to-end benchmarks show native wins from 1,000 through
-        # 1,000,000 weighted losses, including conversion and boundary costs.
-        selected = "native" if _native.available() else "numpy"
+        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
+    selected = resolve_engine(
+        engine, distribution.losses.size, auto_native_threshold=POLICIES["weighted_risk"]
+    )
     assert distribution.probabilities is not None
     if selected == "native":
         raw = cast(

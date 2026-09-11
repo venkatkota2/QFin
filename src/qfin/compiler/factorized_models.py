@@ -14,7 +14,7 @@ from qfin.backends.devices import DeviceTarget, resolve_quantum_device
 from qfin.backends.factorized import FactorizedTailPennyLaneBackend
 from qfin.backends.structured import StructuredPennyLaneBackend
 from qfin.circuits import FactorizedPreparation
-from qfin.exceptions import CompilationError, ResourceLimitError
+from qfin.exceptions import CompilationError, QFinValidationError, ResourceLimitError
 from qfin.finance.exposures import (
     FactorTailProbability,
     FactorTailProbabilitySummary,
@@ -51,16 +51,18 @@ class StructuredOracleErrorBudget:
 
     def __post_init__(self) -> None:
         if not isfinite(self.total) or self.total <= 0.0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         components = (self.transform, self.payoff, self.estimation)
         if any(not isfinite(value) or value < 0.0 for value in components):
-            raise ValueError("oracle error-budget allocations must be finite and non-negative")
+            raise QFinValidationError(
+                "oracle error-budget allocations must be finite and non-negative"
+            )
         if not np.isclose(sum(components), self.total, rtol=1.0e-12, atol=0.0):
-            raise ValueError("oracle error-budget allocations must sum to total")
+            raise QFinValidationError("oracle error-budget allocations must sum to total")
         if not 0.0 < self.interval_level < 1.0:
-            raise ValueError("interval_level must lie strictly between zero and one")
+            raise QFinValidationError("interval_level must lie strictly between zero and one")
         if not self.target_error_unit.strip():
-            raise ValueError("target_error_unit must not be empty")
+            raise QFinValidationError("target_error_unit must not be empty")
 
     @property
     def oracle(self) -> float:
@@ -71,7 +73,7 @@ class StructuredOracleErrorBudget:
     @classmethod
     def allocate(cls, target_error: float) -> StructuredOracleErrorBudget:
         if not isfinite(target_error) or target_error <= 0:
-            raise ValueError("target_error must be finite and greater than zero")
+            raise QFinValidationError("target_error must be finite and greater than zero")
         return cls(
             total=target_error,
             transform=0.2 * target_error,
@@ -176,7 +178,8 @@ class CompiledFactorTailModel:
             "backend": self.backend_name,
             "representation": "factorized_reversible_loss_oracle",
             "algorithm": (
-                self.algorithm_name if self.backend_name == "pennylane"
+                self.algorithm_name
+                if self.backend_name == "pennylane"
                 else "classical_streamed_factor_reference"
             ),
             "target_error": self.target_error,
@@ -229,7 +232,7 @@ class CompiledFactorTailModel:
         max_total_wires: int = 28,
     ) -> FactorizedTailPennyLaneBackend:
         if self.backend_name != "pennylane":
-            raise ValueError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
+            raise QFinValidationError(f"compiled backend is {self.backend_name!r}, not 'pennylane'")
         return FactorizedTailPennyLaneBackend(
             self.problem.model.encoding,
             self.oracle,
@@ -449,10 +452,8 @@ def compile_factor_tail_problem(
             "factorized tail compilation supports backend='auto', 'classical', or 'pennylane'"
         )
     budget = StructuredOracleErrorBudget.allocate(target_error)
-    if arithmetic_scale is not None and (
-        not isfinite(arithmetic_scale) or arithmetic_scale <= 0
-    ):
-        raise ValueError("arithmetic_scale must be finite and positive")
+    if arithmetic_scale is not None and (not isfinite(arithmetic_scale) or arithmetic_scale <= 0):
+        raise QFinValidationError("arithmetic_scale must be finite and positive")
     scales = (
         (arithmetic_scale,)
         if arithmetic_scale is not None

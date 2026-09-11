@@ -1,0 +1,36 @@
+# Independent financial reference corpus
+
+This corpus contains 1,037 independently derived cases. `tools/generate_references.py`
+imports neither QFin nor SciPy. Each case identifies its origin. Generation uses
+70-digit Decimal arithmetic and QuantLib 1.43; ordinary tests need neither generator
+nor QuantLib because they read the checked-in values.
+
+| File | Cases | Independent definition |
+| --- | ---: | --- |
+| rate_conversions | 144 | Continuous/simple/periodic discount and log-discount identities |
+| daycounts | 60 | QuantLib ACT/365F, ACT/360, ISDA, USA and European 30/360 |
+| schedules | 52 | QuantLib forward/backward schedules, first/final stubs and supplied holidays |
+| fixed_income | 162 | Decimal coupon DCF, analytic yield derivatives, central 1 bp DV01 |
+| curves | 432 | Decimal linear discount/log-discount interpolation and affine zero/Hermite identity |
+| bootstrapping | 4 | Decimal flat-curve deposit, zero, coupon-bond and swap quotes, through 60 years |
+| risk | 30 | Decimal inverse CDF and fractional mass at the VaR atom |
+| alm | 9 | Decimal asset/liability DCF and surplus/funding identities |
+| life | 144 | Scalar Decimal term-life recursion with beginning premiums/expenses and ending benefits |
+
+The tests enforce numerical tolerances and explicit monetary tolerances alongside
+bootstrap residual gates. Reference values are never regenerated from QFin output.
+The reference bond DV01 is a **central** one-basis-point price difference, matching
+QFin's specified quantity; it is not a one-sided price change.
+
+For reversed day counts QFin deliberately applies signed reversal to the ordered
+period. QuantLib's direct reversed US 30/360 rules are not always antisymmetric.
+QFin uses calendar month-end for EOM generation; QuantLib can use business month-end.
+EOM schedule comparisons therefore use unadjusted dates; the other schedule cases
+exercise all supported business-day conventions and separate termination adjustment.
+
+Affine zero curves provide an independent PCHIP identity, not general validation of
+every nonlinear PCHIP shape. Existing curve tests and additional property tests cover
+nonlinear nodes, boundaries, continuity and reconstruction of shifted curves.
+
+To regenerate deliberately: install the validation/dev extras and run
+`python tools/generate_references.py`. Review source definitions and changed numbers.

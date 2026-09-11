@@ -1,0 +1,11 @@
+[
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":-0.02,"scale":1e-06,"asset_pv":0.00011051709180756476,"liability_pv":9.556528918908236e-05,"surplus":1.4951802618482396e-05,"deficit":0.0,"funding_ratio":1.1564564157693202,"id":"alm-000"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":-0.02,"scale":1,"asset_pv":110.51709180756477,"liability_pv":95.56528918908236,"surplus":14.951802618482397,"deficit":0.0,"funding_ratio":1.1564564157693202,"id":"alm-001"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":-0.02,"scale":10000000000.0,"asset_pv":1105170918075.6477,"liability_pv":955652891890.8236,"surplus":149518026184.82397,"deficit":0.0,"funding_ratio":1.1564564157693202,"id":"alm-002"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":0,"scale":1e-06,"asset_pv":0.0001,"liability_pv":9e-05,"surplus":1e-05,"deficit":0.0,"funding_ratio":1.1111111111111112,"id":"alm-003"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":0,"scale":1,"asset_pv":100.0,"liability_pv":90.0,"surplus":10.0,"deficit":0.0,"funding_ratio":1.1111111111111112,"id":"alm-004"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":0,"scale":10000000000.0,"asset_pv":1000000000000.0,"liability_pv":900000000000.0,"surplus":100000000000.0,"deficit":0.0,"funding_ratio":1.1111111111111112,"id":"alm-005"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":0.06,"scale":1e-06,"asset_pv":7.408182206817179e-05,"liability_pv":7.517431902701448e-05,"surplus":-1.0924969588426954e-06,"deficit":1.0924969588426954e-06,"funding_ratio":0.9854671519079528,"id":"alm-006"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":0.06,"scale":1,"asset_pv":74.08182206817179,"liability_pv":75.17431902701448,"surplus":-1.0924969588426954,"deficit":1.0924969588426954,"funding_ratio":0.9854671519079528,"id":"alm-007"},
+  {"source":"Decimal(70): zero-coupon asset/liability DCF identities","rate":0.06,"scale":10000000000.0,"asset_pv":740818220681.7179,"liability_pv":751743190270.1448,"surplus":-10924969588.426952,"deficit":10924969588.426952,"funding_ratio":0.9854671519079528,"id":"alm-008"}
+]

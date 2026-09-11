@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin._validation import require_integer
+from qfin.exceptions import QFinTypeError, QFinValidationError
 
 if TYPE_CHECKING:
     from qfin.representation.factorized import FactorizedDistributionEncoding
@@ -29,11 +30,11 @@ class HingeExposure:
 
     def __post_init__(self) -> None:
         if not self.factor.strip():
-            raise ValueError("factor must not be empty")
+            raise QFinValidationError("factor must not be empty")
         if not isfinite(self.threshold):
-            raise ValueError("threshold must be finite")
+            raise QFinValidationError("threshold must be finite")
         if not isfinite(self.slope) or self.slope == 0:
-            raise ValueError("slope must be finite and non-zero")
+            raise QFinValidationError("slope must be finite and non-zero")
 
     def to_dict(self) -> dict[str, str | float]:
         return {
@@ -61,23 +62,25 @@ class SparseExposureObjective:
 
     def __post_init__(self) -> None:
         if not isfinite(self.constant):
-            raise ValueError("constant must be finite")
+            raise QFinValidationError("constant must be finite")
 
         linear: dict[str, float] = {}
         for name, coefficient in self.linear.items():
             value = float(coefficient)
             if not name.strip() or not isfinite(value):
-                raise ValueError("linear exposures require non-empty names and finite values")
+                raise QFinValidationError(
+                    "linear exposures require non-empty names and finite values"
+                )
             if value != 0:
                 linear[name] = value
 
         quadratic: dict[tuple[str, str], float] = {}
         for pair, coefficient in self.quadratic.items():
             if len(pair) != 2 or not pair[0].strip() or not pair[1].strip():
-                raise ValueError("quadratic keys must contain two non-empty factor names")
+                raise QFinValidationError("quadratic keys must contain two non-empty factor names")
             value = float(coefficient)
             if not isfinite(value):
-                raise ValueError("quadratic coefficients must be finite")
+                raise QFinValidationError("quadratic coefficients must be finite")
             left, right = sorted((pair[0], pair[1]))
             key = (left, right)
             quadratic[key] = quadratic.get(key, 0.0) + value
@@ -85,7 +88,7 @@ class SparseExposureObjective:
 
         piecewise = tuple(self.piecewise)
         if not all(isinstance(term, HingeExposure) for term in piecewise):
-            raise TypeError("piecewise entries must be HingeExposure objects")
+            raise QFinTypeError("piecewise entries must be HingeExposure objects")
 
         object.__setattr__(self, "linear", MappingProxyType(linear))
         object.__setattr__(self, "quadratic", MappingProxyType(quadratic))
@@ -114,14 +117,14 @@ class SparseExposureObjective:
         values = np.asarray(factor_values, dtype=np.float64)
         names = tuple(factor_names)
         if values.ndim != 2 or values.shape[1] != len(names):
-            raise ValueError("factor_values must be scenario-by-factor")
+            raise QFinValidationError("factor_values must be scenario-by-factor")
         if not np.all(np.isfinite(values)):
-            raise ValueError("factor_values must be finite")
+            raise QFinValidationError("factor_values must be finite")
         if len(set(names)) != len(names):
-            raise ValueError("factor_names must be unique")
+            raise QFinValidationError("factor_names must be unique")
         missing = set(self.referenced_factors) - set(names)
         if missing:
-            raise ValueError(
+            raise QFinValidationError(
                 "objective references unavailable factors: " + ", ".join(sorted(missing))
             )
 
@@ -159,11 +162,11 @@ class FactorizedLossModel:
         from qfin.representation.factorized import FactorizedDistributionEncoding
 
         if not isinstance(self.encoding, FactorizedDistributionEncoding):
-            raise TypeError("encoding must be a FactorizedDistributionEncoding")
+            raise QFinTypeError("encoding must be a FactorizedDistributionEncoding")
         available = set(self.encoding.value_names)
         missing = set(self.objective.referenced_factors) - available
         if missing:
-            raise ValueError(
+            raise QFinValidationError(
                 "objective references unavailable factors: " + ", ".join(sorted(missing))
             )
 
@@ -181,7 +184,7 @@ class FactorizedLossModel:
         start_index = require_integer(start, "start", minimum=0)
         stop_index = require_integer(stop, "stop", minimum=start_index)
         if stop_index > self.joint_grid_points:
-            raise ValueError("chunk bounds must lie inside the joint index range")
+            raise QFinValidationError("chunk bounds must lie inside the joint index range")
         flat = np.arange(start_index, stop_index, dtype=np.int64)
         residual = flat.copy()
         indices = np.empty((flat.size, self.encoding.factor_count), dtype=np.int64)
@@ -223,7 +226,7 @@ class FactorTailProbability:
 
     def __post_init__(self) -> None:
         if not isfinite(self.threshold):
-            raise ValueError("threshold must be finite")
+            raise QFinValidationError("threshold must be finite")
 
 
 @dataclass(frozen=True, slots=True)
@@ -257,7 +260,7 @@ class FactorVaR:
 
     def __post_init__(self) -> None:
         if not isfinite(self.confidence) or not 0 < self.confidence < 1:
-            raise ValueError("confidence must lie strictly between zero and one")
+            raise QFinValidationError("confidence must lie strictly between zero and one")
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,7 +272,7 @@ class FactorCVaR:
 
     def __post_init__(self) -> None:
         if not isfinite(self.confidence) or not 0 < self.confidence < 1:
-            raise ValueError("confidence must lie strictly between zero and one")
+            raise QFinValidationError("confidence must lie strictly between zero and one")
 
 
 FactorRiskProblem = FactorVaR | FactorCVaR
@@ -356,7 +359,7 @@ def evaluate_factor_risk(
     point_limit = require_integer(max_points, "max_points", minimum=1)
     points = problem.model.joint_grid_points
     if points > point_limit:
-        raise ValueError(
+        raise QFinValidationError(
             f"factorized validation requires {points} streamed points, "
             f"above max_points={point_limit}"
         )
@@ -377,7 +380,9 @@ def evaluate_factor_risk(
         maximum = max(maximum, float(np.max(losses)))
         chunks_per_pass += 1
     if not isfinite(total_mass) or total_mass <= 0:
-        raise ValueError("factorized loss model must have positive finite probability mass")
+        raise QFinValidationError(
+            "factorized loss model must have positive finite probability mass"
+        )
 
     target_mass = problem.confidence * total_mass
     cdf_evaluations = 0
@@ -446,7 +451,7 @@ def evaluate_factor_tail_probability(
     point_limit = require_integer(max_points, "max_points", minimum=1)
     points = problem.model.joint_grid_points
     if points > point_limit:
-        raise ValueError(
+        raise QFinValidationError(
             f"factorized validation requires {points} streamed points, "
             f"above max_points={point_limit}"
         )

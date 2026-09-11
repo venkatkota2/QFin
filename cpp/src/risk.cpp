@@ -1,3 +1,4 @@
+#include "qfin/checked_size.hpp"
 #include "qfin/risk.hpp"
 
 #include "qfin/numerics.hpp"
@@ -24,7 +25,7 @@ RiskSummaryNative aggregate_tail_risk(
     NeumaierSum probability_total_sum;
     NeumaierSum mean_sum;
     std::vector<std::pair<double, double>> ordered;
-    ordered.reserve(losses.size());
+    ordered.reserve(checked_allocation(losses.size(), 2));
     for (std::size_t index = 0; index < losses.size(); ++index) {
         const double loss = losses[index];
         const double probability = probabilities[index];
@@ -71,17 +72,18 @@ RiskSummaryNative aggregate_tail_risk(
 
     double cumulative = 0.0;
     double value_at_risk = ordered.back().first;
-    NeumaierSum tail_integral_sum;
     for (const auto& [loss, probability] : ordered) {
         const double next = cumulative + probability;
         if (cumulative < confidence && next >= confidence) {
             value_at_risk = loss;
         }
-        const double overlap = std::max(0.0, next - std::max(cumulative, confidence));
-        tail_integral_sum.add(overlap * loss);
         cumulative = next;
     }
-    const double expected_shortfall = tail_integral_sum.value() / (1.0 - confidence);
+    NeumaierSum excess_sum;
+    for (const auto& [loss, probability] : ordered) {
+        excess_sum.add(probability * std::max(0.0, loss - value_at_risk));
+    }
+    const double expected_shortfall = value_at_risk + excess_sum.value() / (1.0 - confidence);
     if (!std::isfinite(expected_shortfall)) {
         throw std::invalid_argument("expected shortfall exceeds the finite double range");
     }

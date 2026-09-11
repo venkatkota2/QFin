@@ -10,7 +10,10 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from qfin import _native
+from qfin._dispatch import POLICIES, resolve_engine
+from qfin._memory import check_allocation
 from qfin._validation import require_integer
+from qfin.exceptions import QFinTypeError, QFinValidationError
 from qfin.finance.alm import LiabilityPortfolio
 from qfin.finance.curves import YieldCurve
 from qfin.finance.fixed_income import CashFlow, Engine
@@ -30,13 +33,13 @@ class MortalityTable:
         ages = np.array(self.ages, dtype=np.float64, order="C", copy=True).reshape(-1)
         rates = np.array(self.rates, dtype=np.float64, order="C", copy=True).reshape(-1)
         if ages.size == 0 or ages.shape != rates.shape:
-            raise ValueError("ages and rates must have equal non-zero length")
+            raise QFinValidationError("ages and rates must have equal non-zero length")
         if not np.all(np.isfinite(ages)) or np.any(ages < 0) or np.any(np.diff(ages) <= 0):
-            raise ValueError("mortality ages must be finite, non-negative, and increasing")
+            raise QFinValidationError("mortality ages must be finite, non-negative, and increasing")
         if not np.all(np.isfinite(rates)) or np.any((rates < 0) | (rates > 1)):
-            raise ValueError("mortality qx values must lie in [0, 1]")
+            raise QFinValidationError("mortality qx values must lie in [0, 1]")
         if not self.category:
-            raise ValueError("mortality category must be non-empty")
+            raise QFinValidationError("mortality category must be non-empty")
         ages.setflags(write=False)
         rates.setflags(write=False)
         object.__setattr__(self, "ages", ages)
@@ -53,7 +56,7 @@ class MortalityTable:
 
         query = np.asarray(age, dtype=np.float64)
         if not np.all(np.isfinite(query)) or np.any(query < 0):
-            raise ValueError("ages must be finite and non-negative")
+            raise QFinValidationError("ages must be finite and non-negative")
         # np.interp is already a compiled, vectorized kernel and benchmarks faster
         # than crossing the QFin extension boundary for this isolated operation.
         values = np.interp(
@@ -85,7 +88,7 @@ class MortalityTable:
         """Return annual-step survival ``p_x(years)``."""
 
         if not isfinite(age) or age < 0:
-            raise ValueError("age must be finite and non-negative")
+            raise QFinValidationError("age must be finite and non-negative")
         year_count = require_integer(years, "years", minimum=0)
         if year_count == 0:
             return 1.0
@@ -136,29 +139,29 @@ class LifePolicy:
             "benefit_inflation_linkage": self.benefit_inflation_linkage,
         }
         if any(not isfinite(value) or value < 0.0 for value in non_negative.values()):
-            raise ValueError(
+            raise QFinValidationError(
                 "policy amounts, age, bonus, and inflation linkage must be finite and non-negative"
             )
         if not isfinite(self.crediting_spread):
-            raise ValueError("crediting_spread must be finite")
+            raise QFinValidationError("crediting_spread must be finite")
         try:
             term = require_integer(self.term, "term")
             duration = require_integer(self.policy_duration, "policy_duration")
         except ValueError as exc:
-            raise ValueError("term and policy_duration must be integers") from exc
+            raise QFinValidationError("term and policy_duration must be integers") from exc
         if term <= 0 or duration < 0 or duration > term:
-            raise ValueError("require 0 <= policy_duration <= term with positive term")
+            raise QFinValidationError("require 0 <= policy_duration <= term with positive term")
         object.__setattr__(self, "term", term)
         object.__setattr__(self, "policy_duration", duration)
         if self.issue_age is not None:
             if not isfinite(self.issue_age) or self.issue_age < 0:
-                raise ValueError("issue_age must be finite and non-negative")
+                raise QFinValidationError("issue_age must be finite and non-negative")
             if not np.isclose(self.age, self.issue_age + duration, atol=1.0e-9):
-                raise ValueError("age must equal issue_age + policy_duration")
+                raise QFinValidationError("age must equal issue_age + policy_duration")
         if self.product_type not in _PRODUCT_CODES:
-            raise ValueError(f"unsupported life product type: {self.product_type}")
+            raise QFinValidationError(f"unsupported life product type: {self.product_type}")
         if not self.mortality_category:
-            raise ValueError("mortality_category must be non-empty")
+            raise QFinValidationError("mortality_category must be non-empty")
 
     @property
     def remaining_term(self) -> int:
@@ -183,7 +186,7 @@ class PolicyModelPointSet:
     ) -> None:
         items = tuple(policies)
         if any(not isinstance(policy, LifePolicy) for policy in items):
-            raise TypeError("policies must contain LifePolicy objects")
+            raise QFinTypeError("policies must contain LifePolicy objects")
         weights = (
             np.ones(len(items), dtype=np.float64)
             if counts is None
@@ -194,7 +197,9 @@ class PolicyModelPointSet:
             or not np.all(np.isfinite(weights))
             or np.any(weights <= 0.0)
         ):
-            raise ValueError("counts must contain one finite positive value per model point")
+            raise QFinValidationError(
+                "counts must contain one finite positive value per model point"
+            )
         weights = np.array(weights, dtype=np.float64, order="C", copy=True)
         weights.setflags(write=False)
         object.__setattr__(self, "policies", items)
@@ -215,13 +220,13 @@ class PolicyModelPointSet:
             else np.asarray(counts, dtype=np.float64).reshape(-1)
         )
         if weights.shape != (len(items),):
-            raise ValueError("counts must contain one value per policy")
+            raise QFinValidationError("counts must contain one value per policy")
         grouped: dict[LifePolicy, float] = {}
         for policy, weight in zip(items, weights, strict=True):
             if not isinstance(policy, LifePolicy):
-                raise TypeError("policies must contain LifePolicy objects")
+                raise QFinTypeError("policies must contain LifePolicy objects")
             if not isfinite(float(weight)) or weight <= 0.0:
-                raise ValueError("counts must be finite and positive")
+                raise QFinValidationError("counts must be finite and positive")
             grouped[policy] = grouped.get(policy, 0.0) + float(weight)
         return cls(tuple(grouped), tuple(grouped.values()))
 
@@ -258,7 +263,7 @@ def _assumption_path(
         qualifier = (
             "probabilities in [0, 1]" if probability else "finite values in the supported range"
         )
-        raise ValueError(f"{name} must contain {qualifier}")
+        raise QFinValidationError(f"{name} must contain {qualifier}")
     path.setflags(write=False)
     return path
 
@@ -300,7 +305,9 @@ class ProjectionAssumptions:
             self.benefit_multiplier,
         )
         if any(not isfinite(value) or value < 0.0 for value in non_negative):
-            raise ValueError("scalar projection assumptions must be finite and non-negative")
+            raise QFinValidationError(
+                "scalar projection assumptions must be finite and non-negative"
+            )
         object.__setattr__(self, "lapse_rate", lapse)
         object.__setattr__(self, "disability_rate", disability)
         object.__setattr__(self, "recovery_rate", recovery)
@@ -358,7 +365,7 @@ def _validate_horizon(assumptions: ProjectionAssumptions, maximum_term: int) -> 
     }
     for name, path in named_paths.items():
         if path.size != 1 and path.size < maximum_term:
-            raise ValueError(f"{name} must be scalar or cover every projection year")
+            raise QFinValidationError(f"{name} must be scalar or cover every projection year")
 
 
 def _as_model_points(
@@ -543,28 +550,21 @@ def project_liabilities(
         if policy.mortality_category != assumptions.mortality.category
     ]
     if mismatched:
-        raise ValueError("all policies must match the supplied mortality-table category")
+        raise QFinValidationError("all policies must match the supplied mortality-table category")
     maximum_term = max((policy.remaining_term for policy in model_points.policies), default=0)
+    check_allocation((maximum_term + 1,), arrays=12)
+    check_allocation((model_points.model_point_count,), arrays=2)
     _validate_horizon(assumptions, maximum_term)
     if engine not in ("auto", "numpy", "native"):
-        raise ValueError("engine must be 'auto', 'numpy', or 'native'")
+        raise QFinValidationError("engine must be 'auto', 'numpy', or 'native'")
     workload = model_points.model_point_count * maximum_term
-    selected: Literal["numpy", "native"]
-    if engine == "native":
-        if not assumptions.curve.native_compatible:
-            raise ValueError(
-                "native engine requires linear-zero interpolation with flat-zero extrapolation"
-            )
-        _native.require()
-        selected = "native"
-    elif engine == "numpy":
-        selected = "numpy"
-    else:
-        selected = (
-            "native"
-            if assumptions.curve.native_compatible and _native.available() and workload > 0
-            else "numpy"
-        )
+    selected = resolve_engine(
+        engine,
+        workload,
+        native_compatible=assumptions.curve.native_compatible,
+        auto_native_threshold=POLICIES["life"],
+    )
+
     if selected == "native":
         buffers = _policy_buffers(model_points)
         raw = cast(

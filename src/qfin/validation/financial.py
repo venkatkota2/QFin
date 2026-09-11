@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from qfin.exceptions import QFinError, QFinValidationError
 from qfin.finance.dates import BusinessDayConvention, DateLike, as_date
 from qfin.finance.daycount import DayCountConvention
 from qfin.finance.fixed_income import FixedRateBond, Settlement
@@ -35,9 +36,9 @@ class FinancialTolerance:
     def __post_init__(self) -> None:
         values = (self.absolute, self.relative, self.financial)
         if not all(isfinite(item) and item >= 0 for item in values):
-            raise ValueError("validation tolerances must be finite and non-negative")
+            raise QFinValidationError("validation tolerances must be finite and non-negative")
         if not self.unit.strip():
-            raise ValueError("validation tolerance unit must not be empty")
+            raise QFinValidationError("validation tolerance unit must not be empty")
 
     def allowed_error(self, expected: float) -> float:
         """Return the stricter numerical/financial allowance in the stated unit."""
@@ -47,7 +48,7 @@ class FinancialTolerance:
 
     def numerical_allowed_error(self, expected: float) -> float:
         if not isfinite(expected):
-            raise ValueError("expected value must be finite")
+            raise QFinValidationError("expected value must be finite")
         return max(self.absolute, self.relative * abs(expected))
 
     @classmethod
@@ -59,7 +60,7 @@ class FinancialTolerance:
         """
 
         if not isfinite(notional) or notional <= 0:
-            raise ValueError("notional must be finite and positive")
+            raise QFinValidationError("notional must be finite and positive")
         profiles = {
             "price_per_100": (0.01, "currency per 100 face"),
             "pv": (1e-8 * notional, "currency"),
@@ -70,7 +71,7 @@ class FinancialTolerance:
             "probability": (1e-10, "probability units"),
         }
         if quantity not in profiles:
-            raise ValueError(f"unknown financial quantity: {quantity!r}")
+            raise QFinValidationError(f"unknown financial quantity: {quantity!r}")
         financial, unit = profiles[quantity]
         return cls(financial=financial, unit=unit)
 
@@ -142,7 +143,7 @@ class FinancialValidationReport:
             raise FinancialValidationError(f"{self.name} validation failed: {detail}")
 
 
-class FinancialValidationError(AssertionError):
+class FinancialValidationError(QFinError, AssertionError):
     """Raised by :meth:`FinancialValidationReport.assert_valid`."""
 
 
@@ -160,16 +161,16 @@ def validate_financial_values(
     actual_values = np.asarray(actual, dtype=np.float64).reshape(-1)
     expected_values = np.asarray(expected, dtype=np.float64).reshape(-1)
     if actual_values.shape != expected_values.shape:
-        raise ValueError("actual and expected values must have equal shapes")
+        raise QFinValidationError("actual and expected values must have equal shapes")
     if not np.all(np.isfinite(actual_values)) or not np.all(np.isfinite(expected_values)):
-        raise ValueError("actual and expected values must be finite")
+        raise QFinValidationError("actual and expected values must be finite")
     normalized_labels = (
         tuple(f"value[{index}]" for index in range(actual_values.size))
         if labels is None
         else tuple(labels)
     )
     if len(normalized_labels) != actual_values.size:
-        raise ValueError("labels must contain one entry per value")
+        raise QFinValidationError("labels must contain one entry per value")
     checks: list[FinancialValidationCheck] = []
     for label, actual_value, expected_value in zip(
         normalized_labels, actual_values, expected_values, strict=True
@@ -193,13 +194,13 @@ def validate_financial_values(
                 ),
                 financial_allowed_error=selected_tolerance.financial or None,
                 numerical_passed=(
-                    abs(difference) <= selected_tolerance.numerical_allowed_error(
-                        float(expected_value)
-                    )
+                    abs(difference)
+                    <= selected_tolerance.numerical_allowed_error(float(expected_value))
                 ),
                 financial_passed=(
                     abs(difference) <= selected_tolerance.financial
-                    if selected_tolerance.financial > 0 else None
+                    if selected_tolerance.financial > 0
+                    else None
                 ),
             )
         )
@@ -229,12 +230,12 @@ def reference_bond_from_yield(
     """Value one bond with a scalar reference independent of batch kernels."""
 
     if not isfinite(yield_rate) or 1.0 + yield_rate / bond.frequency <= 0:
-        raise ValueError("yield_rate is outside the nominal-compounding domain")
+        raise QFinValidationError("yield_rate is outside the nominal-compounding domain")
     if not isfinite(bump_size) or bump_size <= 0:
-        raise ValueError("bump_size must be finite and positive")
+        raise QFinValidationError("bump_size must be finite and positive")
     times, amounts = bond.cashflows(settlement=settlement)
     if times.size == 0:
-        raise ValueError("cannot value a matured bond")
+        raise QFinValidationError("cannot value a matured bond")
 
     def scalar_price(candidate: float) -> float:
         base = 1.0 + candidate / bond.frequency
@@ -354,9 +355,11 @@ def _build_ql_schedule(ql: Any, bond: FixedRateBond) -> Any:
         12: ql.Monthly,
     }
     if bond.frequency not in frequencies:
-        raise ValueError("QuantLib validation requires a coupon frequency that divides 12")
+        raise QFinValidationError("QuantLib validation requires a coupon frequency that divides 12")
     if bond.calendar.weekend_days != frozenset({5, 6}):
-        raise ValueError("QuantLib validation supports the standard Saturday/Sunday weekend")
+        raise QFinValidationError(
+            "QuantLib validation supports the standard Saturday/Sunday weekend"
+        )
     calendar = ql.WeekendsOnly()
     for holiday in bond.calendar.holidays:
         calendar.addHoliday(_ql_date(ql, holiday))
@@ -395,7 +398,7 @@ def quantlib_bond_schedule(bond: FixedRateBond) -> tuple[date, ...]:
     """Generate the bond schedule independently with optional QuantLib."""
 
     if not bond.is_dated:
-        raise ValueError("QuantLib validation requires a dated bond")
+        raise QFinValidationError("QuantLib validation requires a dated bond")
     if not quantlib_available():
         raise ImportError("QuantLib is not installed; install qfin-quantum[validation]")
     ql = import_module("QuantLib")
@@ -419,7 +422,7 @@ def quantlib_bond_from_yield(
     """
 
     if not bond.is_dated:
-        raise ValueError("QuantLib validation requires a dated bond")
+        raise QFinValidationError("QuantLib validation requires a dated bond")
     if not quantlib_available():
         raise ImportError("QuantLib is not installed; install qfin-quantum[validation]")
     ql = import_module("QuantLib")

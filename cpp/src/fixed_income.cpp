@@ -1,3 +1,4 @@
+#include "qfin/checked_size.hpp"
 #include "qfin/fixed_income.hpp"
 
 #include "qfin/curves.hpp"
@@ -67,7 +68,7 @@ BatchBondMetrics price_cashflow_batches(
     if (!std::isfinite(parallel_shift)) {
         throw std::invalid_argument("parallel shift must be finite");
     }
-    const std::size_t count = offsets.size() - 1;
+    const std::size_t count = checked_allocation(offsets.size() - 1, 6);
     BatchBondMetrics result{
         std::vector<double>(count),
         std::vector<double>(count),
@@ -126,7 +127,7 @@ BatchBondMetrics price_cashflow_batches_from_yield(
     const std::span<const std::int32_t> frequencies
 ) {
     validate_cashflows(cashflow_times, cashflow_amounts, offsets);
-    const std::size_t count = offsets.size() - 1;
+    const std::size_t count = checked_allocation(offsets.size() - 1, 6);
     if (yields.size() != count || frequencies.size() != count) {
         throw std::invalid_argument("one yield and frequency are required per instrument");
     }
@@ -223,7 +224,7 @@ YieldSolveResult solve_yields_from_prices(
     const std::int32_t max_iterations
 ) {
     validate_cashflows(cashflow_times, cashflow_amounts, offsets);
-    const std::size_t count = offsets.size() - 1;
+    const std::size_t count = checked_allocation(offsets.size() - 1, 6);
     if (target_prices.size() != count || frequencies.size() != count ||
         !(tolerance > 0.0) || !std::isfinite(tolerance) || max_iterations <= 0) {
         throw std::invalid_argument("invalid yield-solver inputs");

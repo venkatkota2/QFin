@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from qfin._validation import require_integer
+from qfin.exceptions import QFinValidationError
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,15 +77,15 @@ def analyze_block_encoding(
 
     values = np.asarray(matrix, dtype=np.complex128)
     if values.ndim != 2 or values.shape[0] == 0 or values.shape[1] == 0:
-        raise ValueError("matrix must be a non-empty two-dimensional array")
+        raise QFinValidationError("matrix must be a non-empty two-dimensional array")
     if not np.all(np.isfinite(values)):
-        raise ValueError("matrix must be finite")
+        raise QFinValidationError("matrix must be finite")
     if tolerance <= 0:
-        raise ValueError("tolerance must be positive")
+        raise QFinValidationError("tolerance must be positive")
     rows, columns = (int(value) for value in values.shape)
     dimension_limit = require_integer(max_dimension, "max_dimension", minimum=1)
     if max(rows, columns) > dimension_limit:
-        raise ValueError(
+        raise QFinValidationError(
             f"explicit analysis is limited to dimension {dimension_limit}; "
             "provide structural oracle metadata for larger problems"
         )

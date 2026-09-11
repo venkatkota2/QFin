@@ -1,3 +1,4 @@
+#include "qfin/checked_size.hpp"
 #include "qfin/scenarios.hpp"
 
 #include "qfin/curves.hpp"
@@ -49,7 +50,7 @@ void validate_scenario_cashflows(
     if (cashflow_times.size() != cashflow_amounts.size() || offsets.empty() ||
         offsets.front() != 0 ||
         offsets.back() != static_cast<std::int64_t>(cashflow_times.size()) ||
-        scenario_shocks.size() != scenario_count * curve_times.size()) {
+        scenario_shocks.size() != checked_multiply(scenario_count, curve_times.size())) {
         throw std::invalid_argument("invalid scenario cash-flow buffers");
     }
     for (std::size_t index = 0; index < cashflow_times.size(); ++index) {
@@ -169,7 +170,7 @@ std::vector<double> scenario_portfolio_present_values(
     const std::span<const double> scenario_shocks,
     const std::size_t scenario_count
 ) {
-    std::vector<double> result(scenario_count, 0.0);
+    std::vector<double> result(checked_allocation(scenario_count), 0.0);
     scenario_portfolio_present_values_into(
         cashflow_times,
         cashflow_amounts,
@@ -205,7 +206,7 @@ void scenario_instrument_present_values_into(
         scenario_count
     );
     const std::size_t instrument_count = offsets.size() - 1;
-    if (output.size() != scenario_count * instrument_count) {
+    if (output.size() != checked_allocation(checked_multiply(scenario_count, instrument_count))) {
         throw std::invalid_argument("scenario instrument output dimensions do not align");
     }
     std::vector<double> base_present_values;
@@ -275,7 +276,7 @@ void scenario_indexed_cashflow_present_values_into(
     validate_curve(curve_times, zero_rates);
     if (cashflow_times.size() != cashflow_amounts.size() ||
         cashflow_times.size() != inflation_linkage.size() ||
-        scenario_rate_shocks.size() != scenario_count * curve_times.size() ||
+        scenario_rate_shocks.size() != checked_multiply(scenario_count, curve_times.size()) ||
         scenario_inflation_rates.size() != scenario_count || output.size() != scenario_count) {
         throw std::invalid_argument("invalid indexed scenario cash-flow buffers");
     }
@@ -322,7 +323,7 @@ std::vector<double> scenario_indexed_cashflow_present_values(
     const std::span<const double> scenario_inflation_rates,
     const std::size_t scenario_count
 ) {
-    std::vector<double> result(scenario_count, 0.0);
+    std::vector<double> result(checked_allocation(scenario_count), 0.0);
     scenario_indexed_cashflow_present_values_into(
         cashflow_times,
         cashflow_amounts,

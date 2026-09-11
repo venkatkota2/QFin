@@ -23,7 +23,7 @@ from qfin.compiler.factorized_risk_models import (
 from qfin.compiler.models import CompiledPricingModel, ErrorBudget
 from qfin.compiler.optimization_models import CompiledOptimizationModel
 from qfin.compiler.risk_models import CompiledRiskModel, RiskErrorBudget, RiskProblem
-from qfin.exceptions import CompilationError, ResourceLimitError
+from qfin.exceptions import CompilationError, QFinValidationError, ResourceLimitError
 from qfin.finance import (
     BlackScholes,
     EuropeanCall,
@@ -106,7 +106,7 @@ def compile(
     """
 
     if not isfinite(target_error) or target_error <= 0:
-        raise ValueError("target_error must be finite and greater than zero")
+        raise QFinValidationError("target_error must be finite and greater than zero")
     min_qubits = require_integer(min_qubits, "min_qubits", minimum=1)
     max_qubits = require_integer(max_qubits, "max_qubits", minimum=min_qubits)
     payoff_max_terms = (
@@ -155,17 +155,17 @@ def compile(
         minimum=1,
     )
     if representation_method not in ("auto", "quantile", "probability"):
-        raise ValueError("representation_method must be 'auto', 'quantile', or 'probability'")
+        raise QFinValidationError(
+            "representation_method must be 'auto', 'quantile', or 'probability'"
+        )
     if not isfinite(payoff_angle_tolerance) or payoff_angle_tolerance <= 0:
-        raise ValueError("payoff_angle_tolerance must be finite and positive")
-    if arithmetic_scale is not None and (
-        not isfinite(arithmetic_scale) or arithmetic_scale <= 0.0
-    ):
-        raise ValueError("arithmetic_scale must be finite and positive")
+        raise QFinValidationError("payoff_angle_tolerance must be finite and positive")
+    if arithmetic_scale is not None and (not isfinite(arithmetic_scale) or arithmetic_scale <= 0.0):
+        raise QFinValidationError("arithmetic_scale must be finite and positive")
     if tail_probability is not None and (
         not isfinite(tail_probability) or not 0.0 < tail_probability < 1.0
     ):
-        raise ValueError("tail_probability must lie strictly between zero and one")
+        raise QFinValidationError("tail_probability must lie strictly between zero and one")
 
     if isinstance(problem, (FactorVaR, FactorCVaR)):
         if market is not None:
@@ -256,7 +256,7 @@ def compile(
             np.clip(budget.domain_truncation / (100.0 * financial_scale), 1e-10, 1e-4)
         )
     if not 0 < tail_probability < 1:
-        raise ValueError("tail_probability must lie strictly between zero and one")
+        raise QFinValidationError("tail_probability must lie strictly between zero and one")
 
     discount_factor = exp(-market.rate * problem.maturity)
     distribution = GeometricBrownianMotion(market).terminal_distribution(problem.maturity)
@@ -451,7 +451,7 @@ def _compile_risk_problem(
         target_error_unit=target_error_unit,
     )
     if min_qubits < 1 or max_qubits < min_qubits:
-        raise ValueError("require 1 <= min_qubits <= max_qubits")
+        raise QFinValidationError("require 1 <= min_qubits <= max_qubits")
     effective_max_qubits = max_qubits
     if representation_target is not None and representation_target.wires - 2 >= min_qubits:
         effective_max_qubits = min(max_qubits, representation_target.wires - 2)

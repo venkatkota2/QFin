@@ -16,7 +16,7 @@ from qfin.circuits import (
     WalshPayoffApproximation,
     apply_zero_reflection,
 )
-from qfin.exceptions import BackendUnavailableError, ResourceLimitError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError, ResourceLimitError
 from qfin.representation import DistributionEncoding
 
 
@@ -34,16 +34,16 @@ class CompressedPennyLaneBackend:
     ) -> None:
         payoff = readonly_float64(np.asarray(normalized_payoff).reshape(-1))
         if payoff.shape != representation.probabilities.shape:
-            raise ValueError("normalized_payoff must match the representation grid")
+            raise QFinValidationError("normalized_payoff must match the representation grid")
         if np.any((payoff < 0) | (payoff > 1)) or not np.all(np.isfinite(payoff)):
-            raise ValueError("normalized_payoff values must lie in [0, 1]")
+            raise QFinValidationError("normalized_payoff values must lie in [0, 1]")
         uniform = np.full(representation.grid_points, 1.0 / representation.grid_points)
         if not np.allclose(representation.probabilities, uniform, atol=1e-14):
-            raise ValueError("compressed backend requires a uniform quantile encoding")
+            raise QFinValidationError("compressed backend requires a uniform quantile encoding")
         if representation.state_preparation_method != "uniform_quantile_hadamard":
-            raise ValueError("compressed backend requires uniform_quantile_hadamard")
+            raise QFinValidationError("compressed backend requires uniform_quantile_hadamard")
         if payoff_approximation.qubits != representation.qubits:
-            raise ValueError("payoff approximation must match representation qubits")
+            raise QFinValidationError("payoff approximation must match representation qubits")
         term_limit = require_integer(
             max_compressed_terms,
             "max_compressed_terms",
@@ -116,9 +116,7 @@ class CompressedPennyLaneBackend:
 
     def _make_circuit(self, power: int, *, shots: int | None, seed: int | None) -> Any:
         resolved_power = require_integer(power, "power", minimum=0)
-        resolved_shots = (
-            None if shots is None else require_integer(shots, "shots", minimum=1)
-        )
+        resolved_shots = None if shots is None else require_integer(shots, "shots", minimum=1)
         qml = self._qml()
         device = qml.device(self.device_name, wires=self.total_wires, seed=seed)
 

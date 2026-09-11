@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from qfin._validation import require_integer
-from qfin.exceptions import BackendUnavailableError
+from qfin.exceptions import BackendUnavailableError, QFinValidationError
 
 
 def _qml() -> Any:
@@ -28,7 +28,7 @@ def _qml() -> Any:
 def _fast_walsh_hadamard(values: NDArray[np.float64]) -> NDArray[np.float64]:
     transformed = np.asarray(values, dtype=np.float64).reshape(-1).copy()
     if transformed.size < 2 or transformed.size & (transformed.size - 1):
-        raise ValueError("Walsh transform input must have power-of-two length")
+        raise QFinValidationError("Walsh transform input must have power-of-two length")
     width = 1
     while width < transformed.size:
         for start in range(0, transformed.size, 2 * width):
@@ -63,7 +63,7 @@ class WalshTerm:
     def __post_init__(self) -> None:
         object.__setattr__(self, "mask", require_integer(self.mask, "mask", minimum=0))
         if not isfinite(self.coefficient):
-            raise ValueError("Walsh coefficient must be finite")
+            raise QFinValidationError("Walsh coefficient must be finite")
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,15 +103,15 @@ class WalshPayoffApproximation:
         """Fit the smallest magnitude-ordered expansion meeting both errors."""
         payoff = np.asarray(normalized_payoff, dtype=np.float64).reshape(-1)
         if payoff.size < 2 or payoff.size & (payoff.size - 1):
-            raise ValueError("normalized_payoff must have power-of-two length")
+            raise QFinValidationError("normalized_payoff must have power-of-two length")
         if np.any((payoff < 0) | (payoff > 1)) or not np.all(np.isfinite(payoff)):
-            raise ValueError("normalized_payoff values must lie in [0, 1]")
+            raise QFinValidationError("normalized_payoff values must lie in [0, 1]")
         if not isfinite(financial_multiplier) or financial_multiplier < 0:
-            raise ValueError("financial_multiplier must be finite and non-negative")
+            raise QFinValidationError("financial_multiplier must be finite and non-negative")
         if not isfinite(target_price_error) or target_price_error <= 0:
-            raise ValueError("target_price_error must be finite and positive")
+            raise QFinValidationError("target_price_error must be finite and positive")
         if not isfinite(max_angle_rmse) or max_angle_rmse <= 0:
-            raise ValueError("max_angle_rmse must be finite and positive")
+            raise QFinValidationError("max_angle_rmse must be finite and positive")
         limit = (
             payoff.size
             if max_terms is None
@@ -128,9 +128,7 @@ class WalshPayoffApproximation:
         def diagnostics() -> tuple[float, float, float, float, float, float]:
             approximate_payoff = np.sin(approximate_angles / 2.0) ** 2
             approximate_amplitude = float(np.mean(approximate_payoff))
-            price_error = financial_multiplier * abs(
-                approximate_amplitude - exact_amplitude
-            )
+            price_error = financial_multiplier * abs(approximate_amplitude - exact_amplitude)
             angle_difference = approximate_angles - target_angles
             payoff_difference = approximate_payoff - payoff
             return (
@@ -154,9 +152,7 @@ class WalshPayoffApproximation:
             terms.append(WalshTerm(mask=mask, coefficient=coefficient))
             approximate_angles += coefficient * _walsh_character(mask, payoff.size)
             metrics = diagnostics()
-            met_tolerance = (
-                metrics[1] <= target_price_error and metrics[2] <= max_angle_rmse
-            )
+            met_tolerance = metrics[1] <= target_price_error and metrics[2] <= max_angle_rmse
 
         return cls(
             qubits=int(log2(payoff.size)),
@@ -206,18 +202,16 @@ class WalshPayoffApproximation:
         """Reconstruct the rotation function for diagnostics and tests."""
         angles = np.zeros(self.full_term_count, dtype=np.float64)
         for term in self.terms:
-            angles += term.coefficient * _walsh_character(
-                term.mask, self.full_term_count
-            )
+            angles += term.coefficient * _walsh_character(term.mask, self.full_term_count)
         return angles
 
     def apply(self, control_wires: Sequence[int], target_wire: int) -> None:
         """Queue the sparse commuting Pauli rotations on an active tape."""
         controls = tuple(control_wires)
         if len(controls) != self.qubits:
-            raise ValueError("one control wire is required per Walsh input bit")
+            raise QFinValidationError("one control wire is required per Walsh input bit")
         if target_wire in controls:
-            raise ValueError("target_wire must be outside the data register")
+            raise QFinValidationError("target_wire must be outside the data register")
         qml = _qml()
         for term in self.terms:
             if term.mask == 0:

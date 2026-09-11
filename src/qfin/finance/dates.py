@@ -11,6 +11,7 @@ from itertools import pairwise
 from typing import TypeAlias
 
 from qfin._validation import require_integer, require_integer_sequence
+from qfin.exceptions import QFinTypeError, QFinValidationError
 
 DateLike: TypeAlias = date | datetime | str
 
@@ -26,8 +27,8 @@ def as_date(value: DateLike, *, name: str = "date") -> date:
         try:
             return date.fromisoformat(value)
         except ValueError as exc:
-            raise ValueError(f"{name} must be a valid ISO date") from exc
-    raise TypeError(f"{name} must be a date, datetime, or ISO date string")
+            raise QFinValidationError(f"{name} must be a valid ISO date") from exc
+    raise QFinTypeError(f"{name} must be a date, datetime, or ISO date string")
 
 
 def is_month_end(value: DateLike) -> bool:
@@ -46,7 +47,7 @@ def add_months(value: DateLike, months: int, *, end_of_month: bool = False) -> d
     year, zero_based_month = divmod(absolute_month, 12)
     month = zero_based_month + 1
     if not 1 <= year <= 9999:
-        raise ValueError("resulting date is outside the supported year range")
+        raise QFinValidationError("resulting date is outside the supported year range")
     if year == 9999 and month == 12:
         last_day = 31
     else:
@@ -80,7 +81,7 @@ class BusinessDayConvention(StrEnum):
             return aliases[normalized] if normalized in aliases else cls(normalized)
         except ValueError as exc:
             choices = ", ".join(item.value for item in cls)
-            raise ValueError(f"business-day convention must be one of: {choices}") from exc
+            raise QFinValidationError(f"business-day convention must be one of: {choices}") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +99,7 @@ class Calendar:
 
     def __post_init__(self) -> None:
         if not self.name.strip():
-            raise ValueError("calendar name must not be empty")
+            raise QFinValidationError("calendar name must not be empty")
         holidays = frozenset(as_date(item, name="holiday") for item in self.holidays)
         weekend_days = frozenset(
             require_integer_sequence(
@@ -109,7 +110,7 @@ class Calendar:
             )
         )
         if len(weekend_days) == 7:
-            raise ValueError("calendar must have at least one possible business weekday")
+            raise QFinValidationError("calendar must have at least one possible business weekday")
         object.__setattr__(self, "holidays", holidays)
         object.__setattr__(self, "weekend_days", weekend_days)
 
@@ -135,7 +136,7 @@ class Calendar:
                 try:
                     candidate += timedelta(days=direction)
                 except OverflowError as exc:
-                    raise ValueError(
+                    raise QFinValidationError(
                         "business-day adjustment exceeds the supported date range"
                     ) from exc
             return candidate
@@ -152,10 +153,7 @@ class Calendar:
                 return seek(-1)
             return adjusted
         adjusted = seek(-1)
-        if (
-            selected is BusinessDayConvention.MODIFIED_PRECEDING
-            and adjusted.month != current.month
-        ):
+        if selected is BusinessDayConvention.MODIFIED_PRECEDING and adjusted.month != current.month:
             return seek(1)
         return adjusted
 
@@ -170,7 +168,9 @@ class Calendar:
             try:
                 current += timedelta(days=direction)
             except OverflowError as exc:
-                raise ValueError("business-day advance exceeds the supported date range") from exc
+                raise QFinValidationError(
+                    "business-day advance exceeds the supported date range"
+                ) from exc
             if self.is_business_day(current):
                 remaining -= 1
         return current
@@ -225,13 +225,13 @@ class Schedule:
         start = as_date(start_date, name="start date")
         end = as_date(end_date, name="end date")
         if end <= start:
-            raise ValueError("end date must be after start date")
+            raise QFinValidationError("end date must be after start date")
         normalized_frequency = require_integer(frequency, "frequency", minimum=1)
         if 12 % normalized_frequency != 0:
-            raise ValueError("frequency must be one of 1, 2, 3, 4, 6, or 12")
+            raise QFinValidationError("frequency must be one of 1, 2, 3, 4, 6, or 12")
         generation = date_generation.strip().lower()
         if generation not in ("forward", "backward"):
-            raise ValueError("date_generation must be 'forward' or 'backward'")
+            raise QFinValidationError("date_generation must be 'forward' or 'backward'")
         first = (
             None
             if first_coupon_date is None
@@ -243,11 +243,13 @@ class Schedule:
             else as_date(next_to_last_coupon_date, name="next-to-last coupon date")
         )
         if first is not None and not start < first < end:
-            raise ValueError("first coupon date must be between start and end dates")
+            raise QFinValidationError("first coupon date must be between start and end dates")
         if penultimate is not None and not start < penultimate < end:
-            raise ValueError("next-to-last coupon date must be between start and end dates")
+            raise QFinValidationError(
+                "next-to-last coupon date must be between start and end dates"
+            )
         if first is not None and penultimate is not None and first > penultimate:
-            raise ValueError("first coupon date must not follow next-to-last coupon date")
+            raise QFinValidationError("first coupon date must not follow next-to-last coupon date")
 
         selected_calendar = calendar or Calendar()
         convention = BusinessDayConvention.parse(business_day_convention)
@@ -262,10 +264,12 @@ class Schedule:
             if first is not None:
                 boundaries.append(first)
             limit = penultimate or end
+            step = 1
             cursor = add_months(anchor, months, end_of_month=preserve_eom)
             while cursor < limit:
                 boundaries.append(cursor)
-                cursor = add_months(cursor, months, end_of_month=preserve_eom)
+                step += 1
+                cursor = add_months(anchor, step * months, end_of_month=preserve_eom)
             if penultimate is not None and boundaries[-1] != penultimate:
                 boundaries.append(penultimate)
             boundaries.append(end)
@@ -275,10 +279,12 @@ class Schedule:
             if penultimate is not None:
                 reverse_boundaries.append(penultimate)
             limit = first or start
+            step = 1
             cursor = add_months(anchor, -months, end_of_month=preserve_eom)
             while cursor > limit:
                 reverse_boundaries.append(cursor)
-                cursor = add_months(cursor, -months, end_of_month=preserve_eom)
+                step += 1
+                cursor = add_months(anchor, -step * months, end_of_month=preserve_eom)
             if first is not None and reverse_boundaries[-1] != first:
                 reverse_boundaries.append(first)
             reverse_boundaries.append(start)
@@ -293,7 +299,9 @@ class Schedule:
             for position, item in enumerate(unadjusted)
         )
         if any(left >= right for left, right in pairwise(adjusted)):
-            raise ValueError("business-day adjustment produced non-increasing schedule dates")
+            raise QFinValidationError(
+                "business-day adjustment produced non-increasing schedule dates"
+            )
 
         object.__setattr__(self, "start_date", start)
         object.__setattr__(self, "end_date", end)

@@ -12,7 +12,7 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import minimize
 
 from qfin._validation import readonly_float64
-from qfin.exceptions import OptimizationError
+from qfin.exceptions import OptimizationError, QFinValidationError
 
 FloatArray = NDArray[np.float64]
 OptimizationMethod = Literal["auto", "slsqp", "closed_form"]
@@ -43,9 +43,9 @@ class PortfolioOptimizationResult:
         baseline = readonly_float64(self.baseline_weights).reshape(-1)
         names = tuple(self.asset_names)
         if weights.shape != baseline.shape or weights.size != len(names):
-            raise ValueError("weights, baseline_weights, and asset_names must align")
+            raise QFinValidationError("weights, baseline_weights, and asset_names must align")
         if not np.all(np.isfinite(weights)) or not np.all(np.isfinite(baseline)):
-            raise ValueError("optimization weights must be finite")
+            raise QFinValidationError("optimization weights must be finite")
         object.__setattr__(self, "weights", weights)
         object.__setattr__(self, "baseline_weights", baseline)
         object.__setattr__(self, "asset_names", names)
@@ -91,22 +91,22 @@ class MeanVarianceProblem:
         covariance = np.array(self.covariance, dtype=np.float64, order="C", copy=True)
         asset_count = expected_returns.size
         if asset_count < 2 or not np.all(np.isfinite(expected_returns)):
-            raise ValueError("expected_returns must contain at least two finite values")
+            raise QFinValidationError("expected_returns must contain at least two finite values")
         if covariance.shape != (asset_count, asset_count):
-            raise ValueError("covariance must be square with one row per asset")
+            raise QFinValidationError("covariance must be square with one row per asset")
         if not np.all(np.isfinite(covariance)):
-            raise ValueError("covariance must be finite")
+            raise QFinValidationError("covariance must be finite")
         if not np.allclose(covariance, covariance.T, atol=1e-12, rtol=0.0):
-            raise ValueError("covariance must be symmetric")
+            raise QFinValidationError("covariance must be symmetric")
         eigenvalues = np.linalg.eigvalsh(covariance)
         if float(np.min(eigenvalues)) < -1e-10:
-            raise ValueError("covariance must be positive semidefinite")
+            raise QFinValidationError("covariance must be positive semidefinite")
         if not isfinite(self.risk_aversion) or self.risk_aversion <= 0:
-            raise ValueError("risk_aversion must be finite and positive")
+            raise QFinValidationError("risk_aversion must be finite and positive")
         if not isfinite(self.budget) or self.budget <= 0:
-            raise ValueError("budget must be finite and positive")
+            raise QFinValidationError("budget must be finite and positive")
         if self.target_return is not None and not isfinite(self.target_return):
-            raise ValueError("target_return must be finite")
+            raise QFinValidationError("target_return must be finite")
 
         names = (
             tuple(f"asset_{index}" for index in range(asset_count))
@@ -114,22 +114,22 @@ class MeanVarianceProblem:
             else tuple(self.asset_names)
         )
         if len(names) != asset_count or not all(names):
-            raise ValueError("asset_names must contain one non-empty name per asset")
+            raise QFinValidationError("asset_names must contain one non-empty name per asset")
         if len(set(names)) != len(names):
-            raise ValueError("asset_names must be unique")
+            raise QFinValidationError("asset_names must be unique")
 
         default_lower = 0.0 if self.long_only else -np.inf
         default_upper = self.budget if self.long_only else np.inf
         lower = self._bounds_array(self.lower_bounds, default_lower, asset_count, "lower_bounds")
         upper = self._bounds_array(self.upper_bounds, default_upper, asset_count, "upper_bounds")
         if np.any(lower > upper):
-            raise ValueError("lower_bounds cannot exceed upper_bounds")
+            raise QFinValidationError("lower_bounds cannot exceed upper_bounds")
         if np.all(np.isfinite(lower)) and float(np.sum(lower)) > self.budget + 1e-12:
-            raise ValueError("lower_bounds exceed the available budget")
+            raise QFinValidationError("lower_bounds exceed the available budget")
         if np.all(np.isfinite(upper)) and float(np.sum(upper)) < self.budget - 1e-12:
-            raise ValueError("upper_bounds cannot satisfy the budget")
+            raise QFinValidationError("upper_bounds cannot satisfy the budget")
         if self.long_only and (np.any(lower < 0) or np.any(upper < 0)):
-            raise ValueError("long_only bounds must be non-negative")
+            raise QFinValidationError("long_only bounds must be non-negative")
 
         expected_returns = np.array(expected_returns, dtype=np.float64, order="C", copy=True)
         covariance = np.array(covariance, dtype=np.float64, order="C", copy=True)
@@ -158,7 +158,7 @@ class MeanVarianceProblem:
         else:
             array = array.reshape(-1)
         if array.shape != (size,) or np.any(np.isnan(array)):
-            raise ValueError(f"{name} must contain one non-NaN value per asset")
+            raise QFinValidationError(f"{name} must contain one non-NaN value per asset")
         return array
 
     @property
@@ -182,7 +182,7 @@ class MeanVarianceProblem:
     def _validated_weights(self, weights: ArrayLike) -> FloatArray:
         values = np.asarray(weights, dtype=np.float64).reshape(-1)
         if values.shape != (self.asset_count,) or not np.all(np.isfinite(values)):
-            raise ValueError("weights must contain one finite value per asset")
+            raise QFinValidationError("weights must contain one finite value per asset")
         return values
 
     def _initial_weights(self) -> FloatArray:
@@ -258,9 +258,9 @@ class MeanVarianceProblem:
         assert isinstance(self.lower_bounds, np.ndarray)
         assert isinstance(self.upper_bounds, np.ndarray)
         if np.any(np.isfinite(self.lower_bounds)) or np.any(np.isfinite(self.upper_bounds)):
-            raise ValueError("closed_form requires unbounded weights")
+            raise QFinValidationError("closed_form requires unbounded weights")
         if self.target_return is not None:
-            raise ValueError("closed_form does not support target_return")
+            raise QFinValidationError("closed_form does not support target_return")
         ones = np.ones(self.asset_count, dtype=np.float64)
         eigenvalues, eigenvectors = np.linalg.eigh(self.covariance)
         spectral_scale = max(float(np.max(np.abs(eigenvalues))), np.finfo(np.float64).tiny)
@@ -310,8 +310,8 @@ class MeanVarianceProblem:
             )
             solution, _, _, _ = np.linalg.lstsq(kkt, right_hand_side, rcond=None)
             residual = kkt @ solution - right_hand_side
-            residual_tolerance = 1.0e3 * np.finfo(np.float64).eps * max(
-                1.0, float(np.linalg.norm(right_hand_side))
+            residual_tolerance = (
+                1.0e3 * np.finfo(np.float64).eps * max(1.0, float(np.linalg.norm(right_hand_side)))
             )
             if float(np.linalg.norm(residual, ord=np.inf)) > residual_tolerance:
                 raise OptimizationError(
@@ -326,8 +326,7 @@ class MeanVarianceProblem:
             if denominator <= 0:
                 raise OptimizationError("covariance does not support the budget constraint")
             multiplier = (
-                float(ones @ inverse @ self.expected_returns)
-                - self.risk_aversion * self.budget
+                float(ones @ inverse @ self.expected_returns) - self.risk_aversion * self.budget
             ) / denominator
             weights = inverse @ (self.expected_returns - multiplier * ones) / self.risk_aversion
             solver = "closed_form_equality_constrained_mean_variance"
@@ -396,7 +395,7 @@ class MeanVarianceProblem:
         """Run a deterministic continuous classical baseline."""
 
         if method not in ("auto", "slsqp", "closed_form"):
-            raise ValueError("method must be 'auto', 'slsqp', or 'closed_form'")
+            raise QFinValidationError("method must be 'auto', 'slsqp', or 'closed_form'")
         assert isinstance(self.lower_bounds, np.ndarray)
         assert isinstance(self.upper_bounds, np.ndarray)
         unbounded = not np.any(np.isfinite(self.lower_bounds)) and not np.any(

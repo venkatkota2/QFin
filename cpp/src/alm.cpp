@@ -1,3 +1,4 @@
+#include "qfin/checked_size.hpp"
 #include "qfin/alm.hpp"
 
 #include "qfin/curves.hpp"
@@ -86,9 +87,9 @@ ALMPathProjectionResult project_alm_paths(
     validate_curve(curve_times, zero_rates);
     validate_cashflows(asset_cashflow_times, asset_cashflow_amounts, "asset");
     validate_cashflows(liability_cashflow_times, liability_cashflow_amounts, "liability");
-    const std::size_t path_size = scenario_count * period_count;
+    const std::size_t path_size = checked_multiply(scenario_count, period_count);
     if (liability_inflation_linkage.size() != liability_cashflow_times.size() ||
-        rate_shocks.size() != path_size * curve_times.size() ||
+        rate_shocks.size() != checked_multiply(path_size, curve_times.size()) ||
         credit_spread_shocks.size() != path_size || equity_returns.size() != path_size ||
         inflation_rates.size() != path_size || scenario_count == 0 || period_count == 0 ||
         !std::isfinite(period_length) || period_length <= 0.0 ||
@@ -119,8 +120,8 @@ ALMPathProjectionResult project_alm_paths(
         }
     }
 
-    const std::size_t output_width = period_count + 1;
-    const std::size_t output_size = scenario_count * output_width;
+    const std::size_t output_width = checked_add(period_count, 1);
+    const std::size_t output_size = checked_allocation(checked_multiply(scenario_count, output_width), 9);
     ALMPathProjectionResult result{
         std::vector<double>(output_size, 0.0),
         std::vector<double>(output_size, 0.0),

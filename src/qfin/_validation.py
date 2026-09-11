@@ -9,6 +9,8 @@ from typing import SupportsIndex, cast
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from qfin.exceptions import QFinValidationError
+
 
 def require_integer(
     value: object,
@@ -20,11 +22,11 @@ def require_integer(
     """Return an exact integer without accepting booleans or truncating floats."""
 
     if isinstance(value, bool):
-        raise ValueError(f"{name} must be an integer")
+        raise QFinValidationError(f"{name} must be an integer")
     try:
         result = integer_index(cast(SupportsIndex, value))
     except TypeError as exc:
-        raise ValueError(f"{name} must be an integer") from exc
+        raise QFinValidationError(f"{name} must be an integer") from exc
     if minimum is not None and result < minimum:
         if maximum is not None:
             qualifier = f"in [{minimum}, {maximum}]"
@@ -34,10 +36,10 @@ def require_integer(
             qualifier = "positive"
         else:
             qualifier = f"at least {minimum}"
-        raise ValueError(f"{name} must be {qualifier}")
+        raise QFinValidationError(f"{name} must be {qualifier}")
     if maximum is not None and result > maximum:
         qualifier = f"at most {maximum}" if minimum is None else f"in [{minimum}, {maximum}]"
-        raise ValueError(f"{name} must be {qualifier}")
+        raise QFinValidationError(f"{name} must be {qualifier}")
     return result
 
 
@@ -53,7 +55,7 @@ def require_integer_sequence(
     try:
         items = tuple(values)
     except TypeError as exc:
-        raise ValueError(f"{name} must be an iterable of integers") from exc
+        raise QFinValidationError(f"{name} must be an iterable of integers") from exc
     return tuple(
         require_integer(
             value,
