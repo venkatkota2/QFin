@@ -37,7 +37,8 @@ double yield_discount(const double time, const double yield, const std::int32_t 
     if (!(base > 0.0) || !std::isfinite(base)) {
         return std::numeric_limits<double>::infinity();
     }
-    return std::pow(base, -static_cast<double>(frequency) * time);
+    return std::exp(-static_cast<double>(frequency) * time *
+                    std::log1p(yield / static_cast<double>(frequency)));
 }
 
 double price_one_from_yield(
@@ -51,6 +52,22 @@ double price_one_from_yield(
         price += amounts[index] * yield_discount(times[index], yield, frequency);
     }
     return price;
+}
+
+void validate_metrics(const BatchBondMetrics& metrics, const bool allow_one_sided = false) {
+    for (const auto* values : {&metrics.prices, &metrics.macaulay_durations,
+                              &metrics.convexities, &metrics.dv01, &metrics.effective_durations}) {
+        for (const double value : *values) {
+            if (!std::isfinite(value)) {
+                throw std::invalid_argument("bond analytics exceed the finite double range");
+            }
+        }
+    }
+    for (const double value : metrics.effective_convexities) {
+        if (!std::isfinite(value) && !(allow_one_sided && std::isnan(value))) {
+            throw std::invalid_argument("bond convexity exceeds the finite double range");
+        }
+    }
 }
 
 }  // namespace
@@ -82,8 +99,6 @@ BatchBondMetrics price_cashflow_batches(
         double price = 0.0;
         double first_moment = 0.0;
         double second_moment = 0.0;
-        double price_down = 0.0;
-        double price_up = 0.0;
         double effective_duration_numerator = 0.0;
         double effective_convexity_numerator = 0.0;
         const auto begin = static_cast<std::size_t>(offsets[instrument]);
@@ -98,8 +113,6 @@ BatchBondMetrics price_cashflow_batches(
             first_moment += time * present_value;
             second_moment += time * time * present_value;
             const double bump_time = bump * time;
-            price_down += present_value * std::exp(bump_time);
-            price_up += present_value * std::exp(-bump_time);
             effective_duration_numerator += present_value * std::sinh(bump_time) / bump;
             const double half_sinh = std::sinh(0.5 * bump_time);
             effective_convexity_numerator +=
@@ -114,8 +127,9 @@ BatchBondMetrics price_cashflow_batches(
             result.effective_convexities[instrument] =
                 effective_convexity_numerator / price;
         }
-        result.dv01[instrument] = 0.5 * (price_down - price_up);
+        result.dv01[instrument] = effective_duration_numerator * bump;
     }
+    validate_metrics(result, false);
     return result;
 }
 
@@ -150,8 +164,6 @@ BatchBondMetrics price_cashflow_batches_from_yield(
         double price = 0.0;
         double first_moment = 0.0;
         double convexity_numerator = 0.0;
-        double price_down = 0.0;
-        double price_up = 0.0;
         double effective_duration_numerator = 0.0;
         double one_sided_duration_numerator = 0.0;
         double effective_convexity_numerator = 0.0;
@@ -168,12 +180,9 @@ BatchBondMetrics price_cashflow_batches_from_yield(
             convexity_numerator += periods * (periods + 1.0) * present_value;
             const double delta = bump / (static_cast<double>(frequency) + yield);
             const double log_up_ratio = -periods * std::log1p(delta);
-            const double up_ratio = std::exp(log_up_ratio);
-            price_up += present_value * up_ratio;
             one_sided_duration_numerator -= present_value * std::expm1(log_up_ratio) / bump;
             if (central) {
                 const double log_down_ratio = -periods * std::log1p(-delta);
-                price_down += present_value * std::exp(log_down_ratio);
                 const double midpoint = 0.5 * (log_down_ratio + log_up_ratio);
                 const double half_difference = 0.5 * (log_down_ratio - log_up_ratio);
                 effective_duration_numerator +=
@@ -190,12 +199,12 @@ BatchBondMetrics price_cashflow_batches_from_yield(
         result.prices[instrument] = price;
         if (price != 0.0) {
             result.macaulay_durations[instrument] = first_moment / price;
-            const double denominator = static_cast<double>(frequency * frequency) *
+            const double denominator = static_cast<double>(frequency) * frequency *
                                        std::pow(1.0 + yield / frequency, 2.0);
             result.convexities[instrument] = convexity_numerator / (price * denominator);
         }
         if (central) {
-            result.dv01[instrument] = 0.5 * (price_down - price_up);
+            result.dv01[instrument] = effective_duration_numerator * bump;
             if (price != 0.0) {
                 result.effective_durations[instrument] =
                     effective_duration_numerator / price;
@@ -203,7 +212,7 @@ BatchBondMetrics price_cashflow_batches_from_yield(
                     effective_convexity_numerator / price;
             }
         } else {
-            result.dv01[instrument] = price - price_up;
+            result.dv01[instrument] = one_sided_duration_numerator * bump;
             if (price != 0.0) {
                 result.effective_durations[instrument] = one_sided_duration_numerator / price;
                 result.effective_convexities[instrument] =
@@ -211,6 +220,7 @@ BatchBondMetrics price_cashflow_batches_from_yield(
             }
         }
     }
+    validate_metrics(result, true);
     return result;
 }
 

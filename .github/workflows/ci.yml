@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -69,10 +70,14 @@ jobs:
         run: >-
           python -c "import qfin; info=qfin.system_info();
           assert info['native_extension']; assert info['pennylane_lightning']; print(info)"
-      - run: python -m pytest --cov=qfin --cov-report=term-missing --cov-report=json:coverage.json --cov-fail-under=90
+      - run: python -m pytest --cov=qfin --cov-branch --cov-report=term-missing --cov-report=json:coverage.json --cov-fail-under=90
       - name: Enforce numerical module coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: python examples/check_coverage.py coverage.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.json
 
   native-parity:
     name: native parity and strict C++ warnings
@@ -112,8 +117,12 @@ jobs:
       - run: python -m pytest
 
   sanitizers:
-    name: native ASan and UBSan
+    name: native ASan and UBSan / ${{ matrix.compiler }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,17 +130,39 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: python -m pip install -e . pytest "hypothesis>=6.100,<7"
+      - name: Select compiler and build instrumented extension
+        shell: bash
+        run: |
+          if [[ "$COMPILER" == gcc ]]; then
+            export CC=gcc CXX=g++
+          else
+            export CC=clang CXX=clang++
+          fi
+          "$CXX" --version
+          python -m pip install -e . pytest "hypothesis>=6.100,<7"
+          "$CXX" -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -Icpp/include cpp/tests/checked_size.cpp -o checked-size-test
+          ./checked-size-test
         env:
-          CMAKE_ARGS: -DCMAKE_CXX_COMPILER=g++ -DQFIN_STRICT_WARNINGS=ON -DQFIN_ENABLE_SANITIZERS=ON
+          COMPILER: ${{ matrix.compiler }}
+          CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON -DQFIN_ENABLE_SANITIZERS=ON
       - name: Exercise native ownership, malformed buffers, and parity
         shell: bash
         run: |
-          export LD_PRELOAD="$(g++ -print-file-name=libasan.so):$(g++ -print-file-name=libstdc++.so)"
-          python -m pytest tests/native tests/finance/test_metamorphic_properties.py tests/finance/test_numerical_reductions.py
+          if [[ "$COMPILER" == gcc ]]; then
+            export LD_PRELOAD="$(g++ -print-file-name=libasan.so):$(g++ -print-file-name=libstdc++.so)"
+          else
+            export LD_PRELOAD="$(clang++ -print-file-name=libclang_rt.asan-x86_64.so):$(g++ -print-file-name=libstdc++.so)"
+          fi
+          python -m pytest tests/native tests/property tests/finance/test_metamorphic_properties.py tests/finance/test_numerical_reductions.py
         env:
+          COMPILER: ${{ matrix.compiler }}
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+  binary-wheels:
+    name: portable binary wheels
+    needs: static-quality
+    uses: ./.github/workflows/binary-wheels.yml
 
   examples:
     name: representative examples

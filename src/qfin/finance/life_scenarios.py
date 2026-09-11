@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 
 from qfin import _native
 from qfin._dispatch import POLICIES, resolve_engine
+from qfin._memory import check_allocation
 from qfin._validation import require_integer
 from qfin.exceptions import QFinValidationError
 from qfin.finance.curves import YieldCurve
@@ -96,6 +97,7 @@ def _numpy_scenario_chunk(
     scenario_stop: int,
 ) -> dict[str, FloatArray]:
     scenario_count = scenario_stop - scenario_start
+    check_allocation((scenario_count,), arrays=5)
     present_values = np.zeros(scenario_count, dtype=np.float64)
     premium_totals = np.zeros(scenario_count, dtype=np.float64)
     benefit_totals = np.zeros(scenario_count, dtype=np.float64)
@@ -282,6 +284,7 @@ def project_liability_scenarios(
         auto_native_threshold=POLICIES["life_scenarios"],
     )
 
+    check_allocation((scenarios.scenario_count,), arrays=5)
     output = {
         name: np.zeros(scenarios.scenario_count, dtype=np.float64)
         for name in (

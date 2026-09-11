@@ -24,6 +24,10 @@ def default_value(value):
 
 
 def signature(value):
+    if inspect.isclass(value) and issubclass(value, enum.Enum):
+        # Python changes EnumType construction machinery; the public member/value
+        # conversion contract is stable and tested separately.
+        return [{"name": "value", "kind": "POSITIONAL_OR_KEYWORD", "default": {"required": True}}]
     try:
         return [
             {"name": p.name, "kind": p.kind.name, "default": default_value(p.default)}
@@ -48,7 +52,9 @@ def contract():
                 entry["methods"] = {
                     key: signature(getattr(value, key))
                     for key in dir(value)
-                    if not key.startswith("_") and callable(getattr(value, key))
+                    if not key.startswith("_")
+                    and callable(getattr(value, key))
+                    and (getattr(getattr(value, key), "__module__", "") or "").startswith("qfin")
                 }
                 if dataclasses.is_dataclass(value):
                     entry["fields"] = [

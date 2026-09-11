@@ -149,6 +149,7 @@ def test_low_level_top_level_aliases_warn(name: str, canonical_module: str) -> N
     assert len(caught) == 1
     assert issubclass(caught[0].category, DeprecationWarning)
     assert "deprecated at the top level" in str(caught[0].message)
+    assert caught[0].filename == __file__
 
 
 def test_cli_reports_metadata_version(capsys: pytest.CaptureFixture[str]) -> None:

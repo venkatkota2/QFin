@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from math import isfinite
 from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
+from qfin._provenance import execution_provenance, interval_semantics
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
 from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends import (
@@ -115,8 +117,12 @@ class PricingResult:
     backend: str
     algorithm: str
 
+    provenance: dict[str, object] = field(default_factory=dict, kw_only=True, repr=False)
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "provenance": deepcopy(self.provenance),
+            "interval_semantics": interval_semantics("pricing"),
             "problem_category": "option_pricing",
             "financial_objective": "european_option_price",
             "representation": self.resources.backend_mode,
@@ -484,6 +490,16 @@ class CompiledPricingModel:
             device_name=resolved_device,
         )
         return PricingResult(
+            provenance=execution_provenance(
+                device=resolved_device,
+                seed=seed,
+                shots=shot_count,
+                schedule=powers,
+                representation=resolved_mode,
+                qubits=self.representation.qubits,
+                likelihood_grid_size=likelihood_grid_size,
+                settings={"target_error": self.target_error},
+            ),
             value=value,
             confidence_interval_95=(min(lower, upper), max(lower, upper)),
             classical_value=self.classical_value,

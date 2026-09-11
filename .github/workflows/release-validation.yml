@@ -1,0 +1,63 @@
+name: Release candidate validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_version:
+        description: Exact version from pyproject.toml to validate (no publication)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Check requested version and any existing tag
+        run: python tools/release_artifacts.py --check-version
+        env:
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+  validation:
+    needs: version
+    uses: ./.github/workflows/ci.yml
+  attest:
+    needs: validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: qfin-binary-*
+          path: tested-artifacts
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: qfin-sdist
+          path: tested-artifacts/sdist
+      - name: Verify tested digests and collect without rebuilding
+        run: python tools/release_artifacts.py tested-artifacts --collect release-candidate
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release-candidate/*
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tested-release-candidate
+          path: release-candidate/*
+          if-no-files-found: error
+      # Deliberately no tag creation, GitHub Release, or PyPI publication job.

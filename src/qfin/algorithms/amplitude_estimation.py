@@ -84,6 +84,8 @@ class AmplitudeEstimate:
         likelihood_regions = self.likelihood_ratio_regions_95 or regions
         return {
             "amplitude": self.amplitude,
+            "interval_scope": "fixed_experiment_guarded_likelihood_region",
+            "simultaneous_workflow_coverage": False,
             "confidence_interval_95": [self.lower_95, self.upper_95],
             "confidence_regions_95": [list(region) for region in regions],
             "likelihood_ratio_regions_95": [list(region) for region in likelihood_regions],

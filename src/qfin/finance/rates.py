@@ -52,6 +52,21 @@ def compounding_frequency(compounding: Compounding | str) -> int | None:
     }.get(selected)
 
 
+def _finite_result(value: float, *, positive: bool = False) -> float:
+    if not isfinite(value) or (positive and value <= 0):
+        raise QFinValidationError("rate conversion exceeds the finite double range")
+    return value
+
+
+def _exp_result(value: float, *, subtract_one: bool = False) -> float:
+    try:
+        return _finite_result(
+            expm1(value) if subtract_one else exp(value), positive=not subtract_one
+        )
+    except OverflowError as exc:
+        raise QFinValidationError("rate conversion exceeds the finite double range") from exc
+
+
 def discount_factor(
     rate: float,
     time: float,
@@ -65,18 +80,18 @@ def discount_factor(
     if time == 0:
         return 1.0
     if selected is Compounding.CONTINUOUS:
-        return exp(-rate * time)
+        return _exp_result(-rate * time)
     if selected is Compounding.SIMPLE:
         base = 1.0 + rate * time
         if base <= 0:
             raise QFinValidationError("simple rate requires 1 + rate * time > 0")
-        return 1.0 / base
+        return _finite_result(1.0 / base, positive=True)
     frequency = compounding_frequency(selected)
     assert frequency is not None
     base = 1.0 + rate / frequency
     if base <= 0:
         raise QFinValidationError("periodic rate must be greater than its negative frequency")
-    return exp(-frequency * time * log1p(rate / frequency))
+    return _exp_result(-time * (frequency * log1p(rate / frequency)))
 
 
 def rate_from_discount_factor(
@@ -90,12 +105,14 @@ def rate_from_discount_factor(
         raise QFinValidationError("discount factor and time must be finite and positive")
     selected = Compounding.parse(compounding)
     if selected is Compounding.CONTINUOUS:
-        return -log(value) / time
+        return _finite_result(-log(value) / time)
     if selected is Compounding.SIMPLE:
-        return expm1(-log(value)) / time
+        return _finite_result(_exp_result(-log(value), subtract_one=True) / time)
     frequency = compounding_frequency(selected)
     assert frequency is not None
-    return frequency * expm1(-log(value) / (frequency * time))
+    return _finite_result(
+        frequency * _exp_result((-log(value) / time) / frequency, subtract_one=True)
+    )
 
 
 def convert_rate(
@@ -109,12 +126,18 @@ def convert_rate(
 
     source = Compounding.parse(from_compounding)
     target = Compounding.parse(to_compounding)
+    if not (isfinite(rate) and isfinite(time) and time > 0):
+        raise QFinValidationError("rate and time must be finite, with time positive")
+    continuous = continuous_rate(rate, source, time=time)
     if source is target:
-        if not (isfinite(rate) and isfinite(time) and time > 0):
-            raise QFinValidationError("rate and time must be finite, with time positive")
-        continuous_rate(rate, source, time=time)
         return rate
-    return rate_from_discount_factor(discount_factor(rate, time, source), time, target)
+    if target is Compounding.CONTINUOUS:
+        return continuous
+    if target is Compounding.SIMPLE:
+        return _finite_result(_exp_result(continuous * time, subtract_one=True) / time)
+    frequency = compounding_frequency(target)
+    assert frequency is not None
+    return _finite_result(frequency * _exp_result(continuous / frequency, subtract_one=True))
 
 
 def continuous_rate(
@@ -136,7 +159,7 @@ def continuous_rate(
         base = 1.0 + rate * time
         if base <= 0:
             raise QFinValidationError("simple rate requires 1 + rate * time > 0")
-        return log1p(rate * time) / time
+        return _finite_result(log1p(rate * time) / time)
     frequency = compounding_frequency(selected)
     assert frequency is not None
     base = 1.0 + rate / frequency

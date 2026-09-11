@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from math import isfinite
 from typing import Any, Literal
 
 import numpy as np
 
+from qfin._provenance import execution_provenance, interval_semantics
 from qfin._validation import require_integer
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
 from qfin.algorithms.amplitude_estimation import _validated_schedule
@@ -177,8 +179,12 @@ class QuantumRiskResult:
     backend: str
     algorithm: str
 
+    provenance: dict[str, object] = field(default_factory=dict, kw_only=True, repr=False)
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "provenance": deepcopy(self.provenance),
+            "interval_semantics": interval_semantics(self.problem_kind),
             "problem_category": "empirical_risk",
             "financial_objective": self.problem_kind,
             "representation": "empirical_probability_tree",
@@ -577,6 +583,19 @@ class CompiledRiskModel:
             device_name=resolved_device,
             max_structured_rotations=max_structured_rotations,
         )
+        provenance = execution_provenance(
+            device=resolved_device,
+            seed=seed,
+            shots=shot_count,
+            schedule=powers,
+            representation="empirical_probability_tree",
+            qubits=self.representation.qubits,
+            likelihood_grid_size=likelihood_grid_size,
+            settings={
+                "target_error": self.target_error,
+                "max_structured_rotations": max_structured_rotations,
+            },
+        )
         classical_interval: RiskConfidenceInterval | None = None
         if bootstrap_count:
             if isinstance(self.problem, TailProbability):
@@ -624,6 +643,7 @@ class CompiledRiskModel:
                 resources=resources,
                 classical_interval=None,
                 backend=resolved_device,
+                provenance=provenance,
             )
 
         search = self._run_var_search(
@@ -658,6 +678,7 @@ class CompiledRiskModel:
                 resources=resources,
                 classical_interval=classical_interval,
                 backend=resolved_device,
+                provenance=provenance,
             )
 
         excess_objective = tail_excess_objective(self.representation, search.value)
@@ -695,6 +716,7 @@ class CompiledRiskModel:
             resources=resources,
             classical_interval=classical_interval,
             backend=resolved_device,
+            provenance=provenance,
         )
 
     def _build_result(
@@ -712,10 +734,12 @@ class CompiledRiskModel:
         resources: RiskResourceReport,
         classical_interval: RiskConfidenceInterval | None,
         backend: str,
+        provenance: dict[str, object],
     ) -> QuantumRiskResult:
         absolute_error = abs(value - self.classical_value)
         estimation_error = abs(value - self.encoded_value)
         return QuantumRiskResult(
+            provenance=provenance,
             problem_kind=self.problem_kind,
             value=value,
             confidence_interval_95=(min(interval), max(interval)),

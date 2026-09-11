@@ -12,6 +12,7 @@ from scipy.interpolate import PchipInterpolator
 
 from qfin import _native
 from qfin._dispatch import POLICIES, resolve_engine
+from qfin._memory import check_allocation
 from qfin._validation import require_integer
 from qfin.exceptions import QFinValidationError
 from qfin.finance.curves import CurveExtrapolation, CurveInterpolation, YieldCurve
@@ -40,6 +41,7 @@ def _scenario_path(
 ) -> FloatArray:
     """Normalize one economic factor to a scenario-by-period buffer."""
 
+    check_allocation((scenario_count, period_count))
     if values is None:
         result = np.full((scenario_count, period_count), default, dtype=np.float64)
     else:
@@ -579,6 +581,7 @@ def scenario_portfolio_values(
     weighted_amounts = _weighted_cashflow_amounts(amounts, stream_offsets, weights)
     if selected == "numpy":
         normalized_chunk_size = _bounded_numpy_chunk_size(normalized_chunk_size, times, curve)
+    check_allocation((scenarios.shocks.shape[0],))
     values = np.empty(scenarios.shocks.shape[0], dtype=np.float64)
     for start in range(0, scenarios.shocks.shape[0], normalized_chunk_size):
         stop = min(start + normalized_chunk_size, scenarios.shocks.shape[0])
@@ -648,6 +651,7 @@ def scenario_indexed_cashflow_values(
     )
 
     prepared = _PreparedScenarioValuation.build(times, curve)
+    check_allocation((scenarios.scenario_count,))
     values = np.empty(scenarios.scenario_count, dtype=np.float64)
     if selected == "numpy":
         normalized_chunk_size = _bounded_numpy_chunk_size(normalized_chunk_size, times, curve)

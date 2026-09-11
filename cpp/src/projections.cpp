@@ -307,7 +307,7 @@ LifeModelPointProjectionResult project_life_model_points(
                 if (product_codes[point] == 1) {
                     insured_amount *= std::pow(
                         1.0 + bonus_rates[point],
-                        static_cast<double>(policy_durations[point] + year + 1)
+                        (static_cast<double>(policy_durations[point]) + year + 1.0)
                     );
                 } else if (product_codes[point] == 2) {
                     insured_amount = std::max(insured_amount, account);
@@ -582,7 +582,7 @@ LifeScenarioProjectionResult project_life_scenarios(
                     if (product_codes[point] == 1) {
                         insured_amount *= std::pow(
                             1.0 + bonus_rates[point],
-                            static_cast<double>(policy_durations[point] + year + 1)
+                            (static_cast<double>(policy_durations[point]) + year + 1.0)
                         );
                     } else if (product_codes[point] == 2) {
                         insured_amount = std::max(insured_amount, account);

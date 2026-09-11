@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from math import isfinite
 from typing import Literal
 
 import numpy as np
 
+from qfin._provenance import execution_provenance, interval_semantics
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
 from qfin.backends.devices import DeviceTarget, resolve_quantum_device
 from qfin.backends.factorized import FactorizedTailPennyLaneBackend
@@ -119,8 +121,12 @@ class FactorQuantumTailResult:
     backend: str
     algorithm: str = "factorized_reversible_comparator_mlae"
 
+    provenance: dict[str, object] = field(default_factory=dict, kw_only=True, repr=False)
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "provenance": deepcopy(self.provenance),
+            "interval_semantics": interval_semantics("tail_probability"),
             "problem_category": "factorized_risk",
             "financial_objective": "tail_probability",
             "representation": "factorized_reversible_loss_oracle",
@@ -299,6 +305,16 @@ class CompiledFactorTailModel:
         probability = estimate.amplitude
         absolute_error = abs(probability - self.validation.exact_probability)
         return FactorQuantumTailResult(
+            provenance=execution_provenance(
+                device=resolve_quantum_device(device_name),
+                seed=seed,
+                shots=shots,
+                schedule=schedule,
+                representation="factorized_reversible_loss_oracle",
+                qubits=self.problem.model.encoding.total_qubits,
+                likelihood_grid_size=likelihood_grid_size,
+                settings={"target_error": self.target_error},
+            ),
             probability=probability,
             confidence_interval_95=(estimate.lower_95, estimate.upper_95),
             exact_encoded_probability=self.validation.exact_probability,

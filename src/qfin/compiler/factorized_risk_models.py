@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from math import ceil, isfinite, log2
 from typing import Literal
 
 import numpy as np
 
+from qfin._provenance import execution_provenance, interval_semantics
 from qfin.algorithms import AmplitudeEstimate, maximum_likelihood_amplitude_estimate
 from qfin.algorithms.amplitude_estimation import _validated_schedule
 from qfin.backends.devices import DeviceTarget, resolve_quantum_device
@@ -188,8 +190,12 @@ class FactorQuantumRiskResult:
     backend: str
     algorithm: str
 
+    provenance: dict[str, object] = field(default_factory=dict, kw_only=True, repr=False)
+
     def to_dict(self) -> dict[str, object]:
         return {
+            "provenance": deepcopy(self.provenance),
+            "interval_semantics": interval_semantics(self.problem_kind),
             "problem_category": "factorized_risk",
             "financial_objective": self.problem_kind,
             "representation": "factorized_reversible_loss_oracle",
@@ -643,6 +649,16 @@ class CompiledFactorRiskModel:
             device_name=device_name,
         )
         return FactorQuantumRiskResult(
+            provenance=execution_provenance(
+                device=resolve_quantum_device(device_name),
+                seed=seed,
+                shots=shot_count,
+                schedule=powers,
+                representation="factorized_reversible_loss_oracle",
+                qubits=self.problem.model.encoding.total_qubits,
+                likelihood_grid_size=likelihood_grid_size,
+                settings={"target_error": self.target_error},
+            ),
             problem_kind=self.problem_kind,
             value=value,
             confidence_interval_95=(min(interval), max(interval)),

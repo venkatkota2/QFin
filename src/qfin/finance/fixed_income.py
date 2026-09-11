@@ -534,8 +534,6 @@ def _numpy_curve_metrics(
     convexities = np.divide(second, prices, out=np.zeros_like(prices), where=prices != 0)
     bump_size = 1.0e-4
     bump_times = bump_size * times
-    down = _segment_sum(present_values * np.exp(bump_times), offsets)
-    up = _segment_sum(present_values * np.exp(-bump_times), offsets)
     effective_duration_numerator = _segment_sum(
         present_values * np.sinh(bump_times) / bump_size,
         offsets,
@@ -556,7 +554,14 @@ def _numpy_curve_metrics(
         out=np.zeros_like(prices),
         where=prices != 0,
     )
-    return prices, durations, convexities, 0.5 * (down - up), duration, convexity
+    return (
+        prices,
+        durations,
+        convexities,
+        effective_duration_numerator * bump_size,
+        duration,
+        convexity,
+    )
 
 
 def _prepare_curve_cashflows(
@@ -632,6 +637,18 @@ def price_bonds(
             effective_duration,
             effective_convexity,
         ) = _numpy_curve_metrics(times, amounts, offsets, curve, total_shift)
+    if not all(
+        np.all(np.isfinite(values))
+        for values in (
+            prices,
+            durations,
+            convexities,
+            dv01,
+            effective_duration,
+            effective_convexity,
+        )
+    ):
+        raise QFinValidationError("bond analytics exceed the finite double range")
     accrued = np.asarray(
         [bond.accrued_interest(normalized_settlement) for bond in items], dtype=np.float64
     )
@@ -694,12 +711,9 @@ def _numpy_yield_metrics(
     flow_periods = repeated_frequencies * times
     flow_delta = bump_size / (repeated_frequencies + repeated_yields)
     log_up_ratio = -flow_periods * np.log1p(flow_delta)
-    up = _segment_sum(present_values * np.exp(log_up_ratio), offsets)
     central = yields - bump_size > -frequencies
     flow_central = np.repeat(central, counts)
     log_down_ratio = -flow_periods * np.log1p(np.where(flow_central, -flow_delta, 0.0))
-    down = _segment_sum(present_values * np.exp(log_down_ratio), offsets)
-    dv01 = np.where(central, 0.5 * (down - up), prices - up)
     midpoint = 0.5 * (log_down_ratio + log_up_ratio)
     half_difference = 0.5 * (log_down_ratio - log_up_ratio)
     central_duration_numerator = _segment_sum(
@@ -715,6 +729,7 @@ def _numpy_yield_metrics(
         central_duration_numerator,
         one_sided_duration_numerator,
     )
+    dv01 = duration_numerator * bump_size
     effective_duration = np.divide(
         duration_numerator,
         prices,
