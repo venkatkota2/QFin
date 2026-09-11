@@ -1,0 +1,54 @@
+{
+  "sha": "f9d4be69432ee813fccdde609420cdee9eb15580",
+  "python": "3.12.14",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "packages": {
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "PennyLane": "0.45.1",
+    "PennyLane-Lightning": "0.45.0",
+    "QuantLib": "1.43",
+    "pytest": "9.1.1",
+    "ruff": "0.16.6",
+    "mypy": "1.20.2"
+  },
+  "tests_passed": 654,
+  "skipped": 2,
+  "skip_reason": "optional Qiskit unavailable locally; Linux CI installs it",
+  "coverage": {
+    "covered_lines": 7949,
+    "num_statements": 8551,
+    "percent_covered": 92.95988773242895,
+    "percent_covered_display": "93",
+    "missing_lines": 602,
+    "excluded_lines": 83,
+    "percent_statements_covered": 92.95988773242895,
+    "percent_statements_covered_display": "93"
+  },
+  "system_info": {
+    "qfin_version": "1.1.1",
+    "native_extension": true,
+    "native_backend": "qfin-native",
+    "native_cpp_standard": "C++20",
+    "native_compiler": "GNU 13.3.0",
+    "pennylane": true,
+    "pennylane_lightning": true,
+    "qiskit": false,
+    "preferred_quantum_device": "lightning.qubit",
+    "tested_quantum_devices": [
+      "lightning.qubit",
+      "default.qubit",
+      "default.mixed"
+    ],
+    "noise_simulator": "default.mixed",
+    "openqasm_export": true,
+    "factorized_state_preparation": true,
+    "structured_arithmetic_oracles": true,
+    "factorized_tail_risk": true,
+    "structured_factor_var_cvar": true,
+    "portfolio_optimization": "classical-scipy",
+    "block_encoding_implemented": false,
+    "qsvt_implemented": false
+  }
+}

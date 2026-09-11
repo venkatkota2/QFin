@@ -1,0 +1,63 @@
+{
+  "scope": "curated numerical regression sensitivity; no exhaustive claim",
+  "control": "unmodified isolated source passed",
+  "mutations": [
+    {
+      "mutation": "discount sign",
+      "module": "finance/rates.py",
+      "killed": true,
+      "test_summary": "FAILED tests/test_reference_corpus.py::test_reference_rates[rate_conversions-023]"
+    },
+    {
+      "mutation": "simple accrual horizon",
+      "module": "finance/rates.py",
+      "killed": true,
+      "test_summary": "FAILED tests/test_reference_extensions.py::test_dated_bootstrap_from_independent_calendar_dcf[1000000000000.0-0.08]"
+    },
+    {
+      "mutation": "continuous conversion sign",
+      "module": "finance/rates.py",
+      "killed": true,
+      "test_summary": "FAILED tests/finance/test_rates.py::test_discount_to_continuous_rate_independent_inverse[0.12-60]"
+    },
+    {
+      "mutation": "VaR tie boundary",
+      "module": "finance/risk.py",
+      "killed": true,
+      "test_summary": "FAILED tests/test_reference_corpus.py::test_reference_risk[numpy-risk-005] - ..."
+    },
+    {
+      "mutation": "CVaR tail normalization",
+      "module": "finance/risk.py",
+      "killed": true,
+      "test_summary": "FAILED tests/test_reference_corpus.py::test_reference_risk[numpy-risk-019] - ..."
+    },
+    {
+      "mutation": "variance centering",
+      "module": "finance/risk.py",
+      "killed": true,
+      "test_summary": "FAILED tests/finance/test_risk.py::test_weighted_var_and_expected_shortfall_boundary_mass"
+    },
+    {
+      "mutation": "forward month anchor",
+      "module": "finance/dates.py",
+      "killed": true,
+      "test_summary": "FAILED tests/test_reference_corpus.py::test_reference_schedules[schedules-026]"
+    },
+    {
+      "mutation": "backward month anchor",
+      "module": "finance/dates.py",
+      "killed": true,
+      "test_summary": "FAILED tests/test_reference_corpus.py::test_reference_schedules[schedules-041]"
+    },
+    {
+      "mutation": "bootstrap repricing gate",
+      "module": "finance/calibration.py",
+      "killed": true,
+      "test_summary": "FAILED tests/finance/test_calibration.py::test_solver_termination_does_not_bypass_independent_repricing"
+    }
+  ],
+  "killed": 9,
+  "total": 9,
+  "score": 1.0
+}

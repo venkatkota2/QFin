@@ -36,13 +36,13 @@ work. Comparing the already-prepared engines gives a much smaller difference:
 10,000 bonds/33 nodes measured **0.936767 s versus 0.436920 s**. Small and medium
 cases were less stable across repeated runs.
 
-See [final scenario/key-rate rows](scenario-final-performance.md),
-[par-yield and reduction alternatives](hardening-performance.md), and
-[MLAE timing/coverage](mlae-validation.md), each with accompanying JSON.
+See [final scenario/key-rate rows](../scenario-final-performance.md),
+[par-yield and reduction alternatives](../hardening-performance.md), and
+[MLAE timing/coverage](../mlae-validation.md), each with accompanying JSON.
 
 ## Current public API matrix
 
-The [complete current matrix](native-performance-current.md) includes:
+The [complete current matrix](../native-performance-current.md) includes:
 
 - Pricing at 1, 100, 1,000, 10,000 and 100,000 bonds; annual/semiannual/quarterly
   coupons and mixed maturities. Ordinary native pricing has no stable broad win.
@@ -105,7 +105,7 @@ reserved for severe cancellation. These are reduction microbenchmarks, not
 public-API speedup claims. The native compensated implementation remains separately
 covered by parity tests.
 
-The [native output investigation](native-output-performance.md) compared an
+The [native output investigation](../native-output-performance.md) compared an
 installed audited-main extension with current code on one million tiny scenarios:
 **0.011196 s before versus 0.012009 s after**. Current code also performs stronger
 validation, so this is not evidence that removing a copy alone made compute slower

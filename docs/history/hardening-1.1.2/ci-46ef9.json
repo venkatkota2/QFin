@@ -1,0 +1,257 @@
+{
+  "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274",
+  "run_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885",
+  "jobs": [
+    {
+      "id": 103190404109,
+      "name": "representative examples",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404109"
+    },
+    {
+      "id": 103190404354,
+      "name": "tests / ubuntu-latest / Python 3.13",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404354"
+    },
+    {
+      "id": 103190404375,
+      "name": "native ASan and UBSan / gcc",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404375"
+    },
+    {
+      "id": 103190404379,
+      "name": "native parity and strict C++ warnings",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404379"
+    },
+    {
+      "id": 103190404393,
+      "name": "Ruff and strict mypy",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404393"
+    },
+    {
+      "id": 103190404400,
+      "name": "tests / windows-latest / Python 3.12",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404400"
+    },
+    {
+      "id": 103190404409,
+      "name": "wheel / windows-latest / Python 3.12",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404409"
+    },
+    {
+      "id": 103190404418,
+      "name": "wheel / macos-latest / Python 3.12",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404418"
+    },
+    {
+      "id": 103190404431,
+      "name": "tests / ubuntu-latest / Python 3.12",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404431"
+    },
+    {
+      "id": 103190404433,
+      "name": "wheel / ubuntu-latest / Python 3.13",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404433"
+    },
+    {
+      "id": 103190404473,
+      "name": "tests / macos-latest / Python 3.12",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404473"
+    },
+    {
+      "id": 103190404516,
+      "name": "wheel / ubuntu-latest / Python 3.11",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404516"
+    },
+    {
+      "id": 103190404518,
+      "name": "tests / ubuntu-latest / Python 3.11",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404518"
+    },
+    {
+      "id": 103190404566,
+      "name": "wheel / ubuntu-latest / Python 3.12",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404566"
+    },
+    {
+      "id": 103190404577,
+      "name": "native ASan and UBSan / clang",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404577"
+    },
+    {
+      "id": 103190404600,
+      "name": "sdist clean install",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404600"
+    },
+    {
+      "id": 103190404882,
+      "name": "minimum dependencies / Python 3.11",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190404882"
+    },
+    {
+      "id": 103190824509,
+      "name": "portable binary wheels / cibuildwheel / ubuntu-latest",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190824509"
+    },
+    {
+      "id": 103190824530,
+      "name": "portable binary wheels / cibuildwheel / windows-latest",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190824530"
+    },
+    {
+      "id": 103190824534,
+      "name": "portable binary wheels / cibuildwheel / macos-latest",
+      "conclusion": "success",
+      "html_url": "https://github.com/venkatkota2/QFin/actions/runs/34576612885/job/103190824534"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10190076872,
+      "name": "qfin-binary-windows-latest",
+      "digest": "sha256:75ad682a3f19cc415857b339bf41a82d87b5bf67984c9910f60432c017f342fb",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189994501,
+      "name": "qfin-binary-ubuntu-latest",
+      "digest": "sha256:40bfe358e855bf6ed4c1923dd0d615dda5169d1091594b786d8cd2e86b8878d7",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189988556,
+      "name": "qfin-binary-macos-latest",
+      "digest": "sha256:2b6946b8ab4b118db88746e5825c0df042d4ebe127eedfb060fd12aedbb2c921",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189945654,
+      "name": "coverage-ubuntu-latest-py3.11",
+      "digest": "sha256:51627c53ff1dcb6aab06d7cf082fc7766aca3f5fb9039fd8b1dfee85e0adfaa7",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189943559,
+      "name": "coverage-macos-latest-py3.12",
+      "digest": "sha256:483b6174ee04f2afe0a3e934fe6f1e68c8d8f174cce0cff8b9662932b49362e5",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189943056,
+      "name": "coverage-windows-latest-py3.12",
+      "digest": "sha256:409e41a8703efd03e9597c3d018b897980517e4752922917bcb7ddd7adaa3140",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189935104,
+      "name": "coverage-ubuntu-latest-py3.13",
+      "digest": "sha256:4a1590e728c36fb0a82b848ccdff17fb197e97f6e858cf578b1653ddd2d5e67b",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189932940,
+      "name": "coverage-ubuntu-latest-py3.12",
+      "digest": "sha256:6874ac11a9cce011226eba290742e63662b08331246973fcf997089124d96845",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189926347,
+      "name": "qfin-wheel-windows-latest-py3.12",
+      "digest": "sha256:50692514347ab31a5008f7334027c672b0fe144d45fc5cf5079785fcafb77478",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189920086,
+      "name": "qfin-sdist",
+      "digest": "sha256:0a5985c4fb264f7c780aed1bf319248226168e35a253ca2c4b7bd945da92a029",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189918978,
+      "name": "qfin-wheel-macos-latest-py3.12",
+      "digest": "sha256:fe79e5dad28f88c27a7ae459899ebc40ff46b947ce210518cfe4c915b89f6630",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189918568,
+      "name": "qfin-wheel-ubuntu-latest-py3.12",
+      "digest": "sha256:dbc2a9d5388443c7825baeef049ae018b7793189c7ca32e1a91e4d8f2378e1d2",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189916428,
+      "name": "qfin-wheel-ubuntu-latest-py3.11",
+      "digest": "sha256:620acec3521eb52f244a81011585f721fd2335bdd8c66cef5873d02722a7be9d",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189907989,
+      "name": "qfin-verification-tools",
+      "digest": "sha256:86a1ced9b3a007ccefb00bf028aa72ee4992160a925bd73874e10eab1ecfcce5",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    },
+    {
+      "id": 10189902295,
+      "name": "qfin-wheel-ubuntu-latest-py3.13",
+      "digest": "sha256:a6f088598122cbaff5319a8c83a0319e7d1683fa33d450dbccd2d910a0d1b56f",
+      "head_sha": "46ef9f83d8536e85afbbfaa4fe821524b368f274"
+    }
+  ],
+  "main": {
+    "sha": "f9d4be69432ee813fccdde609420cdee9eb15580",
+    "protected": false
+  },
+  "log_highlights": {
+    "103190404375": [
+      "2026-09-11T07:55:23.4465952Z \u001b[36;1m\"$CXX\" -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -Icpp/include cpp/tests/checked_size.cpp -o checked-size-test\u001b[0m",
+      "2026-09-11T07:55:23.4569213Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON -DQFIN_ENABLE_SANITIZERS=ON",
+      "2026-09-11T07:55:57.2462771Z Successfully built qfin-quantum",
+      "2026-09-11T07:56:18.1772323Z 94 passed in 10.09s"
+    ],
+    "103190404379": [
+      "2026-09-11T07:55:22.4922703Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON",
+      "2026-09-11T07:55:24.1923954Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON",
+      "2026-09-11T07:55:24.3891956Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON",
+      "2026-09-11T07:55:53.6765357Z Successfully built qfin-quantum",
+      "2026-09-11T07:55:59.0821028Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON",
+      "2026-09-11T07:56:03.5984048Z 85 passed in 3.91s",
+      "2026-09-11T07:56:03.6963432Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON",
+      "2026-09-11T07:56:04.1314709Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON"
+    ],
+    "103190404431": [
+      "2026-09-11T07:55:47.2297049Z Successfully built qfin-quantum",
+      "2026-09-11T07:56:14.4133046Z Successfully built qfin-quantum",
+      "2026-09-11T07:56:52.3912863Z _______________ coverage: platform linux, python 3.12.14-final-0 _______________",
+      "2026-09-11T07:56:52.5122924Z Required test coverage of 90% reached. Total coverage: 91.25%",
+      "2026-09-11T07:56:52.5124732Z 2234 passed in 34.29s"
+    ],
+    "103190404577": [
+      "2026-09-11T07:56:03.4836544Z \u001b[36;1m\"$CXX\" -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -Icpp/include cpp/tests/checked_size.cpp -o checked-size-test\u001b[0m",
+      "2026-09-11T07:56:03.4946545Z   CMAKE_ARGS: -DQFIN_STRICT_WARNINGS=ON -DQFIN_ENABLE_SANITIZERS=ON",
+      "2026-09-11T07:56:37.4863116Z Successfully built qfin-quantum",
+      "2026-09-11T07:56:58.9247853Z 94 passed in 9.58s"
+    ],
+    "103190404600": [
+      "2026-09-11T07:56:01.8256116Z Successfully built qfin_quantum-1.1.2.tar.gz",
+      "2026-09-11T07:56:20.7116032Z Successfully built qfin-quantum"
+    ]
+  }
+}

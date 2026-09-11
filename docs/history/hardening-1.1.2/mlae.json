@@ -1,0 +1,597 @@
+{
+  "coverage": [
+    {
+      "amplitude": 0.001,
+      "guarded_coverage": 0.97,
+      "raw_likelihood_ratio_coverage": 0.97,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.01,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.99,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.05,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 1.0,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.25,
+      "guarded_coverage": 0.955,
+      "raw_likelihood_ratio_coverage": 0.955,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.5,
+      "guarded_coverage": 0.97,
+      "raw_likelihood_ratio_coverage": 0.97,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.75,
+      "guarded_coverage": 0.945,
+      "raw_likelihood_ratio_coverage": 0.945,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.95,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.99,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.99,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.995,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.999,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.99,
+      "repetitions": 200,
+      "schedule": [
+        0
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.001,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 0.905,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.01,
+      "guarded_coverage": 0.98,
+      "raw_likelihood_ratio_coverage": 0.95,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.05,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.94,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.25,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 1.0,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.5,
+      "guarded_coverage": 0.975,
+      "raw_likelihood_ratio_coverage": 0.92,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.75,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 1.0,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.95,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.94,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.99,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.945,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.999,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 0.875,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 20
+    },
+    {
+      "amplitude": 0.001,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.945,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.01,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.94,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.05,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.97,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.25,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 1.0,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.5,
+      "guarded_coverage": 0.98,
+      "raw_likelihood_ratio_coverage": 0.965,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.75,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 1.0,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.95,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.97,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.99,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.975,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.999,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.945,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.001,
+      "guarded_coverage": 0.985,
+      "raw_likelihood_ratio_coverage": 0.94,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.01,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 0.97,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.05,
+      "guarded_coverage": 0.98,
+      "raw_likelihood_ratio_coverage": 0.96,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.25,
+      "guarded_coverage": 0.995,
+      "raw_likelihood_ratio_coverage": 0.995,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.5,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.955,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.75,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 1.0,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.95,
+      "guarded_coverage": 0.985,
+      "raw_likelihood_ratio_coverage": 0.945,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.99,
+      "guarded_coverage": 0.975,
+      "raw_likelihood_ratio_coverage": 0.96,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.999,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.96,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots_per_circuit": 1000
+    },
+    {
+      "amplitude": 0.001,
+      "guarded_coverage": 0.97,
+      "raw_likelihood_ratio_coverage": 0.945,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.01,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.965,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.05,
+      "guarded_coverage": 0.97,
+      "raw_likelihood_ratio_coverage": 0.925,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.25,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.97,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.5,
+      "guarded_coverage": 1.0,
+      "raw_likelihood_ratio_coverage": 0.93,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.75,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.94,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.95,
+      "guarded_coverage": 0.98,
+      "raw_likelihood_ratio_coverage": 0.96,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.99,
+      "guarded_coverage": 0.985,
+      "raw_likelihood_ratio_coverage": 0.93,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    },
+    {
+      "amplitude": 0.999,
+      "guarded_coverage": 0.99,
+      "raw_likelihood_ratio_coverage": 0.965,
+      "repetitions": 200,
+      "schedule": [
+        0,
+        2,
+        5
+      ],
+      "shots_per_circuit": 100
+    }
+  ],
+  "environment": {
+    "architecture": "x86_64",
+    "compiler": "GNU 13.3.0",
+    "compiler_flags": "release defaults; see cpp/CMakeLists.txt",
+    "coverage_repetitions_per_case": 200,
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "numpy": "2.5.2",
+    "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+    "pennylane": "0.45.1",
+    "pennylane_lightning": "0.45.0",
+    "python": "3.12.14",
+    "qfin": "1.1.2",
+    "scipy": "1.18.1",
+    "seed": 20260905,
+    "thread_count": 1,
+    "timing_repetitions": 5
+  },
+  "optimizer": {
+    "benchmark": "MLAE repeated VaR-threshold fits",
+    "environment": {
+      "architecture": "x86_64",
+      "compiler": "GNU 13.3.0",
+      "compiler_flags": "release defaults; see cpp/CMakeLists.txt",
+      "coverage_repetitions_per_case": 200,
+      "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+      "numpy": "2.5.2",
+      "os": "Linux-6.18.35-x86_64-with-glibc2.39",
+      "pennylane": "0.45.1",
+      "pennylane_lightning": "0.45.0",
+      "python": "3.12.14",
+      "qfin": "1.1.2",
+      "scipy": "1.18.1",
+      "seed": 20260905,
+      "thread_count": 1,
+      "timing_repetitions": 5
+    },
+    "max_difference": 5.6557118829903e-06,
+    "problem_size": "31 thresholds; schedule=(0,1,2,4); 1000 shots/circuit",
+    "qfin": "coarse-to-fine global search plus guarded confidence region",
+    "qfin_seconds": 0.05317284800003108,
+    "reference": "legacy 131073-point dense global grid",
+    "reference_seconds": 0.5224148429999786,
+    "speedup": 9.824842239025324
+  }
+}

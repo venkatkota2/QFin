@@ -11,7 +11,6 @@ from qfin.exceptions import QFinValidationError
 Engine = Literal["auto", "numpy", "native"]
 SelectedEngine = Literal["numpy", "native"]
 KEY_RATE_CASHFLOW_VISITS = 8_000_000
-ALM_BASE_CASHFLOWS = 4_096
 
 # Units: counts of scalar cashflow visits, loss observations or model-point years.
 # None disables auto native; explicit native remains available when compatible.
@@ -19,7 +18,8 @@ POLICIES: dict[str, int | None] = {
     "bond_price": None,
     "yield_solve": 1,
     "key_rate": KEY_RATE_CASHFLOW_VISITS,
-    "alm_base": ALM_BASE_CASHFLOWS,
+    # 1.1.2 public API rechecks found no stable win at 4K through 262K liabilities.
+    "alm_base": None,
     "rate_scenarios": 1,
     "life": 1,
     "life_scenarios": 1,

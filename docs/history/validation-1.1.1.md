@@ -58,7 +58,7 @@ supported by differential tests and sanitizers; no artificial 100% claim is made
   schedules reproduce results. Existing structured factor circuits retain their
   encoded-grid oracles and resource guards.
 - MLAE validation includes a dense likelihood reference, ambiguous modes,
-  boundaries, narrow peaks and a 9,000-fit [coverage study](mlae-validation.md).
+  boundaries, narrow peaks and a 9,000-fit [coverage study](../mlae-validation.md).
 
 `FinancialTolerance` requires numerical and financial bounds simultaneously.
 Named units cover price, PV, DV01, duration, convexity, loss statistics and
@@ -88,7 +88,7 @@ metamorphic identities and cancellation.
 All 16 jobs passed on checkpoint `d657075dba5cedd0d7164883fd8c29a0ffe9f4f0`.
 The final numerical gates pass locally. Final PR checks must also pass for the complete report/verification commit; inspect
 [PR #14](https://github.com/venkatkota2/QFin/pull/14) for the exact final head and
-merge state. [Repository protection settings](repository-settings.md) require
+merge state. [Repository protection settings](../repository-settings.md) require
 maintainer administration access and are not falsely reported as configured.
 
-The [hardening report](hardening-report.md) records repaired behavior, measured tradeoffs, API changes and limitations. [Machine-readable validation](hardening-validation.json) records the fresh local coverage run; earlier accumulated coverage is not used for final acceptance.
+The [hardening report](../hardening-report.md) records repaired behavior, measured tradeoffs, API changes and limitations. [Machine-readable validation](../hardening-validation.json) records the fresh local coverage run; earlier accumulated coverage is not used for final acceptance.

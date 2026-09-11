@@ -19,7 +19,8 @@
   compatible common exception hierarchy. Compiler validation now uses an internal
   typed configuration; classical engine policy is centralized and deterministic.
 - Added fresh-process peak RSS/timing dispersion and before/after public API
-  measurements. Retained explicit engine overrides and existing modelling scope.
+  measurements. Revalidated the liability crossover and kept automatic standalone
+  liability valuation on NumPy; retained explicit engine overrides and modelling scope.
 - Added nine portable CPython/platform wheel builds, installed artifact tests,
   checked SHA-256 collection and a manual release-candidate attestation workflow.
   No tag, GitHub Release, PyPI publication, license grant or branch-protection

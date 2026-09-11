@@ -1,0 +1,21 @@
+Global lines 93.51% (required 93%), branches 82.25% (required 81%)
+finance: 96.15% (required 95%) PASS
+compiler: 93.81% (required 92%) PASS
+representation: 92.53% (required 92%) PASS
+resources: 90.93% (required 90%) PASS
+backends: 87.16% (required 85%) PASS
+_native: 100.00% (required 95%) PASS
+finance/curves.py branches: 85.71% (required 85%) PASS
+finance/fixed_income.py branches: 88.16% (required 85%) PASS
+finance/calibration.py branches: 82.73% (required 80%) PASS
+finance/scenarios.py branches: 88.28% (required 85%) PASS
+finance/alm.py branches: 76.92% (required 75%) PASS
+finance/alm_paths.py branches: 95.83% (required 80%) PASS
+finance/life.py branches: 92.86% (required 90%) PASS
+finance/life_scenarios.py branches: 78.95% (required 75%) PASS
+finance/risk.py branches: 96.88% (required 90%) PASS
+finance/optimization.py branches: 77.50% (required 75%) PASS
+representation/ branches: 79.48% (required 75%) PASS
+compiler/ branches: 81.02% (required 80%) PASS
+algorithms/amplitude_estimation.py branches: 80.26% (required 80%) PASS
+_native/ branches: 100.00% (required 100%) PASS

@@ -1,0 +1,370 @@
+{
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+  "python": "3.12.14",
+  "cpu": "x86_64",
+  "machine": "x86_64",
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "measurements": [
+    {
+      "workload": "bonds",
+      "size": "10,000 bonds; 400,000 cashflows",
+      "engine": "numpy",
+      "chunk": 256,
+      "seconds": [
+        0.2695750630000475,
+        0.2685785769999711,
+        0.33343407000006664
+      ],
+      "median_seconds": 0.2695750630000475,
+      "min_seconds": 0.2685785769999711,
+      "max_seconds": 0.33343407000006664,
+      "stdev_seconds": 0.03034102600561798,
+      "warmups": 1,
+      "peak_rss_bytes": 133681152,
+      "peak_before_workload_bytes": 99176448,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "bonds",
+      "size": "10,000 bonds; 400,000 cashflows",
+      "engine": "native",
+      "chunk": 256,
+      "seconds": [
+        0.11173101300005328,
+        0.10518216699983896,
+        0.11352389199987556
+      ],
+      "median_seconds": 0.11173101300005328,
+      "min_seconds": 0.10518216699983896,
+      "max_seconds": 0.11352389199987556,
+      "stdev_seconds": 0.003585250262747243,
+      "warmups": 1,
+      "peak_rss_bytes": 115097600,
+      "peak_before_workload_bytes": 99225600,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "rate_scenarios",
+      "size": "2,000 scenarios; 20 bonds",
+      "engine": "numpy",
+      "chunk": 16,
+      "seconds": [
+        0.02980413000000226,
+        0.02771253900004922,
+        0.02773247999994055
+      ],
+      "median_seconds": 0.02773247999994055,
+      "min_seconds": 0.02771253900004922,
+      "max_seconds": 0.02980413000000226,
+      "stdev_seconds": 0.0009813190826250659,
+      "warmups": 1,
+      "peak_rss_bytes": 100159488,
+      "peak_before_workload_bytes": 99483648,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "rate_scenarios",
+      "size": "2,000 scenarios; 20 bonds",
+      "engine": "numpy",
+      "chunk": 256,
+      "seconds": [
+        0.052117603999931816,
+        0.04520472300009715,
+        0.04541386500000044
+      ],
+      "median_seconds": 0.04541386500000044,
+      "min_seconds": 0.04520472300009715,
+      "max_seconds": 0.052117603999931816,
+      "stdev_seconds": 0.003210603623986542,
+      "warmups": 1,
+      "peak_rss_bytes": 108101632,
+      "peak_before_workload_bytes": 99352576,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "rate_scenarios",
+      "size": "2,000 scenarios; 20 bonds",
+      "engine": "native",
+      "chunk": 16,
+      "seconds": [
+        0.040158771999813325,
+        0.03564506799989431,
+        0.04020106900020437
+      ],
+      "median_seconds": 0.040158771999813325,
+      "min_seconds": 0.03564506799989431,
+      "max_seconds": 0.04020106900020437,
+      "stdev_seconds": 0.002137819708382904,
+      "warmups": 1,
+      "peak_rss_bytes": 99536896,
+      "peak_before_workload_bytes": 99389440,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "rate_scenarios",
+      "size": "2,000 scenarios; 20 bonds",
+      "engine": "native",
+      "chunk": 256,
+      "seconds": [
+        0.020561115999953472,
+        0.02535129400007463,
+        0.021522184999867022
+      ],
+      "median_seconds": 0.021522184999867022,
+      "min_seconds": 0.020561115999953472,
+      "max_seconds": 0.02535129400007463,
+      "stdev_seconds": 0.0020691258119449195,
+      "warmups": 1,
+      "peak_rss_bytes": 99713024,
+      "peak_before_workload_bytes": 99434496,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "alm_paths",
+      "size": "1,000 scenarios x 20 periods",
+      "engine": "numpy",
+      "chunk": 16,
+      "seconds": [
+        0.7390455489999113,
+        0.7654503050000585,
+        1.3840655230001175
+      ],
+      "median_seconds": 0.7654503050000585,
+      "min_seconds": 0.7390455489999113,
+      "max_seconds": 1.3840655230001175,
+      "stdev_seconds": 0.2980366804308032,
+      "warmups": 1,
+      "peak_rss_bytes": 102510592,
+      "peak_before_workload_bytes": 100413440,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "alm_paths",
+      "size": "1,000 scenarios x 20 periods",
+      "engine": "numpy",
+      "chunk": 256,
+      "seconds": [
+        0.43457024600002114,
+        0.43396460199983267,
+        0.47059784299995044
+      ],
+      "median_seconds": 0.43457024600002114,
+      "min_seconds": 0.43396460199983267,
+      "max_seconds": 0.47059784299995044,
+      "stdev_seconds": 0.017128108465381917,
+      "warmups": 1,
+      "peak_rss_bytes": 112152576,
+      "peak_before_workload_bytes": 100327424,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "alm_paths",
+      "size": "1,000 scenarios x 20 periods",
+      "engine": "native",
+      "chunk": 16,
+      "seconds": [
+        0.24757896599999185,
+        0.25396632399997543,
+        0.2737052939999103
+      ],
+      "median_seconds": 0.25396632399997543,
+      "min_seconds": 0.24757896599999185,
+      "max_seconds": 0.2737052939999103,
+      "stdev_seconds": 0.011120602969451712,
+      "warmups": 1,
+      "peak_rss_bytes": 101720064,
+      "peak_before_workload_bytes": 100278272,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "alm_paths",
+      "size": "1,000 scenarios x 20 periods",
+      "engine": "native",
+      "chunk": 256,
+      "seconds": [
+        0.2421112520000861,
+        0.28979603500010853,
+        0.260449048000055
+      ],
+      "median_seconds": 0.260449048000055,
+      "min_seconds": 0.2421112520000861,
+      "max_seconds": 0.28979603500010853,
+      "stdev_seconds": 0.01963941314431268,
+      "warmups": 1,
+      "peak_rss_bytes": 102768640,
+      "peak_before_workload_bytes": 100278272,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "life_scenarios",
+      "size": "1,000 scenarios x 10 model points x 20 years",
+      "engine": "numpy",
+      "chunk": 16,
+      "seconds": [
+        11.444572053000002,
+        11.158191244999898,
+        11.570584661999874
+      ],
+      "median_seconds": 11.444572053000002,
+      "min_seconds": 11.158191244999898,
+      "max_seconds": 11.570584661999874,
+      "stdev_seconds": 0.17254998477177647,
+      "warmups": 1,
+      "peak_rss_bytes": 100642816,
+      "peak_before_workload_bytes": 100642816,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "life_scenarios",
+      "size": "1,000 scenarios x 10 model points x 20 years",
+      "engine": "numpy",
+      "chunk": 256,
+      "seconds": [
+        11.67378636400008,
+        11.712550805000092,
+        11.213729913999941
+      ],
+      "median_seconds": 11.67378636400008,
+      "min_seconds": 11.213729913999941,
+      "max_seconds": 11.712550805000092,
+      "stdev_seconds": 0.2265629420445544,
+      "warmups": 1,
+      "peak_rss_bytes": 100597760,
+      "peak_before_workload_bytes": 100597760,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "life_scenarios",
+      "size": "1,000 scenarios x 10 model points x 20 years",
+      "engine": "native",
+      "chunk": 16,
+      "seconds": [
+        0.012481211000022085,
+        0.013901889999942796,
+        0.014011617000051046
+      ],
+      "median_seconds": 0.013901889999942796,
+      "min_seconds": 0.012481211000022085,
+      "max_seconds": 0.014011617000051046,
+      "stdev_seconds": 0.0006970183610121927,
+      "warmups": 1,
+      "peak_rss_bytes": 100347904,
+      "peak_before_workload_bytes": 100347904,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "life_scenarios",
+      "size": "1,000 scenarios x 10 model points x 20 years",
+      "engine": "native",
+      "chunk": 256,
+      "seconds": [
+        0.008716052999943713,
+        0.007314805999840246,
+        0.009979210999972565
+      ],
+      "median_seconds": 0.008716052999943713,
+      "min_seconds": 0.007314805999840246,
+      "max_seconds": 0.009979210999972565,
+      "stdev_seconds": 0.0010882256349502544,
+      "warmups": 1,
+      "peak_rss_bytes": 100458496,
+      "peak_before_workload_bytes": 100458496,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "factor_validation",
+      "size": "4,096 joint points; streamed",
+      "engine": "numpy",
+      "chunk": 16,
+      "seconds": [
+        0.36813257400012844,
+        0.3484204190001492,
+        0.4089192769999954
+      ],
+      "median_seconds": 0.36813257400012844,
+      "min_seconds": 0.3484204190001492,
+      "max_seconds": 0.4089192769999954,
+      "stdev_seconds": 0.02519311196786429,
+      "warmups": 1,
+      "peak_rss_bytes": 99373056,
+      "peak_before_workload_bytes": 99184640,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "factor_validation",
+      "size": "4,096 joint points; streamed",
+      "engine": "numpy",
+      "chunk": 256,
+      "seconds": [
+        0.034412263000149323,
+        0.03593543499982843,
+        0.04033367100009855
+      ],
+      "median_seconds": 0.03593543499982843,
+      "min_seconds": 0.034412263000149323,
+      "max_seconds": 0.04033367100009855,
+      "stdev_seconds": 0.002510591022858987,
+      "warmups": 1,
+      "peak_rss_bytes": 99381248,
+      "peak_before_workload_bytes": 99241984,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    },
+    {
+      "workload": "mlae",
+      "size": "131,073-point MLAE likelihood grid",
+      "engine": "numpy",
+      "chunk": 256,
+      "seconds": [
+        0.004454733999864402,
+        0.0025498279999283113,
+        0.001548779999893668
+      ],
+      "median_seconds": 0.0025498279999283113,
+      "min_seconds": 0.001548779999893668,
+      "max_seconds": 0.004454733999864402,
+      "stdev_seconds": 0.0012053276464150404,
+      "warmups": 1,
+      "peak_rss_bytes": 99110912,
+      "peak_before_workload_bytes": 98955264,
+      "rss_scope": "fresh process lifetime, includes imports, inputs, warmup and timed calls",
+      "qfin": "1.1.1",
+      "compiler": "GNU 13.3.0"
+    }
+  ]
+}
