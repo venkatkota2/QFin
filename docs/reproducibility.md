@@ -30,6 +30,7 @@ QFin does not enable fast-math. GCC/Clang builds use `-fno-fast-math` and
 sanitizer builds append `-O1 -g` and disable IPO. This supports reliable finite-value
 checks and reproducible reductions without claiming portable bit patterns.
 
-The [statistical validation](statistical-validation.md) explains conditional and
-local intervals. Logical resource reports describe circuit counts, not measured
+The [statistical validation](statistical-validation.md) explains local diagnostic
+intervals and corrected workflow bounds, including their sampling assumptions.
+Logical resource reports describe circuit counts, not measured
 hardware performance or quantum advantage.

@@ -81,8 +81,9 @@ flowchart TB
 ```
 
 The result retains every local amplitude estimate, the selected loss code,
-and a monotonicity-derived VaR interval. That interval combines marginal MLAE
-intervals and is not a simultaneous-coverage guarantee.
+and a monotonicity-derived VaR interval. Since 1.1.3, that interval uses a fixed
+workflow failure budget and exact-binomial bounds. Coverage assumes ideal
+binomial shots; the local MLAE intervals remain diagnostic.
 
 ## Reversible CVaR tail excess
 
@@ -105,9 +106,9 @@ E[e] = sum_b 2**b P(e_b = 1).
 The fixed-point scale converts expected ticks back to financial units before
 the discrete CVaR identity is applied. This requires one objective per loss
 bit. Resource reports include all VaR thresholds, excess bits, circuits,
-shots, oracle queries, and the wider excess-register circuit. CVaR intervals
-are conditional on the selected VaR and conservatively combine per-bit
-intervals; they are not joint statistical intervals.
+shots, oracle queries, and the wider excess-register circuit. Since 1.1.3, CVaR
+intervals propagate VaR-selection uncertainty and budget every excess-bit query
+within the same workflow. See [the assumptions and derivation](statistical-validation.md).
 
 ## Backend policy and responsibilities
 
@@ -141,7 +142,7 @@ Implemented in 1.0:
 Not implemented:
 
 - a coherent all-quantum quantile search;
-- simultaneous-coverage VaR or CVaR confidence intervals;
+- calibrated device-noise or cross-problem simultaneous risk intervals;
 - arbitrary nonlinear multivariate payoff compilation;
 - QRAM, amplitude loading of an externally materialized portfolio cube, or a
   state-vector simulator;

@@ -45,7 +45,10 @@ def record(directory: Path) -> None:
                 "runner": platform.platform(),
                 "python": platform.python_version(),
                 "float_policy": "GCC/Clang: -fno-fast-math -ffp-contract=off; MSVC: /fp:strict",
-                "wheel_builder": "cibuildwheel 4.2.1; platform default repair",
+                "wheel_builder": (
+                    "cibuildwheel 4.2.1; default Linux/macOS repair; "
+                    "compiler-matched, verified Windows MSVC runtime"
+                ),
                 "artifacts": {p.name: digest(p) for p in files},
             },
             indent=2,

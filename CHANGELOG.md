@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.3 — 2026-09-12 (repository milestone; unpublished)
+
+- Budgeted exact-binomial uncertainty across all adaptive VaR and CVaR objectives,
+  propagated quantile-selection error into expected-shortfall bounds, and made
+  inconsistent sampling bounds fall back to loss support instead of false precision.
+  Kept all circuits, schedules, point estimators, public signatures and result fields.
+- Raised the SciPy dependency floor and minimum CI pin to its 1.11.1 licensing fix.
+- Made Windows portable wheel repair select and verify a compiler-compatible
+  installed MSVC runtime, fail on repair warnings, and retain runtime hashes.
+- Reused ALM period closing valuations as the next period's opening valuations,
+  eliminating duplicate work while retaining finite-result and memory checks.
+- Added analytical, exhaustive binomial, real-circuit, packaging and performance
+  regressions. Licensing and repository administration remain owner decisions;
+  no tag, release, publication or license grant is created.
+
 ## 1.1.2 — 2026-09-11 (repository milestone; unpublished)
 
 - Corrected forward/backward coupon schedule month drift after February, near-zero

@@ -332,10 +332,18 @@ def _probability_constraint_regions(
 
 def _exact_binomial_confidence_regions(
     observations: Sequence[CircuitObservation],
+    *,
+    failure_probability: float = 0.05,
 ) -> tuple[tuple[float, float], ...]:
-    """Return a finite-sample simultaneous 95% confidence set in theta."""
+    """Invert exact binomial bounds, sharing a fixed failure budget over powers.
 
-    family_tail_probability = 0.05 / (2.0 * len(observations))
+    A workflow can allocate a smaller budget before its first adaptive query.
+    The public fixed-experiment estimator retains its existing 95% contract.
+    """
+
+    if not observations or not 0.0 < failure_probability < 1.0:
+        raise QFinValidationError("observations and a failure probability in (0, 1) are required")
+    family_tail_probability = failure_probability / (2.0 * len(observations))
     regions: tuple[tuple[float, float], ...] = ((0.0, _THETA_MAX),)
     for observation in observations:
         if observation.successes == 0:

@@ -30,6 +30,9 @@ jobs:
           CIBW_ARCHS_LINUX: x86_64
           CIBW_ARCHS_MACOS: arm64
           CIBW_ARCHS_WINDOWS: AMD64
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >-
+            python "{project}/tools/repair_windows_wheel.py" "{wheel}" "{dest_dir}"
+            --report-directory "{project}/wheelhouse"
           CIBW_TEST_REQUIRES: pytest hypothesis==6.168.0
           CIBW_TEST_COMMAND: >-
             python {project}/examples/wheel_smoke.py &&

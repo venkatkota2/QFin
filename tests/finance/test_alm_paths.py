@@ -105,6 +105,24 @@ def test_auto_path_dispatch_follows_measured_numpy_policy() -> None:
     assert result.engine == "numpy"
 
 
+def test_numpy_path_reuses_previous_closing_valuations(monkeypatch) -> None:
+    from qfin.finance import alm_paths
+
+    calls = []
+    original = alm_paths._scenario_present_value
+
+    def measured(*args, **kwargs):
+        calls.append(args[2])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(alm_paths, "_scenario_present_value", measured)
+    model = _model()
+    scenarios = _scenarios(model)
+    model.project_paths(scenarios, engine="numpy", scenario_chunk_size=6)
+    # Two initial PVs, then one closing bond PV and one liability PV per period.
+    assert len(calls) == 2 + 2 * scenarios.period_count
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

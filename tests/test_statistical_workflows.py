@@ -27,16 +27,48 @@ def test_seeded_actual_workflow_and_serializable_interval_semantics(family, kind
     assert first.confidence_interval_95 == second.confidence_interval_95
     report = first.to_dict()
     assert json.loads(json.dumps(report))["value"] == first.value
-    assert report["interval_semantics"]["simultaneous_workflow_coverage"] is False
+    assert report["interval_semantics"]["simultaneous_workflow_coverage"] is True
     assert report["interval_semantics"]["includes_deterministic_encoding_error"] is False
     assert report["interval_semantics"]["scope"] == (
-        "conditional_on_selected_var" if kind == "cvar" else "adaptive_local_regions"
+        "simultaneous_var_selection_and_excess"
+        if kind == "cvar"
+        else "simultaneous_adaptive_cdf_bounds"
     )
     assert report["provenance"]["seed"] == 92
     assert report["provenance"]["shots_per_circuit"] == 200
     assert report["provenance"]["mlae_schedule"] == [0, 1]
     report["provenance"]["mlae_schedule"].append(999)
     assert first.provenance["mlae_schedule"] == [0, 1]
+
+
+@pytest.mark.parametrize("family,maximum", [("empirical", 1000), ("factor_two_point", 1)])
+@pytest.mark.parametrize("seed", [71833, 71834, 71835])
+def test_ambiguous_rare_tail_propagates_var_selection_uncertainty(family, maximum, seed):
+    compiled = study.compile_fixture(family, [0, maximum], [999999, 1], 0.95, "cvar")
+    result = compiled.run_quantum(
+        shots=100,
+        schedule=(1,),
+        seed=seed,
+        likelihood_grid_size=4097,
+        device_name="default.qubit",
+    )
+    _, exact_es = study.exact_risk([0, maximum], [999999, 1], 0.95)
+    lower, upper = result.confidence_interval_95
+    assert lower <= exact_es <= upper
+    assert upper > lower
+    # Empirical endpoint encoding may move the upper support by one ULP.
+    assert 0 <= lower <= upper <= maximum + 2 * abs(float(study.np.spacing(maximum)))
+    count = (
+        len(result.amplitude_estimates)
+        if family == "empirical"
+        else len(result.search.evaluations) + len(result.excess_estimates)
+    )
+    assert count <= result.provenance["sampling_objective_budget"]
+    if family == "empirical":
+        # The observations cannot distinguish alias modes. Do not disguise the
+        # unchanged bad point estimate with a zero-width conditional interval.
+        assert result.value > 900
+        assert result.meets_target_error is False
 
 
 def test_small_real_circuit_study_records_references_and_monte_carlo_error():

@@ -18,6 +18,12 @@ from qfin.backends.devices import DeviceTarget, resolve_quantum_device
 from qfin.backends.interop import QasmExport, export_openqasm, export_qiskit
 from qfin.backends.noise import NoiseMitigationReport, NoiseModel, analyze_noise
 from qfin.backends.risk import RiskPennyLaneBackend
+from qfin.compiler._risk_uncertainty import (
+    cvar_interval,
+    objective_budget,
+    quantile_indices,
+    simultaneous_amplitude_interval,
+)
 from qfin.exceptions import QFinValidationError
 from qfin.finance.fixed_income import Engine
 from qfin.finance.risk import (
@@ -146,8 +152,9 @@ class QuantumVaRSearch:
             "selected_estimate": self.selected_estimate.to_dict(),
             "resolved_to_single_grid_point": self.resolved_to_single_grid_point,
             "caveat": (
-                "The interval combines local MLAE intervals through monotonicity; "
-                "it is not a simultaneous-coverage guarantee."
+                "The interval inverts workflow-budgeted exact binomial CDF bounds. "
+                "Coverage assumes ideal independent shots conditional on prior queries "
+                "and excludes deterministic encoding error."
             ),
         }
 
@@ -184,7 +191,11 @@ class QuantumRiskResult:
     def to_dict(self) -> dict[str, object]:
         return {
             "provenance": deepcopy(self.provenance),
-            "interval_semantics": interval_semantics(self.problem_kind),
+            "interval_semantics": interval_semantics(
+                self.problem_kind,
+                simultaneous=self.provenance.get("sampling_interval_method")
+                == "bonferroni_exact_binomial",
+            ),
             "problem_category": "empirical_risk",
             "financial_objective": self.problem_kind,
             "representation": "empirical_probability_tree",
@@ -230,9 +241,9 @@ class QuantumRiskResult:
             "algorithm": self.algorithm,
             "caveat": (
                 "Experimental simulator workflow with generic O(2**n) state and "
-                "objective loading; no quantum-advantage claim. CVaR intervals are "
-                "conditional on the selected VaR grid point, and VaR intervals combine "
-                "local rather than simultaneous MLAE coverage."
+                "objective loading; no quantum-advantage claim. Corrected workflow "
+                "intervals propagate VaR selection and excess sampling uncertainty "
+                "under ideal binomial shots; encoding and device errors are separate."
             ),
         }
 
@@ -281,7 +292,7 @@ class CompiledRiskModel:
             "limitations": [
                 "Empirical loss inputs are not a calibrated stochastic model.",
                 "Quantum execution is experimental and requires optional dependencies.",
-                "Adaptive VaR/CVaR intervals do not guarantee simultaneous coverage.",
+                "Sampling bounds assume ideal binomial shots, not hardware or encoding accuracy.",
                 "Resource estimates are not hardware-runtime or quantum-advantage claims.",
             ],
         }
@@ -531,16 +542,15 @@ class CompiledRiskModel:
             evaluations.append(final_estimate)
             evaluated_indices[selected_index] = final_estimate
 
-        interval_lower = 0
-        interval_upper = candidates.size - 1
-        for index, item in evaluated_indices.items():
-            if item.estimate.upper_95 < confidence:
-                interval_lower = max(interval_lower, min(index + 1, candidates.size - 1))
-            if item.estimate.lower_95 >= confidence:
-                interval_upper = min(interval_upper, index)
-        if interval_lower > interval_upper:
-            interval_lower = selected_index
-            interval_upper = selected_index
+        budget = objective_budget(int(candidates.size), int(isinstance(self.problem, CVaR)))
+        interval_lower, interval_upper = quantile_indices(
+            int(candidates.size),
+            confidence,
+            [
+                (index, simultaneous_amplitude_interval(item.estimate, budget))
+                for index, item in evaluated_indices.items()
+            ],
+        )
         return QuantumVaRSearch(
             confidence=confidence,
             value=float(candidates[selected_index]),
@@ -646,6 +656,15 @@ class CompiledRiskModel:
                 provenance=provenance,
             )
 
+        candidates = self.representation.grid[self.representation.probabilities > 0]
+        budget = objective_budget(
+            int(np.unique(candidates).size), int(isinstance(self.problem, CVaR))
+        )
+        provenance.update(
+            sampling_interval_method="bonferroni_exact_binomial",
+            sampling_objective_budget=budget,
+            sampling_failure_probability_per_objective=0.05 / budget,
+        )
         search = self._run_var_search(
             runtime,
             confidence=self.problem.confidence,
@@ -656,7 +675,8 @@ class CompiledRiskModel:
         )
         final_cdf = search.selected_estimate.estimate
         tail_probability = 1.0 - final_cdf.amplitude
-        tail_interval = (1.0 - final_cdf.upper_95, 1.0 - final_cdf.lower_95)
+        cdf_lower, cdf_upper = simultaneous_amplitude_interval(final_cdf, budget)
+        tail_interval = (1.0 - cdf_upper, 1.0 - cdf_lower)
 
         if isinstance(self.problem, VaR):
             resources = self.resources(
@@ -692,9 +712,17 @@ class CompiledRiskModel:
         )
         multiplier = excess_objective.financial_scale / (1.0 - self.problem.confidence)
         value = search.value + multiplier * excess_item.estimate.amplitude
+        excess_lower, excess_upper = simultaneous_amplitude_interval(excess_item.estimate, budget)
         conditional_interval = (
-            search.value + multiplier * excess_item.estimate.lower_95,
-            search.value + multiplier * excess_item.estimate.upper_95,
+            search.value + multiplier * excess_lower,
+            search.value + multiplier * excess_upper,
+        )
+        interval = cvar_interval(
+            selected_var=search.value,
+            var_interval=search.confidence_interval_95,
+            conditional_interval=conditional_interval,
+            confidence=self.problem.confidence,
+            support=(float(np.min(candidates)), float(np.max(candidates))),
         )
         estimates = (*search.evaluations, excess_item)
         resources = self.resources(
@@ -705,7 +733,7 @@ class CompiledRiskModel:
         )
         return self._build_result(
             value=value,
-            interval=conditional_interval,
+            interval=interval,
             threshold=search.value,
             tail_probability=tail_probability,
             tail_interval=tail_interval,

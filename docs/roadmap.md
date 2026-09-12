@@ -117,9 +117,9 @@ fault-tolerant synthesis remain later research.
 
 The classical reference uses repeated streamed CDF passes: it bounds memory
 but is deliberately slower than materialized NumPy on every measured small and
-medium case. The quantum path remains hybrid. VaR intervals combine local MLAE
-intervals and CVaR intervals are conditional on the selected VaR; neither is a
-simultaneous statistical guarantee. No QRAM, hardware runtime, or quantum
+medium case. The quantum path remains hybrid. Since 1.1.3, VaR/CVaR workflow
+bounds budget exact binomial uncertainty and propagate quantile selection,
+conditional on ideal sampling and excluding encoding/device error. No QRAM, hardware runtime, or quantum
 advantage claim is made.
 
 ## 1.1 — financial accuracy foundation (complete)

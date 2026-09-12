@@ -19,6 +19,12 @@ from qfin.backends.factorized import (
     FactorizedTailPennyLaneBackend,
 )
 from qfin.circuits import FactorizedPreparation
+from qfin.compiler._risk_uncertainty import (
+    cvar_interval,
+    objective_budget,
+    quantile_indices,
+    simultaneous_amplitude_interval,
+)
 from qfin.exceptions import CompilationError, QFinValidationError, ResourceLimitError
 from qfin.finance.exposures import (
     FactorCVaR,
@@ -160,8 +166,9 @@ class FactorQuantumVaRSearch:
             "selected_estimate": self.selected_estimate.to_dict(),
             "resolved_to_single_loss_code": self.resolved_to_single_loss_code,
             "caveat": (
-                "The interval combines local MLAE intervals using CDF monotonicity; "
-                "it is not a simultaneous-coverage guarantee."
+                "The interval inverts workflow-budgeted exact binomial CDF bounds. "
+                "Coverage assumes ideal independent shots conditional on prior queries "
+                "and excludes deterministic encoding error."
             ),
         }
 
@@ -195,7 +202,11 @@ class FactorQuantumRiskResult:
     def to_dict(self) -> dict[str, object]:
         return {
             "provenance": deepcopy(self.provenance),
-            "interval_semantics": interval_semantics(self.problem_kind),
+            "interval_semantics": interval_semantics(
+                self.problem_kind,
+                simultaneous=self.provenance.get("sampling_interval_method")
+                == "bonferroni_exact_binomial",
+            ),
             "problem_category": "factorized_risk",
             "financial_objective": self.problem_kind,
             "representation": "factorized_reversible_loss_oracle",
@@ -229,8 +240,9 @@ class FactorQuantumRiskResult:
             "algorithm": self.algorithm,
             "caveat": (
                 "Experimental simulator workflow with reversible financial arithmetic. "
-                "CVaR bounds are conditional on the selected VaR code and combine marginal "
-                "bit intervals; no quantum-advantage or fault-tolerant claim is made."
+                "Corrected bounds budget all adaptive CDF and excess-bit queries and "
+                "propagate VaR-selection uncertainty under ideal binomial shots. "
+                "No quantum-advantage or fault-tolerant claim is made."
             ),
         }
 
@@ -531,17 +543,17 @@ class CompiledFactorRiskModel:
         selected_index = lower_index
         selected = by_index.get(selected_index) or evaluate(selected_index)
 
-        interval_lower = 0
-        interval_upper = len(candidates) - 1
+        budget = objective_budget(
+            len(candidates), self.oracle.loss_qubits if isinstance(self.problem, FactorCVaR) else 0
+        )
+        bounds = []
         for index, item in by_index.items():
-            lower, upper = item.confidence_interval_95
-            if upper < self.problem.confidence:
-                interval_lower = max(interval_lower, min(index + 1, len(candidates) - 1))
-            if lower >= self.problem.confidence:
-                interval_upper = min(interval_upper, index)
-        if interval_lower > interval_upper:
-            interval_lower = selected_index
-            interval_upper = selected_index
+            lower, upper = simultaneous_amplitude_interval(item.estimate, budget)
+            # These circuits measure P(L > candidate), not the CDF directly.
+            bounds.append((index, (1.0 - upper, 1.0 - lower)))
+        interval_lower, interval_upper = quantile_indices(
+            len(candidates), self.problem.confidence, bounds
+        )
         selected_code = candidates[selected_index]
         return FactorQuantumVaRSearch(
             confidence=self.problem.confidence,
@@ -579,6 +591,10 @@ class CompiledFactorRiskModel:
         """Execute structured VaR search and, for CVaR, bitwise tail excess."""
 
         powers, shot_count = _validated_schedule(schedule, shots)
+        budget = objective_budget(
+            len(self.validation.occupied_codes),
+            self.oracle.loss_qubits if isinstance(self.problem, FactorCVaR) else 0,
+        )
         search = self._run_var_search(
             schedule=powers,
             shots=shot_count,
@@ -630,14 +646,26 @@ class CompiledFactorRiskModel:
                 )
                 items.append(item)
                 expected_ticks += weight * item.probability
-                bit_lower, bit_upper = item.confidence_interval_95
+                bit_lower, bit_upper = simultaneous_amplitude_interval(estimate, budget)
                 lower_ticks += weight * bit_lower
                 upper_ticks += weight * bit_upper
             multiplier = 1.0 / self.oracle.loss_scale / (1.0 - self.problem.confidence)
             value = search.value + multiplier * expected_ticks
-            interval = (
-                search.value + multiplier * lower_ticks,
-                search.value + multiplier * upper_ticks,
+            support = self.oracle.decode_loss(
+                np.asarray(
+                    [self.validation.occupied_codes[0], self.validation.occupied_codes[-1]],
+                    dtype=np.int64,
+                )
+            )
+            interval = cvar_interval(
+                selected_var=search.value,
+                var_interval=search.confidence_interval_95,
+                conditional_interval=(
+                    search.value + multiplier * lower_ticks,
+                    search.value + multiplier * upper_ticks,
+                ),
+                confidence=self.problem.confidence,
+                support=(float(support[0]), float(support[1])),
             )
             excess_estimates = tuple(items)
             expected_shortfall = value
@@ -648,17 +676,23 @@ class CompiledFactorRiskModel:
             threshold_evaluations=len(search.evaluations),
             device_name=device_name,
         )
+        provenance = execution_provenance(
+            device=resolve_quantum_device(device_name),
+            seed=seed,
+            shots=shot_count,
+            schedule=powers,
+            representation="factorized_reversible_loss_oracle",
+            qubits=self.problem.model.encoding.total_qubits,
+            likelihood_grid_size=likelihood_grid_size,
+            settings={"target_error": self.target_error},
+        )
+        provenance.update(
+            sampling_interval_method="bonferroni_exact_binomial",
+            sampling_objective_budget=budget,
+            sampling_failure_probability_per_objective=0.05 / budget,
+        )
         return FactorQuantumRiskResult(
-            provenance=execution_provenance(
-                device=resolve_quantum_device(device_name),
-                seed=seed,
-                shots=shot_count,
-                schedule=powers,
-                representation="factorized_reversible_loss_oracle",
-                qubits=self.problem.model.encoding.total_qubits,
-                likelihood_grid_size=likelihood_grid_size,
-                settings={"target_error": self.target_error},
-            ),
+            provenance=provenance,
             problem_kind=self.problem_kind,
             value=value,
             confidence_interval_95=(min(interval), max(interval)),

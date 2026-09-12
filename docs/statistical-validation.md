@@ -1,9 +1,70 @@
 # Statistical validation of the existing workflows
 
-This is empirical evidence for research workflows. A reported 95% interval is
-not a demonstrated simultaneous 95% guarantee for adaptive VaR/CVaR. CVaR
-intervals condition on the selected VaR; deterministic encoding error is separate.
-The 1.1.2 result serializers state these meanings explicitly.
+## Corrected workflow bounds in 1.1.3
+
+VaR/CVaR now budget sampling uncertainty across the full adaptive workflow and
+propagate VaR-selection uncertainty into CVaR. The point estimator, schedules,
+circuits, seeds, and shot counts are unchanged. Individual `AmplitudeEstimate`
+regions remain fixed-experiment diagnostics; the top-level risk interval uses
+separate, more conservative bounds derived from the same observations.
+
+For `m` occupied candidate losses, binary search visits at most
+`ceil(log2(m)) + 1` objectives, including a selected-point check. Set a fixed
+budget `B` to that bound plus one empirical excess objective, or all `r`
+structured excess-bit objectives. Each objective gets failure probability
+`0.05/B`, split over both tails of every Grover-power binomial observation.
+QFin inverts these exact Clopper–Pearson constraints through every sine branch,
+preserving amplitude alias modes. Empty intersections revert to full support.
+CDF monotonicity converts their simultaneous bounds into a quantile interval;
+contradictory bounds also revert to full support, never a selected point.
+
+This is a finite union-bound argument, not a claim inferred from Monte Carlo:
+conditional on previous queries, each fresh objective has failure probability
+at most `0.05/B` under ideal independent binomial shots. Summing those
+conditional failure bounds over at most `B` executed objectives gives at most
+0.05 workflow failure probability. Independence *between* the resulting
+interval events is not required. See [exact binomial intervals](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binomtest.html)
+and the [Bonferroni principle](https://www.itl.nist.gov/div898/handbook/prc/section4/prc473.htm).
+The allocation must use the pre-determined maximum query count, not the
+data-dependent number of queries actually executed.
+
+For CVaR at risk confidence `alpha`, define
+`g(t) = t + E[(L-t)+]/(1-alpha)`. Discrete expected shortfall, including fractional
+mass at a quantile atom, is `min_t g(t)` and a true VaR is a minimizer. This uses
+the [Rockafellar–Uryasev objective](https://sites.math.washington.edu/~rtr/papers/rtr179-CVaR1.pdf);
+the following finite-support propagation bound is the implementation's derivation.
+Every subgradient of `g` lies in `[-alpha/(1-alpha), 1]`. If the VaR interval is
+`[a,b]`, the excess-based interval for `g(t_selected)` is `[g_lo,g_hi]`, and
+
+```text
+penalty = max(0, t_selected-a, alpha/(1-alpha)*(b-t_selected)),
+```
+
+then `[g_lo-penalty, g_hi]` contains CVaR whenever all input bounds cover. Intersect
+with the known encoded loss support and the VaR lower bound. An inconsistent
+intersection falls back to the entire loss support. This does not use the exact
+classical or encoded CVaR to manufacture coverage. Structured excess bits share
+the same workflow budget, rather than combining unadjusted marginal intervals.
+
+`interval_semantics.simultaneous_workflow_coverage` is true for these corrected
+results **under the stated sampling model**. It excludes deterministic encoding,
+quantization, calibration, device noise, model misspecification, and simultaneous
+coverage across separate runs/problems. It is not a hardware or regulatory
+guarantee. A schedule without power zero can still have non-identifiable modes,
+large point error and very wide intervals. The classical error comparison and
+`meets_target_error` remain essential; a confidence bound does not repair a bad
+point estimate. No new quantum algorithm is introduced.
+
+Regression tests enumerate finite binomial count outcomes, compare power-zero
+bounds with SciPy's independent exact test, check discrete CVaR propagation,
+exercise contradictory bounds and run the real rare-tail circuits on both
+empirical and structured paths. Follow-up measurements are recorded in the
+[1.1.3 report](hardening-1.1.3.md).
+
+## Archived 1.1.2 evidence
+
+The experiments below used the **old local/conditional bounds**. They are kept
+as the reproducible failure baseline, not relabelled as 1.1.3 results.
 
 ## Experiment and provenance
 
