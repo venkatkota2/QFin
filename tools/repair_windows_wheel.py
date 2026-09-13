@@ -15,6 +15,7 @@ import os
 import struct
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -131,22 +132,28 @@ def repair(wheel: Path, destination: Path, report_directory: Path | None = None)
     extension, linker = wheel_extension(wheel)
     runtime = select_runtime(redist_directories(), linker)
     print(f"Repairing {wheel.name}: extension linker {linker}, runtime {runtime}", flush=True)
-    subprocess.run(
-        [
-            sys.executable,
-            "-W",
-            "error",
-            "-m",
-            "delvewheel",
-            "repair",
-            "--add-path",
-            str(runtime.parent),
-            "-w",
-            str(destination),
-            str(wheel),
-        ],
-        check=True,
-    )
+    # Own cleanup explicitly: delvewheel's implicit TemporaryDirectory finalizer
+    # otherwise emits an unraisable ResourceWarning under the strict warning gate.
+    # Its extraction option may remove its target, so pass a fresh private child.
+    with tempfile.TemporaryDirectory(prefix="qfin-wheel-repair-") as workspace:
+        subprocess.run(
+            [
+                sys.executable,
+                "-W",
+                "error",
+                "-m",
+                "delvewheel",
+                "repair",
+                "--extract-dir",
+                str(Path(workspace) / "wheel"),
+                "--add-path",
+                str(runtime.parent),
+                "-w",
+                str(destination),
+                str(wheel),
+            ],
+            check=True,
+        )
     repaired = destination / wheel.name
     records = verify_bundled_runtime(repaired, linker)
     report = {

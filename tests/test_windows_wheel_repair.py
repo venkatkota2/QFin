@@ -115,6 +115,48 @@ def test_wrong_architecture_and_missing_extension_fail_closed(tmp_path):
         repair.wheel_extension(path)
 
 
+@pytest.mark.parametrize("failure", [False, True])
+def test_repair_owns_private_extraction_cleanup(tmp_path, monkeypatch, failure):
+    source = wheel(tmp_path / "source.whl", runtime=None)
+    runtime = tmp_path / "crt/msvcp140.dll"
+    runtime.parent.mkdir()
+    runtime.write_bytes(pe())
+    destination = tmp_path / "repaired"
+    destination.mkdir()
+    reports = tmp_path / "reports"
+    monkeypatch.setattr(repair, "redist_directories", lambda: [runtime.parent])
+    extractions = []
+
+    def run(command, *, check):
+        assert command[:6] == [repair.sys.executable, "-W", "error", "-m", "delvewheel", "repair"]
+        assert check is True
+        extraction = Path(command[command.index("--extract-dir") + 1])
+        assert extraction.name == "wheel" and extraction.parent.is_dir()
+        assert not extraction.exists()
+        assert extraction.parent.name.startswith("qfin-wheel-repair-")
+        assert command[command.index("--add-path") + 1] == str(runtime.parent)
+        extractions.append(extraction)
+        extraction.mkdir()
+        (extraction / "intermediate.txt").write_text("temporary repair data")
+        if failure:
+            raise repair.subprocess.CalledProcessError(1, command)
+        wheel(destination / source.name)
+
+    monkeypatch.setattr(repair.subprocess, "run", run)
+    if failure:
+        with pytest.raises(repair.subprocess.CalledProcessError):
+            repair.repair(source, destination, reports)
+        assert not reports.exists()
+    else:
+        repair.repair(source, destination, reports)
+        report = json.loads((reports / "source.whl.runtime.json").read_text())
+        assert report["extension_linker_version"] == [14, 51]
+        assert len(report["bundled_runtimes"]) == 1
+    assert len(extractions) == 1
+    assert not extractions[0].parent.exists()
+    assert source.is_file() and runtime.is_file()
+
+
 def test_scipy_minimum_matches_licensing_fix():
     import tomllib
 
