@@ -1,6 +1,7 @@
 """Cross-platform fixture tests for the Windows wheel's fail-closed runtime gate."""
 
 import importlib.util
+import json
 import struct
 import zipfile
 from pathlib import Path
@@ -34,6 +35,35 @@ def wheel(path, *, runtime=(14, 51), extension=(14, 51), machine=0x8664):
         if runtime is not None:
             archive.writestr("qfin_quantum.libs/msvcp140-abc123.dll", pe(runtime, machine))
     return path
+
+
+def test_runtime_discovery_accepts_legacy_and_nested_toolsets(tmp_path, monkeypatch):
+    installations = [tmp_path / "VS2022", tmp_path / "VS2026"]
+    legacy = installations[0] / "VC/Redist/MSVC/14.44.35211/x64/Microsoft.VC143.CRT"
+    nested = installations[1] / "VC/Redist/MSVC/v145/14.51.36247/x64/Microsoft.VC145.CRT"
+    excluded = [
+        installations[1] / "VC/Redist/MSVC/v145/14.51.36247/arm64/Microsoft.VC145.CRT",
+        tmp_path / "unregistered/VC/Redist/MSVC/14.60/x64/Microsoft.VC145.CRT",
+    ]
+    for directory in [legacy, nested, *excluded]:
+        directory.mkdir(parents=True)
+    (legacy / "msvcp140.dll").write_bytes(pe((14, 44)))
+    (nested / "msvcp140.dll").write_bytes(pe((14, 51)))
+    monkeypatch.setenv("PROGRAMFILES(X86)", str(tmp_path / "Program Files (x86)"))
+
+    def vswhere(command, *, encoding):
+        assert Path(command[0]) == (
+            tmp_path / "Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+        )
+        assert command[1:] == ["-all", "-products", "*", "-format", "json", "-utf8"]
+        assert encoding == "utf-8"
+        # Duplicate discovery should not create duplicate runtime candidates.
+        return json.dumps([{"installationPath": str(path)} for path in installations * 2])
+
+    monkeypatch.setattr(repair.subprocess, "check_output", vswhere)
+    directories = repair.redist_directories()
+    assert directories == sorted([legacy, nested])
+    assert repair.select_runtime(directories, (14, 51)) == nested / "msvcp140.dll"
 
 
 def test_header_parser_and_runtime_selection_ignore_stale_path(tmp_path):

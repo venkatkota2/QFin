@@ -67,9 +67,13 @@ def redist_directories() -> list[Path]:
         {
             directory
             for installation in installations
+            # VS 2026 also nests redistributables under a toolset-family folder
+            # (for example v145). Search only installed VS redistributable roots,
+            # not PATH/System32, while accepting both old and new layouts.
             for directory in (Path(installation["installationPath"]) / "VC/Redist/MSVC").glob(
-                "*/x64/Microsoft.VC*.CRT"
+                "**/x64/Microsoft.VC*.CRT"
             )
+            if directory.is_dir()
         }
     )
 
@@ -81,6 +85,7 @@ def select_runtime(directories: list[Path], linker: tuple[int, int]) -> Path:
         if not runtime.is_file():
             continue
         machine, version = pe_linker(runtime.read_bytes())
+        print(f"Runtime candidate {runtime}: machine {machine:#x}, linker {version}", flush=True)
         if machine == AMD64 and version >= linker:
             candidates.append((version, str(runtime), runtime))
     if not candidates:
