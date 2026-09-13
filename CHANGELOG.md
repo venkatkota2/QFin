@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.3 — 2026-09-12 (repository milestone; unpublished)
+## 1.1.3 — 2026-09-13 (repository milestone; unpublished)
 
 - Budgeted exact-binomial uncertainty across all adaptive VaR and CVaR objectives,
   propagated quantile-selection error into expected-shortfall bounds, and made
@@ -12,7 +12,8 @@
 - Reused ALM period closing valuations as the next period's opening valuations,
   eliminating duplicate work while retaining finite-result and memory checks.
 - Added analytical, exhaustive binomial, real-circuit, packaging and performance
-  regressions. Licensing and repository administration remain owner decisions;
+  regressions, 9600 sampled workflow reruns and paired ALM timings with identical
+  output hashes. Licensing and repository administration remain owner decisions;
   no tag, release, publication or license grant is created.
 
 ## 1.1.2 — 2026-09-11 (repository milestone; unpublished)

@@ -35,6 +35,16 @@ runtime bundled in the repaired wheel. Missing, wrong-architecture, older, or
 unverifiable runtimes stop the build. Runtime provenance and hashes are retained
 with the wheel artifacts. This addresses the observed 14.51/14.40 mismatch;
 it does not certify every host's other loaded DLLs or bypass redistribution review.
+Portable Windows builds explicitly select the installed `v143` toolset. The
+2026-09-13 runner's default `v145` extension reported PE linker 14.51, while even
+its 14.51 redistributable reported PE linker 14.50. A PE linker version is not a
+DLL product version, so that conservative rejection is not itself proof that the
+installed 14.51 redistributable is incompatible. Selecting the older compiler
+allows the same-or-newer CRT rule without weakening the gate or suppressing the
+original delvewheel warning. Only desktop x64 CRT directories are searched;
+OneCore, Spectre and unregistered locations are excluded. Toolset removal or an
+unverifiable pairing fails closed. CMake documents explicit
+[Visual Studio toolset selection](https://cmake.org/cmake/help/latest/generator/Visual%20Studio%2018%202026.html#toolset-selection).
 See Microsoft's [runtime compatibility restriction](https://learn.microsoft.com/en-us/cpp/porting/binary-compat-2015-2017?view=msvc-170)
 and [PE header specification](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format).
 

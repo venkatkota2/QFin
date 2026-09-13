@@ -40,6 +40,13 @@ jobs:
           CIBW_ENVIRONMENT: >-
             CMAKE_BUILD_PARALLEL_LEVEL=2 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
             CMAKE_ARGS="-DQFIN_STRICT_WARNINGS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          # VS 2026's v145 extension reports PE linker 14.51 while its bundled
+          # CRT reports 14.50. Use installed v143 and a verified same/newer CRT;
+          # do not weaken the conservative PE gate or suppress repair warnings.
+          CIBW_ENVIRONMENT_WINDOWS: >-
+            CMAKE_BUILD_PARALLEL_LEVEL=2 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+            CMAKE_GENERATOR_TOOLSET=v143
+            CMAKE_ARGS="-DQFIN_STRICT_WARNINGS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
       - name: Record artifact digests and build context
         run: python tools/release_artifacts.py wheelhouse
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

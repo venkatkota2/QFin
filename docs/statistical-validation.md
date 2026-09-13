@@ -61,6 +61,44 @@ exercise contradictory bounds and run the real rare-tail circuits on both
 empirical and structured paths. Follow-up measurements are recorded in the
 [1.1.3 report](hardening-1.1.3.md).
 
+## Follow-up measurements in 1.1.3
+
+The same eight fixtures, five main configurations and 100 seeds per cell were
+rerun through the actual public compiler and PennyLane circuits: **8000 main
+executions plus 1600 ambiguity executions**. Minimum per-cell coverage against
+the independent Decimal reference was 96% for VaR and 100% for CVaR. Every
+ambiguity cell covered in 100/100 executions, including the rare-tail CVaR case
+that covered in 0/100 with the old conditional interval.
+
+| Fixture | Main VaR minimum | Main CVaR minimum | Ambiguous VaR | Ambiguous CVaR |
+| --- | ---: | ---: | ---: | ---: |
+| uniform | 100% | 100% | 100% | 100% |
+| two_point | 97% | 100% | 100% | 100% |
+| repeated_atom | 96% | 100% | 100% | 100% |
+| rare_tail | 100% | 100% | 100% | 100% |
+| near_degenerate | 100% | 100% | 100% | 100% |
+| symmetric | 100% | 100% | 100% | 100% |
+| factor_two_point | 99% | 100% | 100% | 100% |
+| factor_uniform | 100% | 100% | 100% | 100% |
+
+These are separate finite Monte Carlo observations, not a pooled or universal
+coverage guarantee. The Wilson intervals in each raw row quantify their sampling
+uncertainty. The rare-tail ambiguity point estimate remains wrong by about
+999.98 loss units; its interval now spans the encoded support, approximately
+`[0,1000]`, instead of claiming zero uncertainty. The fix honestly represents
+non-identifiability; it does not make an ambiguous schedule identify the truth.
+
+The [main record](history/hardening-1.1.3/statistical-workflows.json) was captured
+at clean commit `061c4ce9fd68ac7487380c8628b88e2cf9a45043`, version 1.1.3.
+The [ambiguity record](history/hardening-1.1.3/statistical-ambiguity.json) retains
+its actual development provenance: parent `f14de6598523ecefc79e925214a926cc720d3e79`,
+dirty working tree, version 1.1.3. Both used the corrected risk implementation
+committed in `061c4ce`; subsequent Windows-repair and documentation changes do not
+change that implementation. Python was 3.12.14, NumPy 2.5.3, SciPy 1.18.1,
+PennyLane 0.45.1 and Lightning 0.45.0, with `lightning.qubit`, single-thread
+settings and likelihood grid 4097. Per-row elapsed times sum to 520.13 s and
+40.84 s respectively; these are not benchmark comparisons.
+
 ## Archived 1.1.2 evidence
 
 The experiments below used the **old local/conditional bounds**. They are kept

@@ -43,6 +43,8 @@ def test_runtime_discovery_accepts_legacy_and_nested_toolsets(tmp_path, monkeypa
     nested = installations[1] / "VC/Redist/MSVC/v145/14.51.36247/x64/Microsoft.VC145.CRT"
     excluded = [
         installations[1] / "VC/Redist/MSVC/v145/14.51.36247/arm64/Microsoft.VC145.CRT",
+        installations[1] / "VC/Redist/MSVC/14.51.36247/onecore/x64/Microsoft.VC145.CRT",
+        installations[1] / "VC/Redist/MSVC/14.51.36247/spectre/x64/Microsoft.VC145.CRT",
         tmp_path / "unregistered/VC/Redist/MSVC/14.60/x64/Microsoft.VC145.CRT",
     ]
     for directory in [legacy, nested, *excluded]:
@@ -121,3 +123,11 @@ def test_scipy_minimum_matches_licensing_fix():
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
     assert "scipy==1.11.1" in workflow
     assert "scipy==1.11.0 " not in workflow
+
+
+def test_portable_windows_uses_compatible_toolset_and_strict_repair():
+    workflow = (ROOT / ".github/workflows/binary-wheels.yml").read_text()
+    assert "CIBW_ENVIRONMENT_WINDOWS:" in workflow
+    assert "CMAKE_GENERATOR_TOOLSET=v143" in workflow
+    assert 'tools/repair_windows_wheel.py" "{wheel}" "{dest_dir}"' in workflow
+    assert '--report-directory "{project}/wheelhouse"' in workflow

@@ -1,4 +1,51 @@
-# Performance and automatic engine policy — 1.1.2
+# Performance and automatic engine policy — 1.1.3
+
+## Follow-up: reuse ALM period-boundary valuations
+
+The NumPy ALM path implementation now reuses each period's closing bond index and
+short rate as the next period's opening values. It also reuses the initial bond
+valuation. This removes redundant valuations without removing finite-result,
+dimensional or memory checks. Native code and automatic dispatch are unchanged.
+
+The paired comparison used untouched starting main
+`f14de6598523ecefc79e925214a926cc720d3e79` (1.1.2) and the 1.1.3 implementation,
+in baseline/candidate/candidate/baseline process order. Each block had one warm-up
+and five measurements: ten timings per version/chunk. The workload was 1000
+zero-rate-shock scenarios, 20 periods and 20 bonds, through the public
+`project_paths(..., engine="numpy")` call. Construction was outside timed calls.
+The same interpreter and dependencies were used: Python 3.12.14, NumPy 2.5.3,
+SciPy 1.18.1, Linux 6.18.35 x86_64/glibc 2.39, Intel Xeon Platinum 8573C,
+single OpenBLAS/MKL/OMP threads.
+
+| Chunk | 1.1.2 median s | 1.1.3 median s | 1.1.3 min–max s | 1.1.3 std. dev. s | Median reduction |
+| --- | ---: | ---: | --- | ---: | ---: |
+| 16 | 0.645871 | 0.390445 | 0.367224–0.565238 | 0.053952 | 39.5% |
+| 256 | 0.405097 | 0.204200 | 0.191750–0.212067 | 0.006587 | 49.6% |
+
+All nine returned array SHA-256 digests match bit-for-bit across both versions,
+both chunks and all four blocks. Regressions also check scenario/path parity,
+chunk invariance, and exactly two initial plus two per-period present valuations.
+These results describe this workload on this host, not a universal speedup or
+evidence to change native crossover policy. No new peak-RSS claim is made.
+
+The [raw paired record](history/hardening-1.1.3/paired-alm-reuse.json) retains its
+actual candidate parent `f14de65` and dirty-tree flag. It records the imported
+source path and ALM source-file hash for each block. Both source trees ran under
+installed package metadata 1.1.3; the baseline label refers to the verified source
+checkout, not that metadata. The candidate source hash matches the implementation
+committed in `061c4ce`. The harness verifies the selected source to avoid an
+editable-install finder silently importing the other checkout.
+
+```bash
+python tools/benchmark_alm_reuse.py --baseline /path/to/f14de65-checkout --output alm.json
+```
+
+## Retained 1.1.2 evidence and unchanged dispatch policy
+
+The remaining measurements below belong to the 1.1.2 campaign. In particular,
+the old NumPy ALM-path timing is superseded by the controlled follow-up above;
+it must not be read as the current 1.1.3 timing. Other kernels and dispatch policy
+were not changed in 1.1.3.
 
 Correctness and explicit failure take precedence over timing. These measurements
 include public API validation, buffer preparation, allocation and the Python/C++
@@ -41,7 +88,7 @@ evidence to change their conservative automatic policy. No broad twofold
 regression remained reproducible in the targeted recheck. Small percentage
 differences are observations, not statistically established improvements.
 
-## Current NumPy/native comparisons
+## 1.1.2 NumPy/native comparisons
 
 These are same-version comparisons, distinct from incremental release changes.
 Each uses three timed repetitions. Numerical differences are in the result's
@@ -121,7 +168,7 @@ for complexity, aggregate output sizes, 512 MiB guards and simulator limitations
 
 ## Retained implementation alternatives and floating-point policy
 
-The current par-yield comparison measured 0.00002196 s for one floating schedule
+The 1.1.2 par-yield comparison measured 0.00002196 s for one floating schedule
 versus 0.00021286 s for two derived bonds; dated values were 0.00006972 s versus
 0.00083999 s. Five repetitions gave zero result difference. These measure an
 existing implementation choice, not an incremental 1.1.2 optimization. The MLAE

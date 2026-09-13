@@ -1,0 +1,224 @@
+{
+  "baseline_commit": "f14de6598523ecefc79e925214a926cc720d3e79",
+  "candidate_parent": "f14de6598523ecefc79e925214a926cc720d3e79",
+  "candidate_dirty": true,
+  "python": "3.12.14",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+  "warmups_per_block": 1,
+  "repetitions_per_block": 5,
+  "size": "1000 scenarios x 20 periods x 20 bonds",
+  "blocks": [
+    {
+      "label": "baseline",
+      "source": "/workspace/scratch/4218929e5c40/QFin-followup-baseline/src/qfin/__init__.py",
+      "installed_metadata_version": "1.1.3",
+      "source_alm_sha256": "302b1cae023acc0ea41587a9952dbd926ce72dc7114b9eb1a25e6d61c359ff49",
+      "numpy": "2.5.3",
+      "rows": [
+        {
+          "chunk": 16,
+          "seconds": [
+            0.65634798699989,
+            0.6601148059999105,
+            0.6616834400001608,
+            0.650736636000147,
+            0.649297166000224
+          ],
+          "median_seconds": 0.65634798699989,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        },
+        {
+          "chunk": 256,
+          "seconds": [
+            0.4085523819999253,
+            0.4071127060001345,
+            0.44837536999989425,
+            0.4030822889999399,
+            0.41749069399998007
+          ],
+          "median_seconds": 0.4085523819999253,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        }
+      ]
+    },
+    {
+      "label": "candidate",
+      "source": "/workspace/scratch/4218929e5c40/QFin/src/qfin/__init__.py",
+      "installed_metadata_version": "1.1.3",
+      "source_alm_sha256": "7fa5d72f4059cbfdb49d04d3053d5203b7d29c17a15bc691d4683f150bdf5d15",
+      "numpy": "2.5.3",
+      "rows": [
+        {
+          "chunk": 16,
+          "seconds": [
+            0.38478793199988104,
+            0.40035943199995927,
+            0.3875289820000489,
+            0.5652379729999666,
+            0.38126133400010076
+          ],
+          "median_seconds": 0.3875289820000489,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        },
+        {
+          "chunk": 256,
+          "seconds": [
+            0.19174958899998273,
+            0.2038051260001339,
+            0.20825963500010403,
+            0.19502510500001335,
+            0.2086905639998804
+          ],
+          "median_seconds": 0.2038051260001339,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        }
+      ]
+    },
+    {
+      "label": "candidate",
+      "source": "/workspace/scratch/4218929e5c40/QFin/src/qfin/__init__.py",
+      "installed_metadata_version": "1.1.3",
+      "source_alm_sha256": "7fa5d72f4059cbfdb49d04d3053d5203b7d29c17a15bc691d4683f150bdf5d15",
+      "numpy": "2.5.3",
+      "rows": [
+        {
+          "chunk": 16,
+          "seconds": [
+            0.39563020700006746,
+            0.3972405600000002,
+            0.36722351100002015,
+            0.39336110999988705,
+            0.38432948900003794
+          ],
+          "median_seconds": 0.39336110999988705,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        },
+        {
+          "chunk": 256,
+          "seconds": [
+            0.21206684900016626,
+            0.20845822000001135,
+            0.1961557659999471,
+            0.20459539400007998,
+            0.19825873400009186
+          ],
+          "median_seconds": 0.20459539400007998,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        }
+      ]
+    },
+    {
+      "label": "baseline",
+      "source": "/workspace/scratch/4218929e5c40/QFin-followup-baseline/src/qfin/__init__.py",
+      "installed_metadata_version": "1.1.3",
+      "source_alm_sha256": "302b1cae023acc0ea41587a9952dbd926ce72dc7114b9eb1a25e6d61c359ff49",
+      "numpy": "2.5.3",
+      "rows": [
+        {
+          "chunk": 16,
+          "seconds": [
+            0.6303287100001853,
+            0.6424453330000688,
+            0.641886488999944,
+            0.6350199979999616,
+            0.6400727749999078
+          ],
+          "median_seconds": 0.6400727749999078,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        },
+        {
+          "chunk": 256,
+          "seconds": [
+            0.415430219999962,
+            0.40115897999999106,
+            0.3963139919999321,
+            0.3895354930000394,
+            0.39824525800008814
+          ],
+          "median_seconds": 0.39824525800008814,
+          "array_sha256": {
+            "asset_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "bond_values": "d239e36d540f0cb745cda78ea57b4301cc2929ad3e21106fe9512037d292bb47",
+            "cash_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "equity_values": "1555f42a09f06e9170a576a3a15745eb4810c03f74b9594e181ef0d9bdfb6e72",
+            "liability_values": "1e1494d35748aefb94e226595cf8be33120e05e6ceaaf18cbd8dc30ba8a68ddd",
+            "liability_payments": "e9dc4ef500c9ab7ec2eaaa54e2f198d695d7c7e1fcfe4a00be04e6b6449b28ec",
+            "surplus": "481ba03ecce3524062528c53e106f97eb2f8d4a2d277a584b5b2c8e060e59529",
+            "funding_ratio": "2823df71af637a275bbbcb772a867b4fb2b51a8ae99f43e36504e561287830a4",
+            "transaction_costs": "b9ce164d30e4101b009fe4be765a070593cfbdd48f897853de159a8c177fabe8"
+          }
+        }
+      ]
+    }
+  ]
+}

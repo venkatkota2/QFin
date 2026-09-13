@@ -1,7 +1,7 @@
 # Main protection and repository settings
 
-Audit on 2026-09-11: GitHub reported `main` at
-`f9d4be69432ee813fccdde609420cdee9eb15580`, **`protected=false`**, with no required
+Audit on 2026-09-13: GitHub reported `main` at
+`f14de6598523ecefc79e925214a926cc720d3e79`, **`protected=false`**, with no required
 status-check enforcement. Protection was not applied by this task. The connected
 GitHub tools expose no repository-administration mutation; writing these
 instructions does not enforce them. Recheck live settings after any owner change.
