@@ -152,6 +152,7 @@ def study(*, repetitions=100, quick=False, ambiguity_only=False, device="lightni
                         "query_count_range": [min(query_counts), max(query_counts)],
                         "seconds": time.perf_counter() - started,
                         "provenance": result.provenance,
+                        "interval_semantics": result.to_dict()["interval_semantics"],
                     }
                 )
                 print(f"{name} {kind} alpha={alpha}: coverage={covered}/{repetitions}", flush=True)
@@ -166,8 +167,10 @@ def study(*, repetitions=100, quick=False, ambiguity_only=False, device="lightni
         "shot_source": "actual PennyLane circuits",
         "device": device,
         "interpretation": (
-            "Empirical marginal coverage; CVaR intervals condition on selected VaR. "
-            "No simultaneous guarantee."
+            "Per-cell empirical coverage of workflow-budgeted exact-binomial bounds, "
+            "including VaR selection and all CVaR excess objectives. Ideal independent "
+            "binomial shots are assumed; deterministic encoding and device errors are "
+            "excluded. This finite study does not establish cross-cell or hardware coverage."
         ),
         "rows": rows,
     }

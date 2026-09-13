@@ -78,5 +78,4 @@ The hardened timing includes the disjoint likelihood-ratio calculation and finit
 | `(0, 2, 5)` | 100 | 0.990 | 0.985 | 0.930 |
 | `(0, 2, 5)` | 100 | 0.999 | 0.990 | 0.965 |
 
-The raw region uses the one-parameter Wilks likelihood-ratio cutoff and is reported as diagnostic metadata. The main interval is its union with a simultaneous exact Clopper-Pearson set, which is deliberately conservative near boundaries and at low shot counts. VaR/CVaR searches remain adaptive, so their aggregate intervals are not simultaneous-coverage guarantees.
-
+The raw region uses the one-parameter Wilks likelihood-ratio cutoff and is reported as diagnostic metadata. The main interval is its union with a simultaneous exact Clopper-Pearson set, which is deliberately conservative near boundaries and at low shot counts. This fixed-experiment interval is unchanged. Since 1.1.3, adaptive VaR/CVaR uses a separate workflow failure budget and quantile-error propagation; see [statistical validation](statistical-validation.md) for the sampling assumptions and exclusions.

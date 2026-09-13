@@ -1,0 +1,5672 @@
+{
+  "schema_version": 1,
+  "qfin_version": "1.1.3",
+  "python": "3.12.14",
+  "source_commit": "061c4ce9fd68ac7487380c8628b88e2cf9a45043",
+  "working_tree_dirty": false,
+  "shot_source": "actual PennyLane circuits",
+  "device": "lightning.qubit",
+  "interpretation": "Per-cell empirical coverage of workflow-budgeted exact-binomial bounds, including VaR selection and all CVaR excess objectives. Ideal independent binomial shots are assumed; deterministic encoding and device errors are excluded. This finite study does not establish cross-cell or hardware coverage.",
+  "rows": [
+    {
+      "distribution": "uniform",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.07,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 2.0093251669998153,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.07000000000000042,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 1.680268821000027,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.88507008800002,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 7.759215375000167,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.487282407000066,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 13.843844020999995,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.030850864000058,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 7.770676473000094,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 11.073690828000053,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "uniform",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 13.87806300300008,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 0.97,
+      "coverage_wilson_95": [
+        0.9154806357094724,
+        0.9897454759759611
+      ],
+      "encoded_reference_coverage": 0.97,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 0.6,
+      "mean_error": 4.0,
+      "max_absolute_error": 10.0,
+      "mean_interval_width": 9.6,
+      "query_count_range": [
+        1,
+        2
+      ],
+      "seconds": 0.8100434519999453,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.000000000000002,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 1.7763568394002505e-15,
+      "correct_selected_var_frequency": 0.6,
+      "mean_error": 0.20000004969142457,
+      "max_absolute_error": 9.999999454846972,
+      "mean_interval_width": 9.752234274438514,
+      "query_count_range": [
+        2,
+        3
+      ],
+      "seconds": 1.1769447239998954,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.1,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.138076252000019,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.10000000000000175,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.929058621999957,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.1903993309999805,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.7763568394002505e-15,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.675979926000082,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.031516798999974,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.7763568394002505e-15,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.893272389999993,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.136393195999972,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "two_point",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 10.0,
+      "encoded_reference": 10.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.7763568394002505e-15,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.51627842400012,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": -0.11111111111111112,
+      "empirical_interval_coverage": 0.96,
+      "coverage_wilson_95": [
+        0.9016292856411208,
+        0.9843366960084523
+      ],
+      "encoded_reference_coverage": 0.97,
+      "encoding_error": -0.11111111111111112,
+      "correct_selected_var_frequency": 0.0,
+      "mean_error": 39.93333333333334,
+      "max_absolute_error": 100.0,
+      "mean_interval_width": 96.10666666666668,
+      "query_count_range": [
+        1,
+        2
+      ],
+      "seconds": 0.8051832860001014,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.00000000000004,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 4.263256414560601e-14,
+      "correct_selected_var_frequency": 0.0,
+      "mean_error": 2.002222719688586,
+      "max_absolute_error": 100.11110565352357,
+      "mean_interval_width": 97.63070090299001,
+      "query_count_range": [
+        2,
+        3
+      ],
+      "seconds": 1.1550368489999983,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.001111111111111,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.087925688000041,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.0011111111111253,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.835422799999833,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.139292980999926,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.4210854715202004e-14,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.7406757440001,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.162621948000151,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.4210854715202004e-14,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.0353378719999,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.191187984999942,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "repeated_atom",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 100.0,
+      "encoded_reference": 100.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.4210854715202004e-14,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.521447561999821,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        1,
+        1
+      ],
+      "seconds": 0.6679760009999427,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.01,
+      "encoded_reference": 0.010000000000000002,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 1.734723475976807e-18,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": -0.01,
+      "max_absolute_error": 0.01,
+      "mean_interval_width": 467.4698504026679,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 1.0233618780000597,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        1,
+        1
+      ],
+      "seconds": 2.2055782869999803,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.02,
+      "encoded_reference": 0.019999999999999983,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": -1.734723475976807e-17,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.00286272172394232,
+      "max_absolute_error": 1.12348475388955,
+      "mean_interval_width": 9.43293544218593,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.106018936000055,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        1,
+        1
+      ],
+      "seconds": 3.7622004700001526,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.1,
+      "encoded_reference": 0.09999999999999991,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": -9.71445146547012e-17,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.016394153720558618,
+      "max_absolute_error": 0.762312687900567,
+      "mean_interval_width": 4.094297436299023,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.197162213999945,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        1,
+        1
+      ],
+      "seconds": 2.196116168999879,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.2,
+      "encoded_reference": 0.19999999999999982,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": -1.942890293094024e-16,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": -0.2,
+      "max_absolute_error": 0.2,
+      "mean_interval_width": 465.92473133650776,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.1104398380000475,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        1,
+        1
+      ],
+      "seconds": 3.7718533050001497,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "rare_tail",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 0.9999999999999991,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": -8.881784197001252e-16,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.16394153720558596,
+      "max_absolute_error": 7.623126879005669,
+      "mean_interval_width": 40.94297436299022,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.1925070899999355,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 1.0139968749999753,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 1.4087489900000492,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.026460700000143,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.042860769000072,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.137842188999912,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.46440742699997,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 3.987308984000265,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.939648185999886,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 7.08562006000011,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "near_degenerate",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.521560508999755,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.14,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 1.3725380109999605,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.1400000000000004,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 1.6863321549999455,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.985748855000111,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 9.816249110000172,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.550829511999837,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 13.871080603999872,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 5.922748326000146,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 7.758772448999935,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 10.65291121600012,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "symmetric",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        4,
+        4
+      ],
+      "seconds": 14.32057278800039,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "empirical_probability_tree",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01,
+          "max_structured_rotations": 32767
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 4,
+        "sampling_failure_probability_per_objective": 0.0125
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 0.0,
+      "encoded_reference": 0.0,
+      "empirical_interval_coverage": 0.99,
+      "coverage_wilson_95": [
+        0.9455138038212946,
+        0.9982325679358593
+      ],
+      "encoded_reference_coverage": 0.99,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 0.41,
+      "mean_error": 0.59,
+      "max_absolute_error": 1.0,
+      "mean_interval_width": 0.98,
+      "query_count_range": [
+        1,
+        2
+      ],
+      "seconds": 0.7828747989997282,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0000000000000002,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 2.220446049250313e-16,
+      "correct_selected_var_frequency": 0.41,
+      "mean_error": -0.0019999956746887325,
+      "max_absolute_error": 0.9999999454846971,
+      "mean_interval_width": 0.9852234274438513,
+      "query_count_range": [
+        2,
+        3
+      ],
+      "seconds": 1.0873893049997605,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 2.634151309999652,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 3.7754215579998345,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.218012421999902,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.311911553999835,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 2.5794996569998148,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 3.707913728999756,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        2,
+        2
+      ],
+      "seconds": 4.169277750000219,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 2,
+        "sampling_failure_probability_per_objective": 0.025
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_two_point",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 1.0,
+      "encoded_reference": 1.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 1.1102230246251565e-16,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.072118025999771,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 1,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "var",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.05,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 1.4797434639999665,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "cvar",
+      "confidence": 0.9,
+      "shots": 100,
+      "schedule": [
+        0
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.05000000000000043,
+      "query_count_range": [
+        5,
+        5
+      ],
+      "seconds": 2.1979313179999735,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 5,
+        "sampling_failure_probability_per_objective": 0.01
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "var",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.929495422999935,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "cvar",
+      "confidence": 0.95,
+      "shots": 500,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        5,
+        5
+      ],
+      "seconds": 11.205925423999815,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 500,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 5,
+        "sampling_failure_probability_per_objective": 0.01
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "var",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.01,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 16.316904754000007,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "cvar",
+      "confidence": 0.99,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        5,
+        5
+      ],
+      "seconds": 23.195273483000165,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 5,
+        "sampling_failure_probability_per_objective": 0.01
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "var",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.0,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 6.962782579999839,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "cvar",
+      "confidence": 0.995,
+      "shots": 100,
+      "schedule": [
+        0,
+        1,
+        2
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        5,
+        5
+      ],
+      "seconds": 11.634310150000147,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 100,
+        "mlae_schedule": [
+          0,
+          1,
+          2
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 5,
+        "sampling_failure_probability_per_objective": 0.01
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "var",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 0.01,
+      "query_count_range": [
+        3,
+        3
+      ],
+      "seconds": 12.65004666699997,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 3,
+        "sampling_failure_probability_per_objective": 0.016666666666666666
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_adaptive_cdf_bounds",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    },
+    {
+      "distribution": "factor_uniform",
+      "kind": "cvar",
+      "confidence": 0.999,
+      "shots": 2000,
+      "schedule": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "repetitions": 100,
+      "seed_start": 71833,
+      "exact_reference": 3.0,
+      "encoded_reference": 3.0,
+      "empirical_interval_coverage": 1.0,
+      "coverage_wilson_95": [
+        0.9630065017930143,
+        1
+      ],
+      "encoded_reference_coverage": 1.0,
+      "encoding_error": 0.0,
+      "correct_selected_var_frequency": 1.0,
+      "mean_error": 0.0,
+      "max_absolute_error": 0.0,
+      "mean_interval_width": 4.440892098500626e-16,
+      "query_count_range": [
+        5,
+        5
+      ],
+      "seconds": 20.82808089299988,
+      "provenance": {
+        "schema_version": 1,
+        "dependencies": {
+          "qfin-quantum": "1.1.3",
+          "numpy": "2.5.3",
+          "scipy": "1.18.1",
+          "pennylane": "0.45.1",
+          "pennylane-lightning": "0.45.0"
+        },
+        "execution_engine": "quantum_simulator",
+        "backend": "pennylane",
+        "device": "lightning.qubit",
+        "seed": 71932,
+        "shots_per_circuit": 2000,
+        "mlae_schedule": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "representation": "factorized_reversible_loss_oracle",
+        "data_qubits": 2,
+        "likelihood_grid_size": 4097,
+        "precision_settings": {
+          "target_error": 0.01
+        },
+        "randomness_contract": "seeded backend-dependent sampling; no cross-device bitwise promise",
+        "adaptive_seed_policy": "CDF queries add their query index; excess uses a separate offset",
+        "sampling_interval_method": "bonferroni_exact_binomial",
+        "sampling_objective_budget": 5,
+        "sampling_failure_probability_per_objective": 0.01
+      },
+      "interval_semantics": {
+        "level": 0.95,
+        "scope": "simultaneous_var_selection_and_excess",
+        "simultaneous_workflow_coverage": true,
+        "includes_deterministic_encoding_error": false,
+        "sampling_assumptions": "ideal binomial shots conditional on previous adaptive queries; excludes noise, calibration error, and cross-run simultaneous coverage",
+        "empirical_validation": "docs/statistical-validation.md"
+      }
+    }
+  ]
+}

@@ -41,17 +41,25 @@ def execution_provenance(
     }
 
 
-def interval_semantics(kind: str) -> dict[str, object]:
+def interval_semantics(kind: str, *, simultaneous: bool = False) -> dict[str, object]:
     return {
         "level": 0.95,
         "scope": (
-            "conditional_on_selected_var"
+            "simultaneous_var_selection_and_excess"
+            if simultaneous and kind == "conditional_value_at_risk"
+            else "simultaneous_adaptive_cdf_bounds"
+            if simultaneous and kind == "value_at_risk"
+            else "conditional_on_selected_var"
             if kind == "conditional_value_at_risk"
             else "adaptive_local_regions"
             if kind == "value_at_risk"
             else "fixed_objective_guarded_likelihood_region"
         ),
-        "simultaneous_workflow_coverage": False,
+        "simultaneous_workflow_coverage": simultaneous,
         "includes_deterministic_encoding_error": False,
+        "sampling_assumptions": (
+            "ideal binomial shots conditional on previous adaptive queries; "
+            "excludes noise, calibration error, and cross-run simultaneous coverage"
+        ),
         "empirical_validation": "docs/statistical-validation.md",
     }

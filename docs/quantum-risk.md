@@ -86,9 +86,10 @@ inside a classical binary search over occupied encoded grid points. Each
 comparison is driven by an MLAE estimate of `P(L <= K)`. The point estimate is
 the first tested loss threshold whose estimated CDF reaches `alpha`.
 
-The reported VaR interval combines each per-experiment MLAE interval with CDF
-monotonicity. It is useful diagnostic information, but it is not a
-simultaneous-coverage theorem across every adaptive threshold test.
+Since 1.1.3, the reported VaR interval inverts exact-binomial CDF bounds whose
+failure budget is allocated across the maximum number of adaptive queries.
+Under ideal independent binomial shots, these are simultaneous bounds for one
+encoded workflow. Individual MLAE intervals remain local diagnostics.
 
 ## Conditional value-at-risk
 
@@ -107,8 +108,9 @@ CVaR_alpha = v + E[max(L-v, 0)] / (1-alpha).
 ```
 
 MLAE estimates the normalized excess amplitude and QFin converts it back to
-financial units. The CVaR interval is conditional on the selected VaR grid
-point; VaR-search uncertainty is reported separately.
+financial units. Since 1.1.3, the top-level CVaR interval propagates both excess
+sampling and VaR-selection uncertainty using the slope bounds of the tail-excess
+objective. It no longer treats the selected grid point as certain.
 
 ## Error and interval reporting
 
@@ -174,7 +176,8 @@ See [performance](performance.md) and the preserved
 The [1.1.2 statistical study](statistical-validation.md) runs actual empirical and
 factorized CDF queries, adaptive selection and tail-excess circuits with independent
 finite references. It includes an ambiguous schedule without power zero. Result
-`to_dict()` exposes `interval_semantics` and `provenance`; a field named
-`confidence_interval_95` is not a claim of simultaneous coverage of the complete
-adaptive workflow. CVaR intervals condition on the selected VaR and exclude
-deterministic encoding/model/scenario-design error.
+`to_dict()` exposes `interval_semantics` and `provenance`. The
+[1.1.3 correction](statistical-validation.md#corrected-workflow-bounds-in-113)
+provides workflow-budgeted bounds under ideal binomial sampling; it excludes
+deterministic encoding/model/scenario-design and hardware error. Non-identifiable
+schedules can still produce poor point estimates and wide intervals.

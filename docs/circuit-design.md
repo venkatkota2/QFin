@@ -197,8 +197,8 @@ avoiding the joint lookup table.
 The v0.9 loss register is compiled once and reused across VaR thresholds. For
 candidate integer code `v`, QFin marks `loss >= v + 1`, estimates that amplitude
 with MLAE, and uses its complement as `CDF(v)`. A classical binary search visits
-only occupied loss codes. Local MLAE intervals are propagated through CDF
-monotonicity; they are not a simultaneous-coverage construction.
+only occupied loss codes. Since 1.1.3, separately budgeted exact-binomial CDF
+bounds are propagated through monotonicity; local MLAE intervals remain diagnostic.
 
 CVaR uses a second unsigned register of the same width. A comparator marks
 `loss >= v + 1`; controlled `OutPoly` subtraction writes
@@ -219,5 +219,6 @@ Dividing by the fixed-point scale and `1-alpha`, then adding the selected VaR,
 implements the coherent discrete tail-excess identity. This avoids an
 exponential amplitude-rotation table but does not make the full workflow
 constant-cost: resource reports include every threshold objective and all `r`
-bit objectives. CVaR intervals combine marginal bit intervals conditional on
-the selected VaR and are explicitly labelled with that limitation.
+bit objectives. Since 1.1.3, CVaR bounds budget all CDF and excess-bit objectives
+and propagate VaR-selection error. Their workflow coverage assumes ideal
+binomial shots and excludes encoding/device error; see [statistical validation](statistical-validation.md).

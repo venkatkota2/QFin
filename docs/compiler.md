@@ -47,4 +47,5 @@ new user configuration object or required argument is introduced. Quantum result
 serialization adds execution provenance and explicit interval semantics while
 preserving old keys and positional result fields. [Reproducibility](reproducibility.md)
 lists the retained settings; [statistical validation](statistical-validation.md)
-distinguishes deterministic encoding error from local or conditional shot intervals.
+distinguishes deterministic encoding error from local diagnostics and the
+corrected 1.1.3 workflow-budgeted sampling intervals.

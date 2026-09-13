@@ -135,21 +135,15 @@ def _numpy_path_chunk(
 
     short_tenor = np.array([dt], dtype=np.float64)
     short_prepared = _PreparedScenarioValuation.build(short_tenor, model.curve)
+    # A period's opening market is exactly the previous period's closing market.
+    # Keep those valuations instead of rebuilding and validating them twice.
+    start_index = np.full(scenario_count, initial_bond, dtype=np.float64)
+    start_short_rates = -np.log(short_prepared.discount_factors(zero_shocks)[:, 0]) / dt
     for period in range(period_count):
         period_start = period * dt
         period_end = (period + 1) * dt
-        start_rate_shocks = zero_shocks if period == 0 else rate_paths[:, period - 1, :]
         end_rate_shocks = rate_paths[:, period, :]
-        start_spreads = zero_spreads if period == 0 else spread_paths[:, period - 1]
         end_spreads = spread_paths[:, period]
-        start_index = _scenario_present_value(
-            asset_times,
-            asset_amounts,
-            period_start,
-            model.curve,
-            start_rate_shocks,
-            start_spreads,
-        )
         end_index = _scenario_present_value(
             asset_times,
             asset_amounts,
@@ -158,9 +152,9 @@ def _numpy_path_chunk(
             end_rate_shocks,
             end_spreads,
         )
-        start_short_rates = -np.log(short_prepared.discount_factors(start_rate_shocks)[:, 0]) / dt
         end_short_rates = -np.log(short_prepared.discount_factors(end_rate_shocks)[:, 0]) / dt
         average_short_rate = 0.5 * (start_short_rates + end_short_rates)
+        start_short_rates = end_short_rates
         cash_growth = np.exp(average_short_rate * dt)
         received = (asset_times > period_start + 1.0e-12) & (asset_times <= period_end + 1.0e-12)
         if np.any(received):
@@ -180,6 +174,7 @@ def _numpy_path_chunk(
             out=cash_growth.copy(),
             where=start_index != 0.0,
         )
+        start_index = end_index
         bond_balance *= bond_return
         cash_balance *= cash_growth
         equity_balance *= 1.0 + equity_returns[:, period]

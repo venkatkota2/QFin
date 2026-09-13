@@ -21,8 +21,10 @@ production equivalence to commercial pricing/actuarial platforms.
   structured factor arithmetic supports restricted affine grids and sparse
   exposures with explicit validation and resource limits.
 - MLAE reports a guarded likelihood-based confidence region for each fixed
-  experiment. Adaptive VaR and conditional CVaR intervals do not become
-  simultaneous-coverage guarantees across the whole workflow.
+  experiment. Separate 1.1.3 workflow bounds account for adaptive VaR selection
+  and all excess queries under ideal binomial shots. They do not cover encoding,
+  device noise, model risk or simultaneous comparisons across independent runs.
+  Ambiguous schedules may still yield inaccurate point estimates and wide bounds.
 - No QSVT, block-encoding implementation, new stochastic models, new derivatives,
   new quantum backends or new hardware-provider execution is added here.
 - Native execution is single threaded. Benchmarks depend on the CPU, compiler,
@@ -35,11 +37,12 @@ none is invented by the hardening work. Apache-2.0, MIT or proprietary terms are
 possible choices with different obligations; selecting one is a maintainer/legal
 decision, not a technical default.
 
-## 1.1.2 operational boundaries
+## Operational boundaries
 
-The empirical studies do not establish workflow-wide simultaneous intervals.
+The sampling guarantee follows its stated mathematical assumptions, not a
+generalization from finite empirical studies.
 Memory guards are per operation/group, not a process RSS guarantee. Tested portable
 wheels cover Linux x86_64, macOS arm64 and Windows AMD64 on CPython 3.11–3.13.
 Manual release attestation is configured separately from normal CI; no publication
 is implied. Main protection requires repository administration, and licensing
-remains unresolved. See [the current hardening report](hardening-1.1.2.md).
+remains unresolved. See [the follow-up report](hardening-1.1.3.md).
