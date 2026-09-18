@@ -1,5 +1,12 @@
 # Architecture
 
+The execution target is local simulation on a classical computer. A supported
+financial model enters QFin, which selects its quantum representation and
+algorithm, constructs the logical quantum program, then runs that program through
+PennyLane/Lightning. Hardware access, hardware credentials and a physical quantum
+processor are not prerequisites. Existing device/export helpers remain optional;
+they are not part of the default execution path.
+
 QFin keeps financial objects, validation, algorithm selection, orchestration,
 compiler decisions and PennyLane integration in Python. Private C++20 kernels
 consume contiguous batched buffers for existing finance arithmetic. PennyLane
@@ -11,7 +18,8 @@ flowchart TB
     B --> C["NumPy reference"]
     B --> D["Private finance C++ kernels"]
     A --> E["Compiler and error metadata"]
-    E --> F["PennyLane circuits and simulators"]
+    E --> F["Logical quantum program"]
+    F --> G["Local PennyLane / Lightning simulation"]
 ```
 
 `engine="auto"` is an implementation choice within a financial methodology.

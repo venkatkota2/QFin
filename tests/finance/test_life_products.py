@@ -52,6 +52,9 @@ def test_product_foundations_have_analytical_zero_decrement_cashflows() -> None:
     assert result.product_present_values["universal_life"] == pytest.approx(10_000)
 
 
+@pytest.mark.skipif(
+    not qfin.system_info()["native_extension"], reason="native extension unavailable",
+)
 def test_multi_state_and_mixed_product_native_parity() -> None:
     assumptions = _assumptions(
         lapse_rate=0.03,
@@ -113,18 +116,19 @@ def test_multi_state_and_mixed_product_native_parity() -> None:
     assert native.present_value == pytest.approx(reference.present_value, rel=1e-13)
 
 
-def test_empty_model_point_book_is_supported_by_both_engines() -> None:
+def test_empty_model_point_book_is_supported_by_both_engines(installed_engine: str) -> None:
     assumptions = _assumptions()
     reference = qfin.project_liabilities([], assumptions, engine="numpy")
-    native = qfin.project_liabilities([], assumptions, engine="native")
-    assert reference.present_value == native.present_value == 0
-    assert reference.policy_present_values.size == native.policy_present_values.size == 0
-    assert all(value == 0 for value in native.product_present_values.values())
+    result = qfin.project_liabilities([], assumptions, engine=installed_engine)
+    assert reference.present_value == result.present_value == 0
+    assert reference.policy_present_values.size == result.policy_present_values.size == 0
+    assert all(value == 0 for value in result.product_present_values.values())
 
 
 def test_non_empty_life_auto_dispatch_uses_measured_native_path() -> None:
     result = qfin.project_liabilities([qfin.LifePolicy(40, 100_000, 500, 1)], _assumptions())
-    assert result.engine == "mixed"
+    expected = "mixed" if qfin.system_info()["native_extension"] else "numpy"
+    assert result.engine == expected
 
 
 def test_life_model_point_and_assumption_validation() -> None:

@@ -1,4 +1,4 @@
-"""Run the complete QFin European-call MVP."""
+"""Compile a financial model and simulate its quantum program locally with Lightning."""
 
 import qfin
 
@@ -7,5 +7,7 @@ option = qfin.EuropeanCall(strike=105, maturity=1.0)
 compiled = qfin.compile(option, market, target_error=0.10, max_qubits=8)
 
 print(compiled.explain())
-result = compiled.run(shots=2_000, schedule=(0, 1, 2, 4), seed=7)
+result = compiled.run(
+    shots=2_000, schedule=(0, 1, 2, 4), seed=7, device_name="lightning.qubit",
+)
 print(result.to_dict())

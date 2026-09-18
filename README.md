@@ -2,38 +2,66 @@
 
 [![CI](https://github.com/venkatkota2/QFin/actions/workflows/ci.yml/badge.svg)](https://github.com/venkatkota2/QFin/actions/workflows/ci.yml)
 
-QFin is an experimental finance-specific Python library with a private C++20
-finance core and a compiler for existing PennyLane quantum workflows. Financial
-users work with curves, bonds, portfolios, policies and loss distributions.
-Results report their methodology, execution engine, accuracy metadata and limits.
+QFin is an experimental Python library for compiling supported financial models
+into logical quantum programs and simulating them locally with PennyLane and
+PennyLane-Lightning. The intended workflow is **financial model → QFin
+financial-to-quantum compilation → logical quantum program → PennyLane/Lightning
+simulation**. A physical quantum computer or hardware account is not required.
 
-The 1.1.2 hardening milestone improves numerical correctness, settlement
-consistency, reproducibility, API ownership, testing and packaging. It adds no
-financial products, stochastic models, quantum algorithms or backends.
+The existing classical finance utilities use NumPy/SciPy and optional private
+C++20 kernels. Results report methodology, execution engine, accuracy and limits.
+
+The 1.1.2.post1 packaging update makes the existing library installable with or
+without a C++ toolchain. Financial models, calculations and public APIs are unchanged.
 
 ## Install
 
-From a repository checkout:
+Install directly from this repository with Python 3.11–3.13:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
-python -m pip install -e .
+python -m pip install "qfin-quantum[quantum] @ git+https://github.com/venkatkota2/QFin.git"
+python -m qfin --version
 ```
 
-Python 3.11+ is required. Core calculations require NumPy and SciPy. A source or
-editable install builds the native extension and needs a C++20 compiler; an
-installed wheel contains the extension. Optional extras remain separate:
+NumPy and SciPy are installed automatically. Source installs build the C++20
+extension when possible and otherwise use the existing NumPy engines. To skip
+compilation explicitly, add `-Cwheel.cmake=false` to the install command. Native
+binary wheels include the extension and need no compiler on the user's machine.
+
+The command above includes PennyLane and Lightning. For just the classical
+finance utilities, omit the quantum extra:
 
 ```bash
+python -m pip install "qfin-quantum @ git+https://github.com/venkatkota2/QFin.git"
+```
+
+The distribution is `qfin-quantum`; the import is `qfin`. This repository has not
+been published to PyPI: use the URL above, a local checkout, or a tested wheel.
+See the [installation guide](docs/installation.md) for Windows, compiler-free
+installation, native acceleration, extras and troubleshooting.
+
+For development from a repository checkout:
+
+```bash
+python -m pip install -e .               # core library
 python -m pip install -e ".[quantum]"     # PennyLane and Lightning simulation
 python -m pip install -e ".[qiskit]"      # existing circuit export
 python -m pip install -e ".[validation]"  # independent QuantLib comparisons
 python -m pip install -e ".[dev]"         # development checks
 ```
 
-The distribution is `qfin-quantum`; the import is `qfin`. Read the installed
-version from `qfin.__version__` or `qfin --version`.
+Verify the installation from any directory:
+
+```python
+import qfin
+
+curve = qfin.YieldCurve([0, 1, 5], [0.03, 0.03, 0.03])
+bond = qfin.FixedRateBond(maturity=5, coupon_rate=0.04)
+print(qfin.price_bonds([bond], curve).dirty_prices)
+print(qfin.system_info()["native_extension"])
+```
 
 ## Dated fixed income through ALM risk
 
@@ -75,16 +103,26 @@ interpolation with flat-zero extrapolation; automatic dispatch uses NumPy for th
 other supported methods. Mixed dated/floating batches and inconsistent settlement
 clocks are rejected.
 
-## Existing quantum workflows
+## Financial model to local quantum simulation
 
 ```python
+import qfin
+
 market = qfin.BlackScholes(spot=100, rate=0.04, volatility=0.20)
 option = qfin.EuropeanCall(strike=105, maturity=1.0)
 compiled = qfin.compile(option, market, target_error=0.10, max_qubits=8)
 print(compiled.explain())
-result = compiled.run(shots=2_000, schedule=(0, 1, 2, 4), seed=7)
+result = compiled.run(
+    shots=2_000, schedule=(0, 1, 2, 4), seed=7,
+    device_name="lightning.qubit",
+)
 print(result.value, result.confidence_interval_95)
 ```
+
+`compiled` contains the logical problem, encoding, algorithm and resource/error
+metadata; `run()` executes its circuits in the local Lightning simulator. To
+inspect the circuit, use
+`compiled.to_pennylane(device_name="lightning.qubit").draw(power=0)`.
 
 This example requires the quantum extra. Finite and structured-factor risk retain
 their existing explicit `run_quantum()` paths. MLAE uses deterministic likelihood

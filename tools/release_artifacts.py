@@ -45,7 +45,7 @@ def record(directory: Path) -> None:
                 "runner": platform.platform(),
                 "python": platform.python_version(),
                 "float_policy": "GCC/Clang: -fno-fast-math -ffp-contract=off; MSVC: /fp:strict",
-                "wheel_builder": "cibuildwheel 4.2.1; platform default repair",
+                "wheel_builder": "scikit-build-core; portable native wheels use cibuildwheel 4.2.1",
                 "artifacts": {p.name: digest(p) for p in files},
             },
             indent=2,
@@ -67,8 +67,12 @@ def collect(source: Path, destination: Path) -> None:
                 raise SystemExit(f"duplicate or altered tested artifact: {name}")
             seen.add(name)
             shutil.copyfile(file, destination / name)
-    if len(list(destination.glob("*.whl"))) != 9 or len(list(destination.glob("*.tar.gz"))) != 1:
-        raise SystemExit("expected nine CPython/platform wheels and one source distribution")
+    wheels = list(destination.glob("*.whl"))
+    pure = list(destination.glob("*-py3-none-any.whl"))
+    if len(wheels) != 10 or len(pure) != 1 or len(list(destination.glob("*.tar.gz"))) != 1:
+        raise SystemExit(
+            "expected nine CPython/platform wheels, one universal wheel and one source distribution"
+        )
     record(destination)
 
 

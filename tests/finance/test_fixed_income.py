@@ -85,13 +85,12 @@ def test_empty_batch_and_invalid_inputs(flat_curve: qfin.YieldCurve) -> None:
         qfin.yield_from_prices(qfin.FixedRateBond(1.0, 0.0), 0.0)
 
 
-def test_yield_dv01_near_domain_boundary_and_unbracketed_solve() -> None:
+def test_yield_dv01_near_domain_boundary_and_unbracketed_solve(installed_engine: str) -> None:
     bond = qfin.FixedRateBond(1.0, 0.0, frequency=1)
     reference = qfin.price_bonds_from_yield(bond, -0.99995, engine="numpy")
-    native = qfin.price_bonds_from_yield(bond, -0.99995, engine="native")
+    result = qfin.price_bonds_from_yield(bond, -0.99995, engine=installed_engine)
     assert np.isfinite(reference.dv01[0])
-    np.testing.assert_allclose(native.dv01, reference.dv01, rtol=1e-13)
-    for engine in ("numpy", "native"):
-        solved = qfin.yield_from_prices(bond, 1.0e-100, engine=engine)
-        assert not solved.converged[0]
-        assert solved.iterations[0] == 0
+    np.testing.assert_allclose(result.dv01, reference.dv01, rtol=1e-13)
+    solved = qfin.yield_from_prices(bond, 1.0e-100, engine=installed_engine)
+    assert not solved.converged[0]
+    assert solved.iterations[0] == 0

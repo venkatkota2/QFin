@@ -30,12 +30,22 @@ jobs:
           CIBW_ARCHS_LINUX: x86_64
           CIBW_ARCHS_MACOS: arm64
           CIBW_ARCHS_WINDOWS: AMD64
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >-
+            python "{project}/tools/repair_windows_wheel.py" "{wheel}" "{dest_dir}"
+            --report-directory "{project}/wheelhouse"
           CIBW_TEST_REQUIRES: pytest hypothesis==6.168.0
           CIBW_TEST_COMMAND: >-
             python {project}/examples/wheel_smoke.py &&
             python -m pytest {project}/tests/native {project}/tests/test_reference_corpus.py {project}/tests/test_reference_extensions.py
           CIBW_ENVIRONMENT: >-
-            CMAKE_BUILD_PARALLEL_LEVEL=2 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+            QFIN_REQUIRE_NATIVE=1 CMAKE_BUILD_PARALLEL_LEVEL=2 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+            CMAKE_ARGS="-DQFIN_STRICT_WARNINGS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          # VS 2026's v145 extension reports PE linker 14.51 while its bundled
+          # CRT reports 14.50. Use installed v143 and a verified same/newer CRT;
+          # do not weaken the conservative PE gate or suppress repair warnings.
+          CIBW_ENVIRONMENT_WINDOWS: >-
+            QFIN_REQUIRE_NATIVE=1 CMAKE_BUILD_PARALLEL_LEVEL=2 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+            CMAKE_GENERATOR_TOOLSET=v143
             CMAKE_ARGS="-DQFIN_STRICT_WARNINGS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
       - name: Record artifact digests and build context
         run: python tools/release_artifacts.py wheelhouse
