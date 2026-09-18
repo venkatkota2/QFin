@@ -24,6 +24,8 @@ jobs:
     env:
       QFIN_REQUIRE_NATIVE: "0"
       # Prove that no working compiler is needed, even on development runners.
+      # Visual Studio generators ignore CXX; Ninja honors it on every platform.
+      CMAKE_GENERATOR: Ninja
       CXX: qfin-intentionally-missing-cxx
       OMP_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
@@ -43,7 +45,7 @@ jobs:
         run: >-
           python -c "import subprocess,sys;
           result=subprocess.run([sys.executable,'-m','build','--wheel','--outdir','required-native']);
-          assert result.returncode != 0, 'required-native build silently fell back'"
+          assert result.returncode != 0, 'native build succeeded despite the missing compiler'"
       - run: python -m venv package-test
       - run: ${{ matrix.python }} -m pip install numpy scipy pytest "hypothesis>=6.100,<7"
       - run: ${{ matrix.python }} -m pip install --no-index --no-deps --find-links dist qfin-quantum
