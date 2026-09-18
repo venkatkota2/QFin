@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.2.post1 — 2026-09-18 (packaging update; unpublished)
+
+- Made source installs fall back to a pure-Python wheel when the optional native
+  build fails; `QFIN_REQUIRE_NATIVE=1` preserves strict native builds and is set
+  in native CI. Documented explicit compiler-free, GitHub, wheel and editable installs.
+- Added compiler-free installed-package CI on Linux, macOS and Windows, including
+  wheel-from-sdist builds, all module imports, CLI entry points, type markers and
+  existing financial/API tests. Included the tested universal wheel in candidate collection.
+- Raised the SciPy floor to the non-yanked 1.11.1 release and adopted the isolated
+  Windows compiler/runtime wheel repair from the pending hardening follow-up.
+- Made local PennyLane/Lightning simulation explicit in setup instructions and
+  package metadata; added installed-wheel simulation checks with the quantum extra.
+- Changed no runtime Python source, C++ source, financial models, conventions,
+  calculations, algorithms or public API. The separate 1.1.3 modelling follow-up
+  remains unmerged by this packaging work.
+
 ## 1.1.2 — 2026-09-11 (repository milestone; unpublished)
 
 - Corrected forward/backward coupon schedule month drift after February, near-zero

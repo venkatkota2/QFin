@@ -11,7 +11,11 @@ Before adding a financial product or algorithm, open an issue describing:
 
 Set up the development environment with `python -m pip install -e ".[dev]"`.
 Editable installs compile the C++20 extension through scikit-build-core; users
-do not run CMake manually. Then run the complete validation set:
+do not run CMake manually. Set `QFIN_REQUIRE_NATIVE=1` when developing or testing
+the native backend so compiler errors fail the build. Without that requirement,
+source installs may fall back to the existing NumPy engines. See
+[installation](docs/installation.md) for compiler-free setup. Then run the
+complete validation set:
 
 ```bash
 ruff check .

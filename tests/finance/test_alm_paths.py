@@ -32,7 +32,7 @@ def _scenarios(model: qfin.ALMModel) -> qfin.EconomicScenarioSet:
     )
 
 
-def test_one_period_factor_attribution_reconciles_exactly() -> None:
+def test_one_period_factor_attribution_reconciles_exactly(installed_engine: str) -> None:
     model = _model()
     scenarios = _scenarios(model)
     result = model.run_factor_scenarios(scenarios, engine="numpy", chunk_size=2)
@@ -50,13 +50,16 @@ def test_one_period_factor_attribution_reconciles_exactly() -> None:
     assert result.loss_distribution().probabilities.tolist() == pytest.approx(
         scenarios.probabilities
     )
-    sensitivity = model.sensitivities(engine="native")
+    sensitivity = model.sensitivities(engine=installed_engine)
     assert sensitivity.rate_impact != 0
     assert sensitivity.credit_spread_impact < 0
     assert sensitivity.equity_impact > 0
     assert sensitivity.inflation_impact < 0
 
 
+@pytest.mark.skipif(
+    not qfin.system_info()["native_extension"], reason="native extension unavailable",
+)
 @pytest.mark.parametrize(
     "strategy",
     [

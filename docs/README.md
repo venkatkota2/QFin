@@ -6,6 +6,7 @@ the version source. The hardening milestone changes no modelling scope.
 
 | Topic | Document |
 | --- | --- |
+| Install, verify, extras and troubleshooting | [Installation](installation.md) |
 | Responsibilities and execution boundaries | [Architecture](architecture.md) |
 | Dates, settlement, accrual, units | [Financial conventions](financial-conventions.md) |
 | Curve interpolation, scenarios, bootstrapping | [Curves](curves.md) |

@@ -1,0 +1,83 @@
+name: Compiler-free Python package
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: pure Python / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: package-test/bin/python
+          - os: macos-latest
+            python: package-test/bin/python
+          - os: windows-latest
+            python: package-test/Scripts/python.exe
+    env:
+      QFIN_REQUIRE_NATIVE: "0"
+      # Prove that no working compiler is needed, even on development runners.
+      # Visual Studio generators ignore CXX; Ninja honors it on every platform.
+      CMAKE_GENERATOR: Ninja
+      CXX: qfin-intentionally-missing-cxx
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build
+      - name: Build sdist, then wheel from that sdist without a compiler
+        run: python -m build --outdir dist
+      - name: Ensure required-native builds still fail without a compiler
+        env:
+          QFIN_REQUIRE_NATIVE: "1"
+        run: >-
+          python -c "import subprocess,sys;
+          result=subprocess.run([sys.executable,'-m','build','--wheel','--outdir','required-native']);
+          assert result.returncode != 0, 'native build succeeded despite the missing compiler'"
+      - run: python -m venv package-test
+      - run: ${{ matrix.python }} -m pip install numpy scipy pytest "hypothesis>=6.100,<7"
+      - run: ${{ matrix.python }} -m pip install --no-index --no-deps --find-links dist qfin-quantum
+      - run: ${{ matrix.python }} -m pip check
+      - name: Verify all imports, type marker, installed CLIs and existing workflows
+        run: ${{ matrix.python }} -I examples/wheel_smoke.py --pure-python
+      - name: Run existing financial and API tests against the installed package
+        run: >-
+          ${{ matrix.python }} -I -m pytest
+          tests/finance tests/api tests/test_reference_corpus.py
+          tests/test_reference_extensions.py tests/test_operational_contracts.py tests/test_cli.py
+      - name: Install simulator extra from the exact same wheel
+        run: >-
+          ${{ matrix.python }} -c "from pathlib import Path; import subprocess,sys;
+          wheel=next(Path('dist').glob('*-py3-none-any.whl')).resolve();
+          subprocess.run([sys.executable,'-m','pip','install',str(wheel)+'[quantum]'],check=True)"
+      - name: Verify financial-to-quantum compilation and local Lightning simulation
+        run: >-
+          ${{ matrix.python }} -I -m pytest tests/test_pennylane_backend.py tests/test_cli.py
+      - run: ${{ matrix.python }} -I examples/european_option.py
+      - name: Keep exactly the tested universal wheel
+        if: matrix.os == 'ubuntu-latest'
+        run: >-
+          python -c "from pathlib import Path; import shutil;
+          wheels=list(Path('dist').glob('*-py3-none-any.whl'));
+          assert len(wheels)==1, wheels;
+          Path('pure-wheel').mkdir(); shutil.copy2(wheels[0], 'pure-wheel')"
+      - if: matrix.os == 'ubuntu-latest'
+        run: python tools/release_artifacts.py pure-wheel
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qfin-pure-python
+          path: pure-wheel/*
+          if-no-files-found: error
