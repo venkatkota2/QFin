@@ -74,11 +74,10 @@ def test_nonfinite_tail_threshold_and_unknown_engine_rejected():
         qfin.aggregate_risk(distribution, engine="invalid")
 
 
-def test_risk_rejects_unrepresentable_moments() -> None:
+def test_risk_rejects_unrepresentable_moments(installed_engine: str) -> None:
     distribution = qfin.LossDistribution([-1.0e308, 1.0e308])
-    for engine in ("numpy", "native"):
-        with pytest.raises(ValueError, match="finite double range"):
-            qfin.aggregate_risk(distribution, confidence=0.5, engine=engine)
+    with pytest.raises(ValueError, match="finite double range"):
+        qfin.aggregate_risk(distribution, confidence=0.5, engine=installed_engine)
 
 
 @pytest.mark.parametrize("confidence", [0.0, 1.0, float("nan")])

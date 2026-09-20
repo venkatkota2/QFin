@@ -7,8 +7,8 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "qfin-quantum"
-version = "1.1.2"
-description = "A finance-specific modelling and compilation layer for quantum computers"
+version = "1.1.2.post1"
+description = "Financial-to-quantum compilation and local PennyLane/Lightning simulation"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Venkat Kota" }]
@@ -28,7 +28,7 @@ classifiers = [
 ]
 dependencies = [
   "numpy>=1.26,<3",
-  "scipy>=1.11,<2",
+  "scipy>=1.11.1,<2",
 ]
 
 [project.optional-dependencies]
@@ -63,6 +63,7 @@ Repository = "https://github.com/venkatkota2/qfin"
 Issues = "https://github.com/venkatkota2/qfin/issues"
 
 [tool.scikit-build]
+minimum-version = "build-system.requires"
 cmake.source-dir = "cpp"
 cmake.version = ">=3.20"
 wheel.packages = ["src/qfin"]
@@ -73,6 +74,15 @@ sdist.include = [
   "cpp/src/*.cpp",
   "src/qfin/py.typed",
 ]
+
+# Keep native acceleration when a toolchain is available. Source installs on
+# machines without one can still use the existing NumPy implementations.
+# CI and users requiring C++ set QFIN_REQUIRE_NATIVE=1 to keep failures fatal.
+[[tool.scikit-build.overrides]]
+if.failed = true
+if.env.QFIN_REQUIRE_NATIVE = false
+wheel.cmake = false
+messages.after-success = "QFin installed without its optional C++ extension; using the existing NumPy engines. See docs/installation.md to enable native acceleration."
 
 [tool.pytest.ini_options]
 addopts = "-q"

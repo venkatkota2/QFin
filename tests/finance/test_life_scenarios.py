@@ -45,6 +45,9 @@ def test_zero_factor_path_matches_base_projection() -> None:
     assert scenario.expected_premiums[0] == pytest.approx(np.sum(base.expected_premiums))
 
 
+@pytest.mark.skipif(
+    not qfin.system_info()["native_extension"], reason="native extension unavailable",
+)
 def test_chunked_life_scenarios_match_native_and_feed_risk() -> None:
     points, assumptions = _book()
     rates = np.zeros((6, 5, assumptions.curve.times.size))
@@ -87,13 +90,13 @@ def test_chunked_life_scenarios_match_native_and_feed_risk() -> None:
     assert native.working_set_estimate_bytes > 0
 
 
-def test_life_sensitivity_report_has_financially_consistent_signs() -> None:
+def test_life_sensitivity_report_has_financially_consistent_signs(installed_engine: str) -> None:
     points, assumptions = _book()
-    report = qfin.life_sensitivities(points, assumptions, engine="native")
+    report = qfin.life_sensitivities(points, assumptions, engine=installed_engine)
     assert report.mortality_impact > 0
     assert report.rate_impact < 0
     assert report.expense_impact > 0
-    assert report.to_dict()["engine"] == "mixed"
+    assert report.to_dict()["engine"] == ("mixed" if installed_engine == "native" else "numpy")
 
 
 def test_life_scenario_horizon_and_period_validation() -> None:
@@ -108,13 +111,14 @@ def test_life_scenario_horizon_and_period_validation() -> None:
         qfin.project_liability_scenarios(points, assumptions, quarterly)
 
 
-def test_scenario_life_auto_dispatch_and_empty_book() -> None:
+def test_scenario_life_auto_dispatch_and_empty_book(installed_engine: str) -> None:
     points, assumptions = _book()
     scenarios = qfin.EconomicScenarioSet(np.zeros((1, 5, assumptions.curve.times.size)))
     automatic = qfin.project_liability_scenarios(points, assumptions, scenarios)
-    assert automatic.engine == "native"
+    expected = "native" if qfin.system_info()["native_extension"] else "numpy"
+    assert automatic.engine == expected
 
-    empty = qfin.project_liability_scenarios([], assumptions, scenarios, engine="native")
+    empty = qfin.project_liability_scenarios([], assumptions, scenarios, engine=installed_engine)
     np.testing.assert_array_equal(empty.present_values, np.zeros(1))
     assert empty.model_point_count == 0
     assert empty.policy_count == 0
